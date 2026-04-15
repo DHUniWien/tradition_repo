@@ -99,6 +99,7 @@ public class Annotation {
             Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
             Node annoNode = tx.getNodeByElementId(annoId);
             AnnotationModel result = AnnotationService.updateAnnotation(tx, tradNode, annoNode, spec);
+            tx.commit();
             return Response.ok(result).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
@@ -136,6 +137,7 @@ public class Annotation {
         		deleted = deleteIfDangling(a);
         		response = Response.ok(deleted).build();
         	}
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             response = Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -190,6 +192,7 @@ public class Annotation {
             if (result == null)
                 return Response.notModified().build();
             AnnotationModel updated = new AnnotationModel(aNode);
+            tx.commit();
             return Response.ok(updated).build();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -231,6 +234,7 @@ public class Annotation {
             Relationship r = tx.getRelationshipByElementId(linkId);
             r.delete();
             AnnotationModel updated = new AnnotationModel(annoNode);
+            tx.commit();
             return Response.ok(updated).build();
         } catch (Exception e) {
             e.printStackTrace();

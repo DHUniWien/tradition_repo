@@ -105,7 +105,6 @@ public class Reading {
         ReadingModel reading;
         try (Transaction tx = db.beginTx()) {
             reading = new ReadingModel(tx.getNodeByElementId(readId));
-            tx.commit();
         } catch (NotFoundException e) {
             return Response.noContent().build();
         } catch (Exception e) {

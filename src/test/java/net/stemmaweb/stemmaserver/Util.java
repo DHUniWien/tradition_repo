@@ -225,7 +225,7 @@ public class Util {
                     MediaType.APPLICATION_OCTET_STREAM_TYPE).getFormDataContentDisposition();
         }
 
-        return appRest.importGraphMl(tName, userId, "false", "Default",
+        return appRest.importFromFile(tName, userId, "false", "Default",
                 tDir, empty, fType, input, fdcd);
     }
 

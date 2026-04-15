@@ -153,9 +153,7 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = SectionModel.class)
     public Response updateSectionInfo(SectionModel newInfo) {
-    	Transaction tx = null;
-        try {
-        	tx = db.beginTx();
+        try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	}
@@ -164,15 +162,13 @@ public class Section {
                 thisSection.setProperty("name", newInfo.getName());
             if (newInfo.getLanguage() != null)
                 thisSection.setProperty("language", newInfo.getLanguage());
+            SectionModel result = new SectionModel(tx, thisSection);
+            tx.commit();
+            return Response.ok().entity(result).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-	            tx.commit();
-			}
-		}
-        return getSectionInfo();
+        }
     }
 
     /**
@@ -650,9 +646,7 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.Map<String,Long>")
     public Response splitAtRank (@PathParam("rank") String rankstr) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
+    	try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	
@@ -747,16 +741,16 @@ public class Section {
     				.expand(new AlignmentTraverse(newStart), new InitialBranchState.State<>(tx, tx))
     				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes().spliterator(), false)
     		.forEach(x -> {
-    			if (x.hasLabel(Nodes.EMENDATION)) {
-    				x.getSingleRelationship(ERelations.HAS_EMENDATION, Direction.INCOMING).delete();
-    				newSection.createRelationshipTo(x, ERelations.HAS_EMENDATION);
-    			}
-    			if (x.hasLabel(Nodes.READING)) {
-    				x.setProperty("section_id", newId);
-    				if (!x.equals(newStart))
-    					x.setProperty("rank", Long.parseLong(x.getProperty("rank").toString()) - rank + 1);
-    			}
-    		}
+                            if (x.hasLabel(Nodes.EMENDATION)) {
+                                x.getSingleRelationship(ERelations.HAS_EMENDATION, Direction.INCOMING).delete();
+                                newSection.createRelationshipTo(x, ERelations.HAS_EMENDATION);
+                            }
+                            if (x.hasLabel(Nodes.READING)) {
+                                x.setProperty("section_id", newId);
+                                if (!x.equals(newStart))
+                                    x.setProperty("rank", Long.parseLong(x.getProperty("rank").toString()) - rank + 1);
+                            }
+                        }
     				);
     		
     		// Check for lacunae - if the last reading in the old section is a lacuna, the first reading
@@ -765,16 +759,12 @@ public class Section {
     		
     		// Re-initialize the ranks on the new section
     		// recalculateRank(newStart);
-        		
+            tx.commit();
         	return Response.ok().entity(jsonresp("sectionId", newSectionId)).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
-		}
+        }
     }
 
 
@@ -811,9 +801,7 @@ public class Section {
     @Produces(MediaType.TEXT_PLAIN)
     @ReturnType("java.lang.Void")
     public Response mergeSections (@PathParam("otherId") String otherId) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
+    	try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         	if (!VariantGraphService.sectionInTradition(tx, tradId, otherId))
@@ -911,16 +899,12 @@ public class Section {
     		// Re-initialize the ranks starting from the final readings of the first section.
     		for (Node n : firstSectionEnd)
     			recalculateRank(tx, n, false);
-        		
+            tx.commit();
+            return Response.ok().build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
-		}
-    	return Response.ok().build();
+        }
     }
 
     /**
@@ -928,7 +912,7 @@ public class Section {
      * This does not belong to the official API!
      * It is a secret hack to fix ranks if we find they are broken or missing.
      */
-    @GET
+    @POST
     @Path("/initRanks")
     @Produces(MediaType.APPLICATION_JSON)
     @MireDotIgnore
@@ -1115,9 +1099,7 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.Map<String,String>")
     public Response setLemmaText() {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
+    	try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
     		Node startNode = VariantGraphService.getStartNode(tx, sectId);
@@ -1168,15 +1150,12 @@ public class Section {
     						.build();
     			priorLemma = r.getEndNode();
     		}
+            tx.commit();
+            return Response.ok(jsonresp("result", "success")).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
-		}
-        return Response.ok(jsonresp("result", "success")).build();
+        }
     }
 
     /**
@@ -1237,9 +1216,7 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response emendText(ProposedEmendationModel proposal) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
+    	try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND)
         				.entity(jsonerror("Tradition and/or section not found")).build();
@@ -1276,15 +1253,12 @@ public class Section {
     		result.setSequences(newLinks);
     		// If it is a zero-width emendation, re-rank the graph
     		ReadingService.recalculateRank(tx, emendation, false);
+            tx.commit();
         	return Response.ok(result).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
-		}
+        }
     }
 
 

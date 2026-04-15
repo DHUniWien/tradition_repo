@@ -422,7 +422,7 @@ public class Tradition {
      * This does not belong to the official API!
      * It is a secret hack to fix ranks if we find they are broken or missing.
      */
-    @GET
+    @POST
     @Path("/initRanks")
     @Produces(MediaType.APPLICATION_JSON)
     @MireDotIgnore

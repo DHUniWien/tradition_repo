@@ -174,7 +174,7 @@ public class AnnotationLabel {
                             "Linked node label " + key + " not found in this tradition")).build();
                 }
             }
-            tx.close();
+            tx.commit();
             return Response.status(isNew ? Response.Status.CREATED : Response.Status.OK)
             		.entity(new AnnotationLabelModel(ourNode)).build();
         } catch (Exception e) {
@@ -228,7 +228,7 @@ public class AnnotationLabel {
             // Finally, delete the label
             ourNode.getSingleRelationship(ERelations.HAS_ANNOTATION_TYPE, Direction.INCOMING).delete();
             ourNode.delete();
-            tx.close();
+            tx.commit();
             return Response.ok(ourModel).build();
         } catch (Exception e) {
             e.printStackTrace();

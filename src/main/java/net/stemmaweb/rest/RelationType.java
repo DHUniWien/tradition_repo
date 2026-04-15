@@ -103,17 +103,24 @@ public class RelationType {
                 RelationTypeModel defaultType = RelationService.makeDefaultType(tx, traditionNode, typeName);
                 if (defaultType == null)
                     return Response.notModified().build();
+
+                tx.commit();
                 return Response.status(Response.Status.CREATED).entity(defaultType).build();
             }
 
             if (extantRelType != null) {
                 extantRelType = rtModel.update(traditionNode, tx);
-                if (extantRelType != null)
+                if (extantRelType != null) {
+                    tx.commit();
                     return Response.ok().entity(rtModel).build();
+                }
             } else {
                 extantRelType = rtModel.instantiate(traditionNode, tx);
-                if (extantRelType != null)
+                if (extantRelType != null) {
+                    tx.commit();
                     return Response.status(Response.Status.CREATED).entity(rtModel).build();
+                }
+
             }
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
@@ -160,6 +167,7 @@ public class RelationType {
             // Then I guess we can delete it.
             foundRelType.getSingleRelationship(ERelations.HAS_RELATION_TYPE, Direction.INCOMING).delete();
             foundRelType.delete();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

@@ -89,12 +89,8 @@ public class User {
         Node extantUser;
         try (Transaction tx = db.beginTx()) {
             extantUser = tx.findNode(Nodes.USER, "id", userId);
-        }
-
-        Status returnedStatus;
-        if (extantUser != null) {
-            // Update the user if it exists
-            try (Transaction tx = db.beginTx()) {
+            if (extantUser != null) {
+                // User exists, so update it
                 if (extantUser.getProperty("passphrase") != userModel.getPassphrase())
                     extantUser.setProperty("passphrase", userModel.getPassphrase());
                 if (extantUser.getProperty("role") != userModel.getRole())
@@ -104,15 +100,10 @@ public class User {
                 if (extantUser.getProperty("active") != userModel.getActive())
                     extantUser.setProperty("active", userModel.getActive());
                 tx.commit();
-            } catch (Exception e) {
-                return Response.serverError().entity(jsonerror(e.getMessage())).build();
-            }
-            returnedStatus = Response.Status.OK;
-        } else {
-            // Create it if it doesn't exist
-            try (Transaction tx = db.beginTx()) {
+                return Response.ok(new UserModel(extantUser)).build();
+            } else {
+                // User doesn't exist, so create it
                 Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
-
                 extantUser = tx.createNode(Nodes.USER);
                 extantUser.setProperty("id", userId);
                 extantUser.setProperty("passphrase", userModel.getPassphrase());
@@ -123,13 +114,11 @@ public class User {
                 rootNode.createRelationshipTo(extantUser, ERelations.SYSTEMUSER);
 
                 tx.commit();
-            } catch (Exception e) {
-                return Response.serverError().entity(jsonerror(e.getMessage())).build();
+                return Response.status(Status.CREATED).entity(new UserModel(extantUser)).build();
             }
-            returnedStatus = Response.Status.CREATED;
+        } catch (Exception e){
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        UserModel returnedModel = new UserModel(extantUser);
-        return Response.status(returnedStatus).entity(returnedModel).build();
     }
 
 

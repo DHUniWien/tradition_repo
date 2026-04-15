@@ -104,11 +104,8 @@ public class Stemma {
         // Wrap this entire thing in a transaction so that we can roll back
         // the deletion if the replacement import fails.
         try (Transaction tx = db.beginTx()) {
-            if (!this.newCreated) {
-                Response deletionResult = deleteStemma();
-                if (deletionResult.getStatus() != 200)
-                    return deletionResult;
-            }
+            if (!this.newCreated)
+                doStemmaDeletion(tx);
 
             Response replaceResult;
             if (stemmaSpec.getNewick() != null) {
@@ -124,6 +121,8 @@ public class Stemma {
 
             // OK, we can commit it.
             tx.commit();
+        }  catch (IllegalStateException e) {
+            return Response.status(Status.NOT_FOUND).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -146,44 +145,51 @@ public class Stemma {
     @ReturnType(clazz = StemmaModel.class)
     public Response deleteStemma() {
         try (Transaction tx = db.beginTx()) {
-            Node stemmaNode = getStemmaNode(tx);
-            if (stemmaNode == null)
-                return Response.status(Status.NOT_FOUND).build();
+            StemmaModel removed = doStemmaDeletion(tx);
+            tx.commit();
+            return Response.ok(removed).build();
+        } catch (IllegalStateException e) {
+            return Response.status(Status.NOT_FOUND).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+    }
 
-            StemmaModel removed = new StemmaModel(tx, stemmaNode);
-            Set<Relationship> removableRelations = new HashSet<>();
-            Set<Node> removableNodes = new HashSet<>();
+    private StemmaModel doStemmaDeletion(Transaction tx) {
+        Node stemmaNode = getStemmaNode(tx);
+        if (stemmaNode == null)
+            throw new IllegalStateException("No such stemma");
 
-            // The stemma is removable
-            removableNodes.add(stemmaNode);
-            removableRelations.add(stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING));
+        StemmaModel removed = new StemmaModel(tx, stemmaNode);
+        Set<Relationship> removableRelations = new HashSet<>();
+        Set<Node> removableNodes = new HashSet<>();
 
-            // Its HAS_WITNESS relations are removable
-            stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)
+        // The stemma is removable
+        removableNodes.add(stemmaNode);
+        removableRelations.add(stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING));
+
+        // Its HAS_WITNESS relations are removable
+        stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)
                 .forEach(x -> {
                     removableRelations.add(x);
                     removableNodes.add(x.getEndNode());
                 });
-            stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE)
-                    .forEach(removableRelations::add);
+        stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE)
+                .forEach(removableRelations::add);
 
-            // Its associated TRANSMISSION relations are removable
-            removableNodes
-                    .forEach(n -> n.getRelationships(Direction.BOTH, ERelations.TRANSMITTED)
-                            .forEach(r -> {
-                                        if (r.getProperty("hypothesis").equals(name))
-                                            removableRelations.add(r);
-                                    }
-                            ));
+        // Its associated TRANSMISSION relations are removable
+        removableNodes
+                .forEach(n -> n.getRelationships(Direction.BOTH, ERelations.TRANSMITTED)
+                        .forEach(r -> {
+                                    if (r.getProperty("hypothesis").equals(name))
+                                        removableRelations.add(r);
+                                }
+                        ));
 
-            // Its witnesses are removable if they have no links left
-            removableRelations.forEach(Relationship::delete);
-            removableNodes.stream().filter(x -> !x.hasRelationship()).forEach(Node::delete);
-            tx.commit();
-            return Response.ok(removed).build();
-        } catch (Exception e ){
-            return Response.serverError().entity(e.getMessage()).build();
-        }
+        // Its witnesses are removable if they have no links left
+        removableRelations.forEach(Relationship::delete);
+        removableNodes.stream().filter(x -> !x.hasRelationship()).forEach(Node::delete);
+        return removed;
     }
 
     /**
@@ -203,8 +209,7 @@ public class Stemma {
     @ReturnType(clazz = StemmaModel.class)
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
-        try (Transaction tx = db.beginTx())
-        {
+        try (Transaction tx = db.beginTx()) {
             // Get the stemma and the witness
             Result foundStemma = tx.execute("match (:TRADITION {id:'" + tradId
                     + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
@@ -231,9 +236,10 @@ public class Stemma {
             stemma.createRelationshipTo(archetype, ERelations.HAS_ARCHETYPE);
             // and make sure the stemma is directed.
             stemma.setProperty("directed", true);
+            StemmaModel result = new StemmaModel(tx, stemma);
+            tx.commit();
+            return Response.ok(result).build();
         }
-        return getStemma();
-
     }
 
     private Node getStemmaNode (Transaction tx) {

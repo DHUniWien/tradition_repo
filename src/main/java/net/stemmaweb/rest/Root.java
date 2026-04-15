@@ -143,15 +143,15 @@ public class Root {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.Map<String,String>")
-    public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
-                                  @FormDataParam("userId") String userId,
-                                  @FormDataParam("public") String is_public,
-                                  @FormDataParam("language") String language,
-                                  @DefaultValue("LR") @FormDataParam("direction") String direction,
-                                  @FormDataParam("empty") String empty,
-                                  @FormDataParam("filetype") String filetype,
-                                  @FormDataParam("file") InputStream uploadedInputStream,
-                                  @FormDataParam("file") FormDataContentDisposition fileDetail) {
+    public Response importFromFile(@DefaultValue("") @FormDataParam("name") String name,
+                                   @FormDataParam("userId") String userId,
+                                   @FormDataParam("public") String is_public,
+                                   @FormDataParam("language") String language,
+                                   @DefaultValue("LR") @FormDataParam("direction") String direction,
+                                   @FormDataParam("empty") String empty,
+                                   @FormDataParam("filetype") String filetype,
+                                   @FormDataParam("file") InputStream uploadedInputStream,
+                                   @FormDataParam("file") FormDataContentDisposition fileDetail) {
 
         // No file to parse
         if (fileDetail == null && uploadedInputStream == null && empty == null)
@@ -240,7 +240,6 @@ public class Root {
             else
                 nodeList = tx.findNodes(Nodes.TRADITION);
             nodeList.forEachRemaining(t -> traditionList.add(new TraditionModel(t)));
-            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -265,10 +264,7 @@ public class Root {
         List<UserModel> userList = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-
-            tx.findNodes(Nodes.USER)
-                    .forEachRemaining(t -> userList.add(new UserModel(t)));
-            tx.commit();
+            tx.findNodes(Nodes.USER).forEachRemaining(t -> userList.add(new UserModel(t)));
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
