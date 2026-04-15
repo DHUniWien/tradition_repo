@@ -45,6 +45,7 @@ public class Witness {
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
         // The "sigil" might be a sigil, or it might be a node ID.
+        // TODO Check when we ever call a witness by node ID??
         try {
             String found = getWitnessById(requestedSigil);
             if (found != null)
@@ -76,19 +77,15 @@ public class Witness {
         return foundSigil;
     }
 
-    private Node getWitnessBySigil() {
-        Node found = null;
-        try (Transaction tx = db.beginTx()) {
-        	Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
-            for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
-                Node wit = r.getEndNode();
-                if (wit.hasProperty("sigil") && wit.getProperty("sigil").equals(sigil)) {
-                    found = wit;
-                    break;
-                }
+    private Node getWitnessBySigil(Transaction tx) {
+        Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+        for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
+            Node wit = r.getEndNode();
+            if (wit.hasProperty("sigil") && wit.getProperty("sigil").equals(sigil)) {
+                return wit;
             }
         }
-        return found;
+        return null;
     }
 
     // Backwards compatibility for API
@@ -108,10 +105,13 @@ public class Witness {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = WitnessModel.class)
     public Response getWitnessInfo() {
-        Node witnessNode = getWitnessBySigil();
-        if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
-        WitnessModel thisWit = new WitnessModel(witnessNode);
-        return Response.ok(thisWit).build();
+        try (Transaction tx = db.beginTx()) {
+            Node witnessNode = getWitnessBySigil(tx);
+            if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
+            WitnessModel thisWit = new WitnessModel(witnessNode);
+            return Response.ok(thisWit).build();
+
+        }
     }
 
     /**
@@ -131,7 +131,7 @@ public class Witness {
         WitnessModel removed;
         try (Transaction tx = db.beginTx()) {
             // Find the node in question
-            Node witnessNode = getWitnessBySigil();
+            Node witnessNode = getWitnessBySigil(tx);
             if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
             // Find all references to the witness throughout the tradition, and delete them
             removed = new WitnessModel(witnessNode);

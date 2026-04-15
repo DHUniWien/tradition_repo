@@ -240,7 +240,6 @@ public class Stemma {
         Result query = tx.execute("match (:TRADITION {id:'" + tradId
                 + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
         ResourceIterator<Node> foundStemma = query.columnAs("s");
-        tx.close();
         if (!foundStemma.hasNext())
             return null;
         return foundStemma.next();

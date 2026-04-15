@@ -70,7 +70,6 @@ public class AnnotationLabel {
         	} else {
         	    response = Response.ok(new AnnotationLabelModel(ourNode)).build();
         	}
-        	tx.close();
         } catch (Exception e) {
         	e.printStackTrace();
         	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -102,7 +101,7 @@ public class AnnotationLabel {
         	Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
             // Get the existing list of annotation labels associated with this tradition
             List<String> reservedWords = Arrays.asList("USER", "ROOT", "__SYSTEM__");
-            List<String> existingLabels = getValidTargetsForTradition(reservedWords);
+            List<String> existingLabels = getValidTargetsForTradition(tx, reservedWords);
 
             if (ourNode == null) {
                 isNew = true;
@@ -254,14 +253,11 @@ public class AnnotationLabel {
         return answer;
     }
 
-    private List<String> getValidTargetsForTradition(List<String> reservedWords) {
+    private List<String> getValidTargetsForTradition(Transaction tx, List<String> reservedWords) {
         List<String> answer;
         // Get the existing labels
-        try (Transaction tx = db.beginTx()) {
-            answer = getExistingLabelsForTradition(tx).stream()
-                    .map(x -> x.getProperty("name").toString()).collect(Collectors.toList());
-            tx.close();
-        }
+        answer = getExistingLabelsForTradition(tx).stream()
+                .map(x -> x.getProperty("name").toString()).collect(Collectors.toList());
         // Get the primary objects that can also be annotated
         for (Nodes x : Nodes.values()) {
             if (!reservedWords.contains(x.name()))

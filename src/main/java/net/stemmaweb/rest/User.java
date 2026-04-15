@@ -27,20 +27,19 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * Comprises all the API calls related to a user.
- * Can be called using http://BASE_URL/user
+ * Can be called using <a href="http://BASE_URL/user">...</a>
  * @author PSE FS 2015 Team2
  */
 
 public class User {
-    private GraphDatabaseService db;
+    private final GraphDatabaseService db;
     /**
      * The ID of a stemmarest user; this is usually either an email address or a Google ID token.
      */
-    private String userId;
+    private final String userId;
 
     public User (String requestedId) {
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-        db = dbServiceProvider.getDatabase();
+        db = new GraphDatabaseServiceProvider().getDatabase();
         userId = requestedId;
     }
 
@@ -57,19 +56,17 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = UserModel.class)
     public Response getUserById() {
-        UserModel userModel;
         try (Transaction tx = db.beginTx()) {
             Node foundUser = tx.findNode(Nodes.USER, "id", userId);
             if (foundUser != null) {
-                userModel = new UserModel(foundUser);
+                return Response.ok(new UserModel(foundUser)).build();
             } else {
                 return Response.noContent().build();
             }
-            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(userModel).build();
+
     }
 
     /**
@@ -92,7 +89,6 @@ public class User {
         Node extantUser;
         try (Transaction tx = db.beginTx()) {
             extantUser = tx.findNode(Nodes.USER, "id", userId);
-            tx.close();
         }
 
         Status returnedStatus;
@@ -161,7 +157,7 @@ public class User {
                 removed = new UserModel(foundUser);
                 // See if the user owns any traditions
                 ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
-                if (userTraditions.size() > 0)
+                if (!userTraditions.isEmpty())
                     return Response.status(Status.PRECONDITION_FAILED)
                             .entity("User's traditions must be deleted first")
                             .build();
@@ -191,34 +187,17 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
     public Response getUserTraditions() {
-    	boolean userExists = false;
     	try (Transaction tx = db.beginTx()) {
-            userExists = DatabaseService.userExists(tx, userId);
-            tx.close();
-        }
+            Node thisUser = tx.findNode(Nodes.USER, "id", userId);
+            if (thisUser == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("User does not exist")).build();
 
-        if (!userExists) {
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("User does not exist")).build();
-        }
-
-        ArrayList<TraditionModel> traditions = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            Node thisUser = getUserNode();
+            ArrayList<TraditionModel> traditions = new ArrayList<>();
             DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION)
                     .forEach(x -> traditions.add(new TraditionModel(x)));
-            tx.close();
+            return Response.ok(traditions).build();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(traditions).build();
-    }
-
-    private Node getUserNode() {
-        Node foundUser;
-        try (Transaction tx = db.beginTx()) {
-            foundUser = tx.findNode(Nodes.USER, "id", userId);
-            tx.close();
-        }
-        return foundUser;
     }
 }

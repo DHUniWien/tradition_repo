@@ -970,7 +970,7 @@ public class Tradition {
             if (traditionNode == null) {
                 return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
             }
-            StemmawebExporter parser = new StemmawebExporter();
+            StemmawebExporter parser = new StemmawebExporter(tx);
             return parser.writeNeo4J(traditionId);
         } catch (Exception e) {
             e.printStackTrace();

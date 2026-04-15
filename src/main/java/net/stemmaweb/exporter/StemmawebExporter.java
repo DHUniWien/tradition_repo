@@ -18,7 +18,6 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -31,7 +30,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -41,8 +39,7 @@ import net.stemmaweb.services.VariantGraphService;
  */
 
 public class StemmawebExporter {
-    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final Transaction tx;
 
     private final HashMap<String,String[]> nodeMap = new HashMap<>() {
         {
@@ -100,6 +97,10 @@ public class StemmawebExporter {
         }
     };
 
+    public StemmawebExporter(Transaction tx) {
+        this.tx = tx;
+    }
+
     private void writeKeys(XMLStreamWriter writer, HashMap<String, String[]> currentMap, String kind) {
         try {
             for (Map.Entry<String, String[]> entry : currentMap.entrySet()) {
@@ -122,7 +123,6 @@ public class StemmawebExporter {
         int edgeCountGraph2 = 0;
         int nodeCountGraph2 = 0;
         File file;
-        Transaction tx = db.beginTx();
 
         try {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
@@ -309,7 +309,7 @@ public class StemmawebExporter {
                         // Skip internal properties like "colocation" on RELATED links
                         if (rel.hasProperty(prop) && relationMap.containsKey(prop)) {
                             String value = rel.getProperty(prop).toString();
-                            if (!value.equals("")) {
+                            if (!value.isEmpty()) {
                                 writer.writeStartElement("data");
                                 String keyId = relationMap.get(prop)[0];
                                 writer.writeAttribute("key", keyId);
@@ -362,10 +362,6 @@ public class StemmawebExporter {
                     .status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(jsonerror("Error: Tradition could not be exported!"))
                     .build();
-        } finally {
-        	if (tx != null) {
-        		tx.close();
-        	}
         }
 
         return Response.ok(file.toString(), MediaType.APPLICATION_XML).build();

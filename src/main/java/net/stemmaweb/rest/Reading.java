@@ -373,8 +373,8 @@ public class Reading {
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
-        try {
-            List<Node> relatedReadings = collectRelatedReadings(filterTypes);
+        try (Transaction tx = db.beginTx()) {
+            List<Node> relatedReadings = collectRelatedReadings(tx, filterTypes);
             return Response.ok(relatedReadings.stream().map(ReadingModel::new).collect(Collectors.toList())).build();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
@@ -405,7 +405,7 @@ public class Reading {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            List<Node> related = collectRelatedReadings(Collections.singletonList(onRelationType));
+            List<Node> related = collectRelatedReadings(tx, Collections.singletonList(onRelationType));
             Node us = tx.getNodeByElementId(readId);
             String key = us.hasProperty("normal_form") ? "normal_form" : "text";
             Object ourNormalForm = tx.getNodeByElementId(readId).getProperty(key);
@@ -433,24 +433,21 @@ public class Reading {
     }
 
 
-    private List<Node> collectRelatedReadings(List<String> filterTypes) {
+    private List<Node> collectRelatedReadings(Transaction tx, List<String> filterTypes) {
         List<Node> allRelated = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            Node reading = tx.getNodeByElementId(readId);
-            RelationService.RelatedReadingsTraverser rt;
-            if (filterTypes == null || filterTypes.isEmpty())
-                // Traverse all relations
-                rt = new RelationService.RelatedReadingsTraverser(tx, reading);
-            else
-                // Traverse only the named relations
-                rt = new RelationService.RelatedReadingsTraverser(tx, reading, x -> filterTypes.contains(x.getName()));
-            tx.traversalDescription().depthFirst()
-                    .relationships(ERelations.RELATED)
-                    .evaluator(rt)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(reading).nodes().forEach(allRelated::add);
-            tx.commit();
-        }
+        Node reading = tx.getNodeByElementId(readId);
+        RelationService.RelatedReadingsTraverser rt;
+        if (filterTypes == null || filterTypes.isEmpty())
+            // Traverse all relations
+            rt = new RelationService.RelatedReadingsTraverser(tx, reading);
+        else
+            // Traverse only the named relations
+            rt = new RelationService.RelatedReadingsTraverser(tx, reading, x -> filterTypes.contains(x.getName()));
+        tx.traversalDescription().depthFirst()
+                .relationships(ERelations.RELATED)
+                .evaluator(rt)
+                .uniqueness(Uniqueness.NODE_GLOBAL)
+                .traverse(reading).nodes().forEach(allRelated::add);
         return allRelated;
     }
 
@@ -845,7 +842,7 @@ public class Reading {
             if (errorMessage != null)
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
-            readingsAndRelations = split(originalReading, splitIndex, model);
+            readingsAndRelations = split(tx, originalReading, splitIndex, model);
             ReadingService.recalculateRank(tx, originalReading, true);
 
             tx.commit();
@@ -901,7 +898,7 @@ public class Reading {
      *            the ReadingBoundaryModel saying how the reading should be split
      * @return a list of the new SEQUENCE relationships created.
      */
-    private GraphModel split(Node originalReading, int splitIndex, ReadingBoundaryModel model) {
+    private GraphModel split(Transaction tx, Node originalReading, int splitIndex, ReadingBoundaryModel model) {
         ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<>();
         ArrayList<SequenceModel> createdSequences = new ArrayList<>();
 
@@ -919,40 +916,37 @@ public class Reading {
 
         // Add the new readings
         Node lastReading = originalReading;
-        try (Transaction tx = db.beginTx()) {
             for (int i = 1; i < splitWords.length; i++) {
-                Node newReading = tx.createNode();
+            Node newReading = tx.createNode();
 
-                ReadingService.copyReadingProperties(lastReading, newReading);
-                newReading.setProperty("text", splitWords[i]);
-                // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
-                Long previousRank = (Long) lastReading.getProperty("rank");
-                newReading.setProperty("rank", previousRank + 1);
-                if (!model.getSeparate()) {
-                    newReading.setProperty("join_prior", true);
-                    lastReading.setProperty("join_next", true);
-                }
-
-                // Copy the witnesses from our outgoing sequence links
-                Relationship newSeq = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
-                // This will pick up the relationship we just made
-                for (Relationship r : originalOutgoingRels)
-                    ReadingService.transferWitnesses(lastReading, newReading, r);
-
-                // Add the newly created objects to our eventual GraphModel
-                createdOrChangedReadings.add(new ReadingModel(newReading));
-                createdSequences.add(new SequenceModel(newSeq));
-
-                // Loop
-                lastReading = newReading;
+            ReadingService.copyReadingProperties(lastReading, newReading);
+            newReading.setProperty("text", splitWords[i]);
+            // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
+            Long previousRank = (Long) lastReading.getProperty("rank");
+            newReading.setProperty("rank", previousRank + 1);
+            if (!model.getSeparate()) {
+                newReading.setProperty("join_prior", true);
+                lastReading.setProperty("join_next", true);
             }
-            for (Relationship oldRel : originalOutgoingRels) {
-                Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
-                RelationService.copyRelationshipProperties(oldRel, newRel);
-                createdSequences.add(new SequenceModel(newRel));
-                oldRel.delete();
-            }
-            tx.commit();
+
+            // Copy the witnesses from our outgoing sequence links
+            Relationship newSeq = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
+            // This will pick up the relationship we just made
+            for (Relationship r : originalOutgoingRels)
+                ReadingService.transferWitnesses(lastReading, newReading, r);
+
+            // Add the newly created objects to our eventual GraphModel
+            createdOrChangedReadings.add(new ReadingModel(newReading));
+            createdSequences.add(new SequenceModel(newSeq));
+
+            // Loop
+            lastReading = newReading;
+        }
+        for (Relationship oldRel : originalOutgoingRels) {
+            Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
+            RelationService.copyRelationshipProperties(oldRel, newRel);
+            createdSequences.add(new SequenceModel(newRel));
+            oldRel.delete();
         }
 
         return new GraphModel(createdOrChangedReadings, new ArrayList<>(), createdSequences);

@@ -164,9 +164,9 @@ public class Root {
                         .entity(jsonerror("No user with this id exists"))
                         .build();
             }
-            tradId = this.createTradition(name, direction, language, is_public);
+            tradId = this.createTradition(tx, name, direction, language, is_public);
             // Link the given user to the created tradition.
-            this.linkUserToTradition(userId, tradId);
+            this.linkUserToTradition(tx, userId, tradId);
             tx.commit();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -275,43 +275,33 @@ public class Root {
         return Response.ok(userList).build();
     }
 
-    private String createTradition(String name, String direction, String language, String isPublic) {
+    private String createTradition(Transaction tx, String name, String direction, String language, String isPublic) {
         String tradId = UUID.randomUUID().toString();
-        try (Transaction tx = db.beginTx()) {
-            // Make the tradition node
-            Node traditionNode = tx.createNode(Nodes.TRADITION);
-            traditionNode.setProperty("id", tradId);
-            // This has a default value
-            traditionNode.setProperty("direction", direction);
-            // The rest of them don't have defaults
-            if (name != null)
-                traditionNode.setProperty("name", name);
-            if (language != null)
-                traditionNode.setProperty("language", language);
-            if (isPublic != null)
-                traditionNode.setProperty("is_public", isPublic.equals("true"));
-            tx.commit();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+        // Make the tradition node
+        Node traditionNode = tx.createNode(Nodes.TRADITION);
+        traditionNode.setProperty("id", tradId);
+        // This has a default value
+        traditionNode.setProperty("direction", direction);
+        // The rest of them don't have defaults
+        if (name != null)
+            traditionNode.setProperty("name", name);
+        if (language != null)
+            traditionNode.setProperty("language", language);
+        if (isPublic != null)
+            traditionNode.setProperty("is_public", isPublic.equals("true"));
+
         return tradId;
     }
 
-    private void linkUserToTradition(String userId, String tradId) throws Exception {
-        try (Transaction tx = db.beginTx()) {
+    private void linkUserToTradition(Transaction tx, String userId, String tradId) throws Exception {
             Node userNode = tx.findNode(Nodes.USER, "id", userId);
             if (userNode == null) {
-                tx.rollback();
                 throw new Exception("There is no user with ID " + userId + "!");
             }
             Node traditionNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             if (traditionNode == null) {
-                tx.rollback();
                 throw new Exception("There is no tradition with ID " + tradId + "!");
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-            tx.commit();
-        }
     }
 }
