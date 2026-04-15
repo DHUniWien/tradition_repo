@@ -445,27 +445,21 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON)
     @MireDotIgnore
     public Response initRanks() {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-        	if (traditionNode == null)
-        		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-        	List<SectionModel> smlist = produceSectionList(traditionNode, tx);
-        	if (smlist == null)
-        		return Response.ok().build();
-        	
-    		for (SectionModel sm : smlist) {
-    			ReadingService.recalculateRank(tx, VariantGraphService.getStartNode(tx, sm.getId()), true);
-    		}
+        try (Transaction tx = db.beginTx()) {
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+            List<SectionModel> smlist = produceSectionList(traditionNode, tx);
+            if (smlist.isEmpty())
+                return Response.ok().build();
+            for (SectionModel sm : smlist) {
+                ReadingService.recalculateRank(tx, VariantGraphService.getStartNode(tx, sm.getId()), true);
+            }
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
-		}
+        }
         return Response.ok(jsonresp("result", "success")).build();
 
     }
@@ -488,26 +482,17 @@ public class Tradition {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.SectionModel>")
     public Response getAllSections() {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-        	if (traditionNode == null)
-        		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-        	
-        	ArrayList<SectionModel> sectionList = produceSectionList(traditionNode, tx);
-        	if (sectionList == null)
-        		return Response.serverError().entity(jsonerror("Something went wrong building section list")).build();
-        	
-        	return Response.ok(sectionList).build();
+        try (Transaction tx = db.beginTx()) {
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+
+            ArrayList<SectionModel> sectionList = produceSectionList(traditionNode, tx);
+            return Response.ok(sectionList).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
     /**
@@ -598,30 +583,19 @@ public class Tradition {
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-        	if (traditionNode == null)
-        		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-        	ArrayList<SectionModel> ourSections = produceSectionList(traditionNode, tx);
-        	if (ourSections == null)
-        		return Response.serverError().entity(jsonerror("section lookup failed")).build();
-        	for (SectionModel s : ourSections) {
-        		Section sectRest = new Section(traditionId, s.getId());
-        		ArrayList<RelationModel> sectRels = sectRest.sectionRelations(includeReadings.equals("true"), tx);
-        		if (sectRels == null)
-        			return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
-        		relList.addAll(sectRels);
-        	}
+        try (Transaction tx = db.beginTx()) {
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+            ArrayList<SectionModel> ourSections = produceSectionList(traditionNode, tx);
+            for (SectionModel s : ourSections) {
+                ArrayList<RelationModel> sectRels = VariantGraphService.sectionRelations(tx, s.getId(), includeReadings.equals("true"));
+                relList.addAll(sectRels);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
 
        return Response.ok(relList).build();
     }

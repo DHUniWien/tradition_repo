@@ -1,7 +1,9 @@
 package net.stemmaweb.services;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,21 +12,30 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.InitialBranchState;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Relation;
+import net.stemmaweb.services.ReadingService.AlignmentTraverse;
+
+import jakarta.ws.rs.core.Response;
 
 public class VariantGraphService {
 
@@ -516,5 +527,413 @@ public class VariantGraphService {
      */
     public static Traverser returnAllSequences(Transaction tx, Node startNode) {
         return returnTraverser(tx, startNode, sequenceLinks, PathExpanders.forDirection(Direction.OUTGOING));
+    }
+
+
+    /*
+     * Methods extracted from Section for reuse by services and parsers
+     */
+
+    /**
+     * Collect all witness nodes that appear in the given section of the given tradition.
+     *
+     * @param tx     the transaction within which we are working
+     * @param tradId the tradition ID
+     * @param sectId the section ID
+     * @return a list of witness nodes
+     */
+    public static ArrayList<Node> collectSectionWitnesses(Transaction tx, String tradId, String sectId) {
+        HashSet<Node> witnessList = new HashSet<>();
+        Node traditionNode = getTraditionNode(tx, tradId);
+        Node sectionStart = getStartNode(tx, sectId);
+        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
+        for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE))
+            for (String witClass : relationship.getPropertyKeys())
+                for (String sigil : (String[]) relationship.getProperty(witClass))
+                    for (Node curWitness : traditionWitnesses)
+                        if (sigil.equals(curWitness.getProperty("sigil"))) {
+                            witnessList.add(curWitness);
+                            traditionWitnesses.remove(curWitness);
+                            break;
+                        }
+        return new ArrayList<>(witnessList);
+    }
+
+    /**
+     * Collect all relations in a section.
+     *
+     * @param tx     the transaction within which we are working
+     * @param sectId the section ID
+     * @return a list of RelationModel objects
+     */
+    public static ArrayList<RelationModel> sectionRelations(Transaction tx, String sectId) {
+        return sectionRelations(tx, sectId, false);
+    }
+
+    /**
+     * Collect all relations in a section, optionally including full reading information.
+     *
+     * @param tx              the transaction within which we are working
+     * @param sectId          the section ID
+     * @param includeReadings whether to include reading data in the relation models
+     * @return a list of RelationModel objects
+     */
+    public static ArrayList<RelationModel> sectionRelations(Transaction tx, String sectId, Boolean includeReadings) {
+        ArrayList<RelationModel> relList = new ArrayList<>();
+
+    	Node startNode = getStartNode(tx, sectId);
+        tx.traversalDescription().depthFirst()
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                .uniqueness(Uniqueness.NODE_GLOBAL)
+                .traverse(startNode).nodes().forEach(
+                n -> n.getRelationships(Direction.OUTGOING, ERelations.RELATED).forEach(
+                        r -> relList.add(new RelationModel(r, includeReadings)))
+        );
+
+        return relList;
+    }
+
+    /**
+     * Get all readings which have the same text and the same rank, between the given ranks.
+     *
+     * @param tx        the transaction within which we are working
+     * @param sectId    the section ID
+     * @param startRank the rank from where to start the search
+     * @param endRank   the rank at which to end the search
+     * @return a list of lists of identical readings, or null if none found
+     */
+    public static ArrayList<List<ReadingModel>> collectIdenticalReadings(
+            Transaction tx, String sectId, long startRank, long endRank)
+            throws IllegalArgumentException {
+        Node startNode = getStartNode(tx, sectId);
+        if (startNode == null)
+            throw new IllegalArgumentException("No section with ID " + sectId);
+
+        ArrayList<ReadingModel> readingModels =
+                getAllReadingsFromSectionBetweenRanks(startNode, startRank, endRank, tx);
+        ArrayList<List<ReadingModel>> identicalReadings = identifyIdenticalReadings(readingModels, startRank, endRank);
+        return identicalReadings.stream().filter(x -> !x.isEmpty())
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    // Retrieve all readings of a tradition between two ranks as ReadingModels
+    private static ArrayList<ReadingModel> getAllReadingsFromSectionBetweenRanks(
+            Node startNode, long startRank, long endRank, Transaction tx) {
+        ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        getReadingsBetweenRanks(startRank, endRank, startNode, "", tx)
+                .forEach(x -> readingModels.add(new ReadingModel(x)));
+        readingModels.sort(Comparator.comparing(ReadingModel::getRank));
+        return readingModels;
+    }
+
+    // Gets identical readings in a list of ReadingModels sorted by rank.
+    private static ArrayList<List<ReadingModel>> identifyIdenticalReadings(
+            ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
+        ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<>();
+
+        HashMap<String, List<ReadingModel>> rankSet = new HashMap<>();
+        for (ReadingModel rm : readingModels) {
+            String normReading = Normalizer.normalize(rm.getText(), Normalizer.Form.NFC);
+            if (rm.getRank() > endRank)
+                break;
+            if (rm.getRank() > startRank) {
+                for (String k : rankSet.keySet())
+                    if (rankSet.get(k).size() > 1)
+                        identicalReadingsList.add(rankSet.get(k));
+                rankSet.clear();
+                rankSet.put(normReading, new ArrayList<>(Collections.singletonList(rm)));
+                startRank = rm.getRank();
+            }
+            else if (rankSet.containsKey(normReading))
+                rankSet.get(normReading).add(rm);
+            else
+                rankSet.put(normReading, new ArrayList<>(Collections.singletonList(rm)));
+        }
+        return identicalReadingsList;
+    }
+
+    // Retrieve all readings of a section between two ranks as Nodes
+    public static List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode, String limitText, Transaction tx) {
+        List<Node> readings;
+        PathExpander<Transaction> e = new AlignmentTraverse(startNode);
+        Stream<Node> readingStream = StreamSupport.stream(tx.traversalDescription().depthFirst()
+        		.expand(e, new InitialBranchState.State<>(tx, tx)).uniqueness(Uniqueness.NODE_GLOBAL)
+        		.traverse(startNode).nodes().spliterator(), false)
+        		.filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
+        		endRank >= Long.parseLong(x.getProperty("rank").toString()));
+        if (!limitText.isEmpty())
+        	readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
+        readings = readingStream.collect(Collectors.toList());
+
+        return readings;
+    }
+
+
+    /*
+     * Witness text retrieval methods
+     */
+
+    /**
+     * Get the list of section nodes to iterate over for a given tradition and optional section.
+     *
+     * @param tx     the transaction within which we are working
+     * @param tradId the tradition ID
+     * @param sectId the section ID, or null for all sections
+     * @return a list of section nodes
+     * @throws NotFoundException if the tradition or section doesn't exist
+     */
+    public static ArrayList<Node> sectionsRequested(Transaction tx, String tradId, String sectId) {
+        Node traditionNode = getTraditionNode(tx, tradId);
+        if (traditionNode == null)
+            throw new NotFoundException("Requested tradition not found");
+
+        ArrayList<Node> iterationList;
+        if (sectId == null) {
+            iterationList = getSectionNodes(tx, tradId);
+        } else {
+            if (!sectionInTradition(tx, tradId, sectId))
+                throw new NotFoundException("Requested section not found in this tradition");
+            iterationList = new ArrayList<>();
+            Node sectionNode = tx.getNodeByElementId(sectId);
+            iterationList.add(sectionNode);
+        }
+        return iterationList;
+    }
+
+    /**
+     * Traverse the readings for a witness through a section, starting from the given start node.
+     *
+     * @param tx        the transaction within which we are working
+     * @param startNode the start node of the section
+     * @param sigil     the witness sigil
+     * @param layers    the list of witness layers (empty list for the main layer)
+     * @return an ordered list of reading nodes along the witness path
+     * @throws IllegalStateException with message "CONFLICT" if the end node is not reached
+     */
+    public static ArrayList<Node> traverseReadingsOfWitness(Transaction tx, Node startNode, String sigil, List<String> layers) {
+        Evaluator e;
+        if (layers == null || layers.isEmpty())
+            e = new WitnessPath(sigil).getEvalForWitness();
+        else
+            e = new WitnessPath(sigil, layers).getEvalForWitness();
+
+        ArrayList<Node> result = new ArrayList<>();
+        tx.traversalDescription().depthFirst()
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                .evaluator(e)
+                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                .traverse(startNode)
+                .nodes()
+                .forEach(result::add);
+        // If the path is nonzero but the end node wasn't reached, we had a conflict.
+        if (!result.isEmpty() && !result.getLast().hasProperty("is_end"))
+            throw new IllegalStateException("CONFLICT");
+        return result;
+    }
+
+    /**
+     * Get the text of a witness across one or all sections of a tradition.
+     *
+     * @param tx        the transaction within which we are working
+     * @param tradId    the tradition ID
+     * @param sectId    the section ID, or null for all sections
+     * @param sigil     the witness sigil
+     * @param layers    the list of witness layers (empty list for the main layer)
+     * @param startRank the starting rank (0 for no lower bound)
+     * @param endRank   the ending rank (use Long.MAX_VALUE for no upper bound, to be resolved per section)
+     * @return the witness text as a string
+     * @throws NotFoundException        if the tradition/section doesn't exist or no witness path is found
+     * @throws IllegalArgumentException if rank parameters are invalid
+     * @throws IllegalStateException    with message "CONFLICT" if a section's end node cannot be reached
+     */
+    public static String getWitnessText(Transaction tx, String tradId, String sectId, String sigil,
+                                         List<String> layers, long startRank, long endRank) {
+        ArrayList<Node> iterationList = sectionsRequested(tx, tradId, sectId);
+
+        ArrayList<Node> witnessReadings = new ArrayList<>();
+        for (Node currentSection : iterationList) {
+            if (iterationList.size() > 1 && (endRank != Long.MAX_VALUE || startRank != 0))
+                throw new IllegalArgumentException("Cannot request specific start/end across sections");
+
+            long sectionEndRank = endRank;
+            if (sectionEndRank == Long.MAX_VALUE) {
+                // Find the rank of the graph's end.
+                Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END).getFirst();
+                sectionEndRank = Long.parseLong(endNode.getProperty("rank").toString());
+            }
+
+            if (sectionEndRank == startRank)
+                throw new IllegalArgumentException("end-rank is equal to start-rank");
+
+            long sr = startRank;
+            long er = sectionEndRank;
+            if (er < sr) {
+                // Swap them around.
+                long temp = sr;
+                sr = er;
+                er = temp;
+            }
+
+            Node startNode = getStartNode(tx, currentSection.getElementId());
+            final long finalSr = sr;
+            final long finalEr = er;
+            witnessReadings.addAll(traverseReadingsOfWitness(tx, startNode, sigil, layers).stream()
+                    .filter(x -> Long.parseLong(x.getProperty("rank").toString()) >= finalSr
+                            && Long.parseLong(x.getProperty("rank").toString()) <= finalEr).toList());
+        }
+
+        // If the path is size 0 then we didn't even get to the end node; the witness path doesn't exist.
+        if (witnessReadings.isEmpty())
+            throw new NotFoundException("No witness path found for this sigil");
+
+        // Construct the text from the node reading models
+        return ReadingService.textOfReadings(
+                witnessReadings.stream().map(ReadingModel::new).collect(Collectors.toList()), false, false);
+    }
+
+
+    /*
+     * Methods for merging two readings
+     */
+
+    /**
+     * Validates whether two readings can be merged. Throws IllegalStateException if not.
+     *
+     * @param tx              the transaction within which we are working
+     * @param keepingReading  the reading which stays in the database
+     * @param deletingReading the reading which will be deleted from the database
+     * @throws IllegalStateException if the readings cannot be merged
+     * @throws Exception             if something goes wrong during validation
+     */
+    public static void validateMerge(Transaction tx, Node keepingReading, Node deletingReading) throws Exception {
+        // Ensure that the two readings belong to the same section.
+        if (!keepingReading.getProperty("section_id").equals(deletingReading.getProperty("section_id"))) {
+            throw new IllegalStateException("Readings must be in the same section!");
+        }
+        // Test for non-colo relations.
+        if (hasNonColoRelations(keepingReading, deletingReading)) {
+            throw new IllegalStateException("Readings to be merged cannot contain cross-location relations");
+        }
+        // If the two readings are aligned, there is no need to test for cycles.
+        boolean aligned = false;
+        RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
+                tx, keepingReading, RelationTypeModel::getIs_colocation);
+        for (Node n : tx.traversalDescription().depthFirst()
+                .relationships(ERelations.RELATED)
+                .evaluator(rt)
+                .uniqueness(Uniqueness.NODE_GLOBAL)
+                .traverse(keepingReading).nodes()) {
+            if (n.equals(deletingReading)) {
+                aligned = true;
+                break;
+            }
+        }
+        // Test for cycles.
+        if (!aligned) {
+            if (ReadingService.wouldGetCyclic(tx, keepingReading, deletingReading)) {
+                throw new IllegalStateException("Readings to be merged would make the graph cyclic");
+            }
+        }
+    }
+
+    /**
+     * Performs all necessary steps in the database to merge two readings into one.
+     *
+     * @param stayingReading  the reading which stays in the database
+     * @param deletingReading the reading which will be deleted from the database
+     * @param traditionId     the tradition ID, needed for relation creation
+     * @return a GraphModel describing the changes made
+     * @throws IllegalStateException if relation transfer fails due to conflicts
+     */
+    public static GraphModel mergeReadings(Transaction tx, Node stayingReading, Node deletingReading, String traditionId)
+            throws IllegalStateException {
+        GraphModel merged = new GraphModel();
+        // Remove any existing relations between the readings
+        deleteRelationBetweenReadings(stayingReading, deletingReading);
+        // Transfer the witnesses of the to-be-deleted reading to the staying reading
+        for (Relationship r : deletingReading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+            ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r).stream().map(SequenceModel::new)
+                    .forEach(merged.getSequences()::add);
+            r.delete();
+        }
+        for (Relationship r : deletingReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+            ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r).stream().map(SequenceModel::new)
+                    .forEach(merged.getSequences()::add);
+            r.delete();
+        }
+        // Transfer any existing reading relations to the node that will remain
+        merged.addRelations(addRelationsToStayingReading(tx, stayingReading, deletingReading, traditionId));
+        // Delete the redundant reading and record the remaining one
+        deletingReading.delete();
+        merged.getReadings().add(new ReadingModel(stayingReading));
+        return merged;
+    }
+
+    /**
+     * Checks if the two readings have a relation between them which implies non-colocation.
+     *
+     * @param stayingReading  the reading which stays in the database
+     * @param deletingReading the reading which will be deleted from the database
+     * @return true if the readings have a non-colocation relation
+     */
+    private static boolean hasNonColoRelations(Node stayingReading, Node deletingReading) {
+        for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
+            if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)) {
+                return !(stayingRel.hasProperty("colocation") && stayingRel.getProperty("colocation").equals(true));
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Deletes any RELATED relationship(s) between the two readings.
+     *
+     * @param stayingReading  the reading which stays in the database
+     * @param deletingReading the reading which will be deleted from the database
+     */
+    private static void deleteRelationBetweenReadings(Node stayingReading, Node deletingReading) {
+        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
+            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
+                if (firstRel.equals(secondRel)) {
+                    firstRel.delete();
+                }
+            }
+        }
+    }
+
+    /**
+     * Transfers relations from deletingReading to stayingReading.
+     *
+     * @param stayingReading  the reading which stays in the database
+     * @param deletingReading the reading which will be deleted from the database
+     * @param traditionId     the tradition ID, needed for relation creation
+     * @return the set of relation models that were successfully added
+     * @throws IllegalStateException if a conflicting relation prevents the merge
+     */
+    private static Set<RelationModel> addRelationsToStayingReading(Transaction tx, Node stayingReading, Node deletingReading,
+                                                                    String traditionId) throws IllegalStateException {
+        Set<RelationModel> addedRels = new HashSet<>();
+        // copy any relevant and nonexistent relationships from deletingReading to stayingReading
+        for (Relationship oldRel : deletingReading.getRelationships(
+        		Direction.BOTH, ERelations.RELATED)) {
+            RelationModel rel = new RelationModel(oldRel);
+            if (oldRel.getStartNode().equals(deletingReading))
+                rel.setSource(stayingReading.getElementId());
+            else
+                rel.setTarget(stayingReading.getElementId());
+            try {
+                GraphModel addResult = RelationService.createLocalRelation(tx, traditionId, rel);
+                if (!addResult.getRelations().isEmpty()) {
+                    addedRels.add(rel);
+                }
+            } catch (Exception e) {
+                throw new IllegalStateException(String.format("Conflicting %s relation to node %s prevents merge",
+                        rel.getType(), oldRel.getOtherNode(deletingReading).getElementId()));
+            }
+        }
+        // Now delete all the relations from deletingReading, including any that were created just now
+        // as transitive relation artifacts
+        deletingReading.getRelationships(ERelations.RELATED).forEach(Relationship::delete);
+        return addedRels;
     }
 }

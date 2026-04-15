@@ -47,11 +47,11 @@ import net.stemmaweb.model.ReadingBoundaryModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
@@ -612,13 +612,22 @@ public class Reading {
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
 
-        // Now outside our main transaction block, try to put back the deleted relations.
+        // Now outside our main transaction block, try to put back the deleted relations. Each one gets
+        // its own transaction because, if it fails, we don't want to commit any kind of altered graph state.
         ArrayList<RelationModel> deletedRelations = new ArrayList<>();
-        Relation relationRest = new Relation(getTraditionId());
         for (RelationModel rm : tempDeleted) {
-            try (Response result = relationRest.create(rm)) {
-                if (Status.CREATED.getStatusCode() != result.getStatus())
+            try (Transaction tx = db.beginTx()) {
+                GraphModel restored = RelationService.createLocalRelation(tx, traditionId, rm);
+                if (restored.getRelations().isEmpty()) {
+                    // No dice
                     deletedRelations.add(rm);
+                } else {
+                    // Yes dice
+                    tx.commit();
+                }
+            } catch (Exception e) {
+                // Definitely no dice
+                deletedRelations.add(rm);
             }
         }
 
@@ -704,11 +713,9 @@ public class Reading {
         // delete all non-colocated relations that cross our rank
         ArrayList<RelationModel> tempDeleted = new ArrayList<>();
         String sectId = originalReading.getProperty("section_id").toString();
-        String tradId = getTraditionId();
-        Section sectionRest = new Section(tradId, sectId);
         Long ourRank = (Long) originalReading.getProperty("rank");
         try (Transaction tx = db.beginTx()) {
-            for (RelationModel rm : sectionRest.sectionRelations(tx)) {
+            for (RelationModel rm : VariantGraphService.sectionRelations(tx, sectId)) {
                 Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
                 if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                         (rm.getSource().equals(originalReading.getElementId()) ||
@@ -761,17 +768,17 @@ public class Reading {
         GraphModel result;
 
         try (Transaction tx = db.beginTx()) {
-            Node stayingReading = tx.getNodeByElementId(readId);
+            Node keepingReading = tx.getNodeByElementId(readId);
             Node deletingReading = tx.getNodeByElementId(String.valueOf(secondReadId));
 
             ReadingModel drm = new ReadingModel(deletingReading);
 
-            if (!canBeMerged(tx, stayingReading, deletingReading)) {
-                return errorResponse(Status.CONFLICT);
-            }
+            // Validate. Throws IllegalStateException if it won't work.
+            VariantGraphService.validateMerge(tx, keepingReading, deletingReading);
+
             // See if they are on the same rank; if not, we will have to re-rank the graph
             // from the node before the one removed.
-            boolean samerank = stayingReading.getProperty("rank").equals(deletingReading.getProperty("rank"));
+            boolean samerank = keepingReading.getProperty("rank").equals(deletingReading.getProperty("rank"));
             Iterable<Relationship> priorRels = deletingReading.getRelationships(
                     Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE);
             Node aPriorNode = null;
@@ -782,13 +789,13 @@ public class Reading {
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
             }
 
-            // Do the deed
-            result = merge(stayingReading, deletingReading);
+            // Do the merge
+            result = VariantGraphService.mergeReadings(tx, keepingReading, deletingReading, traditionId);
 
             // TEMPORARY: Check that all affected witnesses still have paths to the end node
             for (String sig : drm.getWitnesses()) {
                 HashMap<String, String> parts = parseSigil(sig);
-                Witness w = new Witness(getTraditionId(), stayingReading.getProperty("section_id").toString(), parts.get("sigil"));
+                Witness w = new Witness(traditionId, keepingReading.getProperty("section_id").toString(), parts.get("sigil"));
                 Response r;
                 if (parts.get("layer").equals("witnesses"))
                     r = w.getWitnessAsText();
@@ -819,155 +826,6 @@ public class Reading {
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.ok().entity(result).build();
-    }
-
-    /**
-     * Checks if the two readings can be merged or not. Sets the global error
-     * message if not.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     * @return true if readings can be merged, false if not
-     */
-    private boolean canBeMerged(Transaction tx, Node stayingReading, Node deletingReading) throws Exception {
-        // Ensure that the two readings belong to the same section.
-        if (!stayingReading.getProperty("section_id").equals(deletingReading.getProperty("section_id"))) {
-            errorMessage = "Readings must be in the same section!";
-            return false;
-        }
-        // Test for non-colo relations.
-        if (hasNonColoRelations(stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged cannot contain cross-location relations";
-            return false;
-        }
-        // If the two readings are aligned, there is no need to test for cycles.
-        boolean aligned = false;
-        RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
-                tx, stayingReading, RelationTypeModel::getIs_colocation);
-        for (Node n : tx.traversalDescription().depthFirst()
-                .relationships(ERelations.RELATED)
-                .evaluator(rt)
-                .uniqueness(Uniqueness.NODE_GLOBAL)
-                .traverse(stayingReading).nodes()) {
-            if (n.equals(deletingReading)) {
-                aligned = true;
-                break;
-            }
-        }
-        // Test for cycles.
-        if (!aligned) {
-            if (ReadingService.wouldGetCyclic(tx, stayingReading, deletingReading)) {
-                errorMessage = "Readings to be merged would make the graph cyclic";
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Checks if the two readings have a relation between them which implies non-colocation.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     * @return true if the readings have a non-colocation relation
-     */
-    private boolean hasNonColoRelations(Node stayingReading, Node deletingReading) {
-        for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
-            if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)) {
-                return !(stayingRel.hasProperty("colocation") && stayingRel.getProperty("colocation").equals(true));
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Performs all necessary steps in the database to merge two readings into
-     * one.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     */
-    private GraphModel merge(Node stayingReading, Node deletingReading) throws IllegalStateException {
-        GraphModel merged = new GraphModel();
-        // Remove any existing relations between the readings
-        deleteRelationBetweenReadings(stayingReading, deletingReading);
-        // Transfer the witnesses of the to-be-deleted reading to the staying reading
-        for (Relationship r : deletingReading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
-            ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r).stream().map(SequenceModel::new)
-                    .forEach(merged.getSequences()::add);
-            r.delete();
-        }
-        for (Relationship r : deletingReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
-            ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r).stream().map(SequenceModel::new)
-                    .forEach(merged.getSequences()::add);
-            r.delete();
-        }
-        // Transfer any existing reading relations to the node that will remain
-        merged.addRelations(addRelationsToStayingReading(stayingReading, deletingReading));
-        // Delete the redundant reading (including any transitive relation artifacts) and record the remaining one
-        // deletingReading.getRelationships().forEach(Relationship::delete);
-        deletingReading.delete();
-        merged.getReadings().add(new ReadingModel(stayingReading));
-        return merged;
-    }
-
-    /**
-     * Deletes the relationship between the two readings.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     */
-    private void deleteRelationBetweenReadings(Node stayingReading, Node deletingReading) {
-        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
-            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
-                if (firstRel.equals(secondRel)) {
-                    firstRel.delete();
-                }
-            }
-        }
-    }
-
-    /**
-     * Adds relations from deletedReading to staying reading.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     */
-    private Set<RelationModel> addRelationsToStayingReading(Node stayingReading, Node deletingReading)
-            throws IllegalStateException {
-        Set<RelationModel> addedRels = new HashSet<>();
-        Relation relService = new Relation(getTraditionId());
-        // copy any relevant and nonexistent relationships from deletingReading to stayingReading
-        for (Relationship oldRel : deletingReading.getRelationships(
-        		Direction.BOTH, ERelations.RELATED)) {
-            RelationModel rel = new RelationModel(oldRel);
-            if (oldRel.getStartNode().equals(deletingReading))
-                rel.setSource(stayingReading.getElementId());
-            else
-                rel.setTarget(stayingReading.getElementId());
-            try (Response addResult = relService.create(rel)) {
-                if (addResult.getStatus() == Status.CREATED.getStatusCode())
-                    addedRels.add(rel);
-                else if (addResult.getStatus() > 399)
-                    throw new IllegalStateException(String.format("Conflicting %s relation to node %s prevents merge",
-                            rel.getType(), oldRel.getOtherNode(deletingReading).getElementId()));
-            }
-        }
-        // Now delete all the relations from deletingReading, including any that were created just now
-        // as transitive relation artifacts
-        deletingReading.getRelationships(ERelations.RELATED).forEach(Relationship::delete);
-        return addedRels;
     }
 
     /**

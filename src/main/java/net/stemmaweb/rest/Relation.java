@@ -7,18 +7,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.neo4j.graphdb.Direction;
+import net.stemmaweb.model.RelationTypeModel;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Traverser;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.qmino.miredot.annotations.ReturnType;
 
@@ -32,25 +30,22 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.RelationService.TransitiveRelationTraverser;
+import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Comprises all the api calls related to a relation.
- * can be called by using http://BASE_URL/relation
+ * can be called by using <a href="http://BASE_URL/relation">...</a>
  * @author PSE FS 2015 Team2
  */
 
 public class Relation {
 
-    private GraphDatabaseService db;
-    private String tradId;
+    private final GraphDatabaseService db;
+    private final String tradId;
     private static final String SCOPE_LOCAL = "local";
     private static final String SCOPE_SECTION = "section";
     private static final String SCOPE_TRADITION = "tradition";
@@ -84,331 +79,96 @@ public class Relation {
         // Make sure a scope is set
         if (relationModel.getScope() == null) relationModel.setScope(SCOPE_LOCAL);
         String scope = relationModel.getScope();
-        if (scope.equals(SCOPE_TRADITION) || scope.equals(SCOPE_SECTION) || scope.equals(SCOPE_LOCAL)) {
+        if (!scope.equals(SCOPE_TRADITION) && !scope.equals(SCOPE_SECTION) && !scope.equals(SCOPE_LOCAL)) {
+            return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
+        }
+
+        try (Transaction tx = db.beginTx()) {
             GraphModel relationChanges = new GraphModel();
 
-            Response response = this.create_local(relationModel);
-            if (Status.CREATED.getStatusCode() != response.getStatus()) {
-                return response;
+            // Create the local relation
+            GraphModel localResult = RelationService.createLocalRelation(tx, tradId, relationModel);
+            if (localResult.getRelations().isEmpty()) {
+                return Response.status(Status.NOT_MODIFIED).build();
             }
-            GraphModel createResult = (GraphModel)response.getEntity();
-            relationChanges.addReadings(createResult.getReadings());
-            relationChanges.addRelations(createResult.getRelations());
-            // Fish out the ID of the relationship that we explicitly created
-            Optional<RelationModel> orm = createResult.getRelations().stream()
-                    .filter(x -> x.getTarget().equals(relationModel.getTarget())
-                            && x.getSource().equals(relationModel.getSource())).findFirst();
-            assert(orm.isPresent());
-            String thisRelId = orm.get().getId();
+            relationChanges.addReadings(localResult.getReadings());
+            relationChanges.addRelations(localResult.getRelations());
+
+            // If scope is not local, propagate to matching readings
             if (!scope.equals(SCOPE_LOCAL)) {
-                try (Transaction tx = db.beginTx()) {
-                	Boolean use_normal = returnRelationType(tx, tradId, relationModel.getType()).getUse_regular();
-                    Node readingA = tx.getNodeByElementId(relationModel.getSource());
-                    Node readingB = tx.getNodeByElementId(relationModel.getTarget());
-                    Node startingPoint = VariantGraphService.getTraditionNode(tx, tradId);
-                    if (scope.equals(SCOPE_SECTION))
-                        startingPoint = tx.getNodeByElementId(String.valueOf(readingA.getProperty("section_id")));
-                    Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
+                // Fish out the ID of the relationship that we explicitly created
+                Optional<RelationModel> orm = localResult.getRelations().stream()
+                        .filter(x -> x.getTarget().equals(relationModel.getTarget())
+                                && x.getSource().equals(relationModel.getSource())).findFirst();
+                assert(orm.isPresent());
+                String thisRelId = orm.get().getId();
 
-                    // Get all the readings that belong to our tradition or section
-                    Iterable<Node> tradReadings = VariantGraphService.returnEntireTradition(tx, startingPoint).nodes();
-                    // Pick out the ones that share the readingA text
-                    Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
-                            ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
-//                    HashSet<Node> ourA = tradReadings.stream()
-            		HashSet<Node> ourA = StreamSupport.stream(tradReadings.spliterator(), false)
-                            .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA)) && !x.equals(readingA))
-                            .collect(Collectors.toCollection(HashSet::new));
-                    HashMap<String, HashSet<Long>> ranks = new HashMap<>();
-                    for (Node cur_node : ourA) {
-                        long node_rank = (Long) cur_node.getProperty("rank");
-                        String node_section = cur_node.getProperty("section_id").toString();
-                        String key = node_section + "/" + node_rank;
-                        HashSet<Long> cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
-                        cur_set.add(Long.valueOf(node_rank));
-                        ranks.putIfAbsent(key, cur_set);
-                    }
+                RelationTypeModel typeDefinition = returnRelationType(tx, tradId, relationModel.getType());
+                if (typeDefinition == null)
+                    throw new IllegalStateException("Relation type definition for " + relationModel.getType() + " does not exist");
+                Boolean use_normal = typeDefinition.getUse_regular();
+                Node readingA = tx.getNodeByElementId(relationModel.getSource());
+                Node readingB = tx.getNodeByElementId(relationModel.getTarget());
+                Node startingPoint = VariantGraphService.getTraditionNode(tx, tradId);
+                if (scope.equals(SCOPE_SECTION))
+                    startingPoint = tx.getNodeByElementId(String.valueOf(readingA.getProperty("section_id")));
+                Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
 
-                    // Pick out the ones that share the readingB text
-//                    HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
-            		HashSet<Node> ourB = StreamSupport.stream(tradReadings.spliterator(), false).filter(x -> x.hasProperty("text")
-                            && nodefilter.apply(x).equals(nodefilter.apply(readingB)) && !x.equals(readingB))
-                            .collect(Collectors.toCollection(HashSet::new));
-                    RelationModel userel;
-                    for (Node cur_node : ourB) {
-                        String node_id = cur_node.getElementId();
-                        long node_rank = (Long) cur_node.getProperty("rank");
-                        String node_section = cur_node.getProperty("section_id").toString();
-                        String key = node_section + "/" + node_rank;
+                // Get all the readings that belong to our tradition or section
+                Iterable<Node> tradReadings = VariantGraphService.returnEntireTradition(tx, startingPoint).nodes();
+                // Pick out the ones that share the readingA text
+                Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
+                        ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
+                HashSet<Node> ourA = StreamSupport.stream(tradReadings.spliterator(), false)
+                        .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA)) && !x.equals(readingA))
+                        .collect(Collectors.toCollection(HashSet::new));
+                HashMap<String, HashSet<Long>> ranks = new HashMap<>();
+                for (Node cur_node : ourA) {
+                    long node_rank = (Long) cur_node.getProperty("rank");
+                    String node_section = cur_node.getProperty("section_id").toString();
+                    String key = node_section + "/" + node_rank;
+                    HashSet<Long> cur_set = ranks.getOrDefault(key, new HashSet<>());
+                    cur_set.add(node_rank);
+                    ranks.putIfAbsent(key, cur_set);
+                }
 
-                        HashSet cur_set = ranks.get(key);
-                        if (cur_set != null) {
-                            for (Object id : cur_set) {
-                                userel = new RelationModel(thisRelation);
-                                userel.setSource(Long.toString((Long) id));
-                                userel.setTarget(node_id);
-                                response = this.create_local(userel);
-                                if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
-                                    if (Status.CREATED.getStatusCode() == response.getStatus()) {
-                                        createResult = (GraphModel) response.getEntity();
-                                        relationChanges.addReadings(createResult.getReadings());
-                                        relationChanges.addRelations(createResult.getRelations());
-                                    }  // This is a best-effort operation, so ignore failures
-                                }
+                // Pick out the ones that share the readingB text
+                HashSet<Node> ourB = StreamSupport.stream(tradReadings.spliterator(), false).filter(x -> x.hasProperty("text")
+                        && nodefilter.apply(x).equals(nodefilter.apply(readingB)) && !x.equals(readingB))
+                        .collect(Collectors.toCollection(HashSet::new));
+                RelationModel userel;
+                for (Node cur_node : ourB) {
+                    String node_id = cur_node.getElementId();
+                    long node_rank = (Long) cur_node.getProperty("rank");
+                    String node_section = cur_node.getProperty("section_id").toString();
+                    String key = node_section + "/" + node_rank;
+
+                    HashSet<Long> cur_set = ranks.get(key);
+                    if (cur_set != null) {
+                        for (Long id : cur_set) {
+                            // TODO URGENT are we using ranks as node IDs?!
+                            userel = new RelationModel(thisRelation);
+                            userel.setSource(Long.toString(id));
+                            userel.setTarget(node_id);
+                            try {
+                                GraphModel createResult = RelationService.createLocalRelation(tx, tradId, userel);
+                                relationChanges.addReadings(createResult.getReadings());
+                                relationChanges.addRelations(createResult.getRelations());
+                            } catch (IllegalStateException e) {
+                                // This is a best-effort operation, so ignore failures
                             }
                         }
                     }
-                    tx.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return Response.serverError().build();
                 }
             }
+            tx.commit();
             return Response.status(Status.CREATED).entity(relationChanges).build();
-        }
-        return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
-    }
-
-    // Create a relation; return the relation created as well as any reading nodes whose
-    // properties (e.g. rank) have changed.
-    private Response create_local(RelationModel relationModel) {
-        GraphModel readingsAndRelationModel;
-        try (Transaction tx = db.beginTx()) {
-            /*
-             * Currently search by id search, because is much faster by measurement. Because
-             * the id search is O(n) just go through all ids without care. And the
-             *
-             */
-            Node readingA = tx.getNodeByElementId(relationModel.getSource());
-            Node readingB = tx.getNodeByElementId(relationModel.getTarget());
-
-            Node ourSection = tx.getNodeByElementId(readingA.getProperty("section_id").toString());
-            Node ourTradition = ourSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
-            if (!ourTradition.getProperty("id").equals(tradId))
-                return Response.status(Status.CONFLICT)
-                    .entity(jsonerror("The specified readings do not belong to the specified tradition"))
-                    .build();
-
-
-            if (!readingA.getProperty("section_id").equals(readingB.getProperty("section_id")))
-                return Response.status(Status.CONFLICT)
-                        .entity(jsonerror("Cannot create relation across tradition sections"))
-                        .build();
-
-            if (isMetaReading(readingA) || isMetaReading(readingB))
-                return Response.status(Status.CONFLICT)
-                    .entity(jsonerror("Cannot set relation on a meta reading"))
-                    .build();
-
-            // Get, or create implicitly, the relation type node for the given type.
-            RelationTypeModel rmodel = returnRelationType(tx, tradId, relationModel.getType());
-
-            // Check that the relation type is compatible with the passed relation model
-            if (!relationModel.getScope().equals("local") && !rmodel.getIs_generalizable())
-                return Response.status(Status.CONFLICT)
-                        .entity(jsonerror("Relation type " + rmodel.getName() + " cannot be made outside a local scope"))
-                        .build();
-
-            // Remove any weak relations that might conflict
-            // LATER better idea: write a traverser that will disregard weak relations
-            Boolean colocation = rmodel.getIs_colocation();
-            if (colocation) {
-                Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
-                for (Relationship r : relsA) {
-                    RelationTypeModel rm = returnRelationType(tx, tradId, r.getProperty("type").toString());
-                    if (rm.getIs_weak())
-                        r.delete();
-                }
-                Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
-                for (Relationship r : relsB) {
-                    RelationTypeModel rm = returnRelationType(tx, tradId, r.getProperty("type").toString());
-                    if (rm.getIs_weak())
-                        r.delete();
-                }
-            }
-
-            Boolean isCyclic = ReadingService.wouldGetCyclic(tx, readingA, readingB);
-            if (isCyclic && colocation) {
-                    return Response
-                            .status(Status.CONFLICT)
-                            .entity(jsonerror("This relation creation is not allowed, it would result in a cyclic graph."))
-                            .build();
-            } else if (!isCyclic && !colocation) {
-                return Response
-                        .status(Status.CONFLICT)
-                        .entity(jsonerror("This relation creation is not allowed. The two readings can be co-located."))
-                        .build();
-            } // TODO add constraints about witness uniqueness or lack thereof
-
-            // Check if relation already exists
-            Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
-            for (Relationship relationship : relationships) {
-                if (relationship.getOtherNode(readingA).equals(readingB)) {
-                    RelationModel thisRel = new RelationModel(relationship);
-                    RelationTypeModel rtm = returnRelationType(tx, tradId, thisRel.getType());
-                    if (thisRel.getType().equals(relationModel.getType())) {
-                        // TODO allow for update of existing relation
-                        tx.close();
-                        return Response.status(Status.NOT_MODIFIED).type(MediaType.TEXT_PLAIN_TYPE).build();
-                    } else if (!rtm.getIs_weak()) {
-                        tx.close();
-                        String msg = String.format("Relation of type %s already exists between readings %s and %s",
-                                relationModel.getType(), relationModel.getSource(), relationModel.getTarget());
-                        return Response.status(Status.CONFLICT).entity(jsonerror(msg)).build();
-                    }
-                }
-            }
-
-            // We are finally ready to write a relation.
-            readingsAndRelationModel = createSingleRelation(readingA, readingB, relationModel, rmodel, tx);
-            // We can also write any transitive relationships.
-            propagateRelation(readingsAndRelationModel, rmodel);
-            tx.close();
+        } catch (IllegalStateException e) {
+            return Response.status(Status.CONFLICT).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.status(Response.Status.CREATED).entity(readingsAndRelationModel).build();
-    }
-
-    /**
-     * Muck with the database to set a relation
-     *
-     * @param readingA - the source reading
-     * @param readingB - the target reading
-     * @param relModel - the RelationModel to set
-     * @param rtm      - the RelationTypeModel describing what sort of relation this is
-     * @return a GraphModel containing the single n4j relationship plus whatever readings were re-ranked
-     */
-    private GraphModel createSingleRelation(Node readingA, Node readingB,
-                                            RelationModel relModel, RelationTypeModel rtm, Transaction tx) throws Exception {
-        ArrayList<ReadingModel> changedReadings = new ArrayList<>();
-        ArrayList<RelationModel> createdRelations = new ArrayList<>();
-
-        Boolean colocation = rtm.getIs_colocation();
-        Relationship relationAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
-
-        relationAtoB.setProperty("type", nullToEmptyString(relModel.getType()));
-        relationAtoB.setProperty("scope", nullToEmptyString(relModel.getScope()));
-        relationAtoB.setProperty("annotation", nullToEmptyString(relModel.getAnnotation()));
-        relationAtoB.setProperty("displayform",
-                nullToEmptyString(relModel.getDisplayform()));
-        relationAtoB.setProperty("a_derivable_from_b", relModel.getA_derivable_from_b());
-        relationAtoB.setProperty("b_derivable_from_a", relModel.getB_derivable_from_a());
-        relationAtoB.setProperty("alters_meaning", relModel.getAlters_meaning());
-        relationAtoB.setProperty("is_significant", relModel.getIs_significant());
-        relationAtoB.setProperty("non_independent", relModel.getNon_independent());
-        relationAtoB.setProperty("reading_a", readingA.getProperty("text"));
-        relationAtoB.setProperty("reading_b", readingB.getProperty("text"));
-        if (colocation) relationAtoB.setProperty("colocation", true);
-
-        // Recalculate the ranks, if necessary
-        Long rankA = (Long) readingA.getProperty("rank");
-        Long rankB = (Long) readingB.getProperty("rank");
-        if (!rankA.equals(rankB) && colocation) {
-            // Which one is the lower-ranked reading? Promote it, and recalculate from that point
-            Long higherRank = rankA < rankB ? rankB : rankA;
-            Node lowerRanked = rankA < rankB ? readingA : readingB;
-            lowerRanked.setProperty("rank", higherRank);
-            changedReadings.add(new ReadingModel(lowerRanked));
-            Set<Node> changedRank = ReadingService.recalculateRank(tx, lowerRanked, false);
-            for (Node cr : changedRank)
-                if (!cr.equals(lowerRanked))
-                    changedReadings.add(new ReadingModel(cr));
-
-        }
-
-        createdRelations.add(new RelationModel(relationAtoB));
-        return new GraphModel(changedReadings, createdRelations, new ArrayList<>());
-    }
-
-    /**
-     * Checks if a reading is a "Meta"-reading
-     *
-     * @param reading - the reading to check
-     * @return true or false
-     */
-    private boolean isMetaReading(Node reading) {
-        return reading != null &&
-                ((reading.hasProperty("is_lacuna") && reading.getProperty("is_lacuna").equals(true)) ||
-                        (reading.hasProperty("is_start") && reading.getProperty("is_start").equals(true)) ||
-                        (reading.hasProperty("is_ph") && reading.getProperty("is_ph").equals(true)) ||
-                        (reading.hasProperty("is_end") && reading.getProperty("is_end").equals(true))
-                );
-    }
-
-    /**
-     * Propagates reading relations according to type specification.
-     * NOTE - To be used inside a transaction
-     *
-     * @param newRelationResult - the GraphModel that contains a relation just created
-     * @param rtm - the relation type specification
-     */
-    private void propagateRelation(GraphModel newRelationResult, RelationTypeModel rtm) throws Exception {
-        // First see if this relation type should be propagated.
-        if (!rtm.getIs_transitive()) return;
-        // Now go through all the relations that have been created, and make sure that any
-        // transitivity effects have been accounted for.
-        Transaction tx = db.beginTx();
-        for (RelationModel rm : newRelationResult.getRelations()) {
-            TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tx, tradId, rtm);
-            Node startNode = tx.getNodeByElementId(rm.getSource());
-            ArrayList<Node> relatedNodes = new ArrayList<>();
-            // Get all the readings that are related by this or a more closely-bound type.
-            tx.traversalDescription().depthFirst()
-                    .relationships(ERelations.RELATED)
-                    .evaluator(relTraverser)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode).nodes().forEach(relatedNodes::add);
-            // Now go through them and make sure the relations are explicit.
-            ArrayList<Node> iterateNodes = new ArrayList<>(relatedNodes);
-            while (!iterateNodes.isEmpty()) {
-                Node readingA = iterateNodes.remove(0);
-                HashSet<Node> alreadyRelated = new HashSet<>();
-                readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
-                // System.out.println(String.format("Propagating type model %s on node %d / %s",
-                //        rtm.getName(), readingA.getId(), readingA.getProperty("text")));
-                for (Node readingB : iterateNodes) {
-                    if (!alreadyRelated.contains(readingB)) {
-                        // System.out.println(String.format("...making relation %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
-                        GraphModel interim = createSingleRelation(readingA, readingB, rm, rtm, tx);
-                        newRelationResult.addReadings(interim.getReadings());
-                        newRelationResult.addRelations(interim.getRelations());
-                    }
-                }
-            }
-            // Now go back through them and make sure that relations to more loosely-bound
-            // transitive nodes are marked.
-            for (Node sibling : relatedNodes) {
-                HashMap<Node, Relationship> connections = new HashMap<>();
-                // Get the nodes we are directly related to, and the relations involved, if
-                // they meet the criteria
-                for (Relationship r : sibling.getRelationships(ERelations.RELATED)) {
-                    RelationTypeModel othertm = returnRelationType(tx, tradId, r.getProperty("type").toString());
-                    if (othertm.getBindlevel() > rtm.getBindlevel() && othertm.getIs_transitive())
-                        connections.put(r.getOtherNode(sibling), r);
-                }
-
-                HashSet<Node> cousins = new HashSet<>(relatedNodes);
-                for (Node n : connections.keySet()) {
-                    cousins.remove(n);
-                    RelationModel newmodel = new RelationModel(connections.get(n));
-                    RelationTypeModel newtm = returnRelationType(tx, tradId, newmodel.getType());
-                    for (Node c : cousins) {
-                        ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED);
-                        if (priorLinks.size() == 0) {
-                            // Create a relation based on the looser link
-                            GraphModel interim = createSingleRelation(n, c, newmodel, newtm, tx);
-                            newRelationResult.addReadings(interim.getReadings());
-                            newRelationResult.addRelations(interim.getRelations());
-                        }
-                    }
-                }
-
-
-            }
-        }
-        tx.close();
     }
 
     /**
@@ -440,7 +200,7 @@ public class Relation {
                     if (findRel.isEmpty()) {
                         return Response.status(Status.NOT_FOUND).entity(jsonerror("Relation not found")).build();
                     } else {
-                        Relationship theRel = findRel.get(0);
+                        Relationship theRel = findRel.getFirst();
                         RelationModel relInfo = new RelationModel(theRel);
                         theRel.delete();
                         deleted.add(relInfo);
@@ -473,7 +233,7 @@ public class Relation {
                 default:
                     return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
             }
-            tx.close();
+            tx.commit();
         }
         return Response.status(Response.Status.OK).entity(deleted).build();
     }
@@ -503,14 +263,10 @@ public class Relation {
             } else {
                 return Response.status(Status.FORBIDDEN).entity(jsonerror("This is not a relation link")).build();
             }
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(relationModel).build();
-    }
-    
-    private String nullToEmptyString(String str){
-        return str == null ? "" : str;
     }
 }

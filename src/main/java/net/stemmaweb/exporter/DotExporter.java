@@ -38,7 +38,6 @@ import net.stemmaweb.model.DisplayOptionModel;
 import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -122,9 +121,7 @@ public class DotExporter
             ArrayList<Relationship> relsToWrite = new ArrayList<>();
 
             for (Node sectionNode: sections) {
-                // Get the number of witnesses we have
-                ArrayList<Node> sectionWits = new Section(tradId, sectionNode.getElementId())
-                        .collectSectionWitnesses(tx);
+                ArrayList<Node> sectionWits = VariantGraphService.collectSectionWitnesses(tx, tradId, sectionNode.getElementId());
                 int numWits = sectionWits.size();
                 if (!dm.getExcludeWitnesses().isEmpty()) {
                     numWits -= dm.getExcludeWitnesses().size();
@@ -331,8 +328,6 @@ public class DotExporter
             throws Exception {
         if (normaliseOn == null) {
             HashMap<Node, Node> representatives = new HashMap<>();
-//            List<Node> sectionNodes = VariantGraphService.returnTraditionSection(sectionNode).nodes().stream()
-//                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toList());
 			List<Node> sectionNodes = StreamSupport
 					.stream(VariantGraphService.returnTraditionSection(tx, sectionNode).nodes().spliterator(), false)
 					.filter(x -> x.hasLabel(Label.label("READING"))).toList();

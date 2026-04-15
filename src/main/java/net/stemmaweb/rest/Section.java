@@ -7,7 +7,6 @@ import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
 import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,14 +17,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.PathExpander;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
@@ -64,7 +61,6 @@ import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.model.VariantListModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.ReadingService.AlignmentTraverse;
@@ -112,9 +108,8 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             ReadingModel rdg = new ReadingModel(tx.getNodeByElementId(readingId));
             readingInSection = rdg.getSection().equals(sectId);
-            tx.close();
         }
-        return readingInSection ? new Reading(readingId) : new Reading("-1");
+        return readingInSection ? new Reading(readingId, tradId) : new Reading("-1");
     }
 
     // Base paths
@@ -134,16 +129,15 @@ public class Section {
     public Response getSectionInfo() {
         SectionModel result;
         try (Transaction tx = db.beginTx()) {
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
-        	else {
-        		result = new SectionModel(tx, tx.getNodeByElementId(sectId));
-        	}
+            result = new SectionModel(tx, tx.getNodeByElementId(sectId));
+            return Response.ok().entity(result).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().entity(result).build();
+
     }
 
     /**
@@ -164,7 +158,7 @@ public class Section {
     	Transaction tx = null;
         try {
         	tx = db.beginTx();
-        	if (!sectionInTradition(tx)) {
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	}
             Node thisSection = tx.getNodeByElementId(sectId);
@@ -196,7 +190,7 @@ public class Section {
     @ReturnType("java.lang.Void")
     public Response deleteSection() {
         try (Transaction tx = db.beginTx()) {
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
         				.entity(jsonerror("Tradition and/or section not found")).build();
             Node foundSection = tx.getNodeByElementId(sectId);
@@ -250,18 +244,16 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnessInSection() {
-        Transaction tx = null;
-        try {
-        	tx = db.beginTx();
+        try (Transaction tx = db.beginTx()) {
 
-        	if (!sectionInTradition(tx))
-        		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
-        	
-        	ArrayList<Node> sectionWitnessNodes = collectSectionWitnesses(tx);
-        	if (sectionWitnessNodes == null)
-        		return Response.serverError()
-        				.entity(jsonerror("No witnesses found in section")).build();
-        	
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
+
+            ArrayList<Node> sectionWitnessNodes = VariantGraphService.collectSectionWitnesses(tx, tradId, sectId);
+            if (sectionWitnessNodes.isEmpty())
+                return Response.serverError()
+                        .entity(jsonerror("No witnesses found in section")).build();
+
             ArrayList<WitnessModel> sectionWits = new ArrayList<>();
             sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
             Collections.sort(sectionWits);
@@ -269,33 +261,7 @@ public class Section {
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
-    }
-
-    // Also used by the GraphML exporter
-    public ArrayList<Node> collectSectionWitnesses(Transaction tx) {
-        HashSet<Node> witnessList = new HashSet<>();
-        Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-        Node sectionStart = VariantGraphService.getStartNode(tx, sectId);
-        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
-        for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE)) {
-        	for (String witClass : relationship.getPropertyKeys()) {
-        		for (String sigil : (String[]) relationship.getProperty(witClass)) {
-        			for (Node curWitness : traditionWitnesses) {
-        				if (sigil.equals(curWitness.getProperty("sigil"))) {
-        					witnessList.add(curWitness);
-        					traditionWitnesses.remove(curWitness);
-        					break;
-        				}
-        			}
-        		}
-        	}
         }
-        return new ArrayList<>(witnessList);
     }
 
     private List<Node> collectSectionAnnotations(boolean collectReferents, Transaction tx) {
@@ -320,25 +286,19 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
-    	Transaction tx = null;
-    	try {
-    		tx = db.beginTx();
-    		if (!sectionInTradition(tx)) {
-    			return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
-    		}
-    		List<ReadingModel> readingModels = sectionReadings(tx);
-    		if (readingModels == null) {
-    			return Response.serverError().entity(jsonerror("No readings found in section")).build();
-    		}
-    		return Response.ok(readingModels).build();
-    	} catch (Exception e) {
+        try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
+            }
+            List<ReadingModel> readingModels = sectionReadings(tx);
+            if (readingModels == null) {
+                return Response.serverError().entity(jsonerror("No readings found in section")).build();
+            }
+            return Response.ok(readingModels).build();
+        } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-    	} finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
     List<ReadingModel> sectionReadings(Transaction tx) throws Exception {
@@ -370,43 +330,18 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	ArrayList<RelationModel> relList = sectionRelations(includeReadings.equals("true"), tx);
-        	
-        	if (relList == null) {
-        		return Response.serverError().entity(jsonerror("No relations found in section")).build();
-        	}
-        	return Response.ok(relList).build();
+        try (Transaction tx = db.beginTx()) {
+            ArrayList<RelationModel> relList = VariantGraphService.sectionRelations(tx, sectId, includeReadings.equals("true"));
+            if (relList.isEmpty()) {
+                return Response.serverError().entity(jsonerror("No relations found in section")).build();
+            }
+            return Response.ok(relList).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
-    ArrayList<RelationModel> sectionRelations(Transaction tx) {
-        return sectionRelations(false, tx);
-    }
-
-    ArrayList<RelationModel> sectionRelations(Boolean includeReadings, Transaction tx) {
-        ArrayList<RelationModel> relList = new ArrayList<>();
-
-    	Node startNode = VariantGraphService.getStartNode(tx, sectId);
-        tx.traversalDescription().depthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .uniqueness(Uniqueness.NODE_GLOBAL)
-                .traverse(startNode).nodes().forEach(
-                n -> n.getRelationships(Direction.OUTGOING, ERelations.RELATED).forEach(
-                        r -> relList.add(new RelationModel(r, includeReadings)))
-        );
-
-        return relList;
-    }
 
 
     /**
@@ -462,37 +397,31 @@ public class Section {
                                  @QueryParam("endRank")   @DefaultValue("E") String endRank,
                                  @QueryParam("startRdg") String startRdg,
                                  @QueryParam("endRdg")   String endRdg) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
-        		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
+                return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
 
-        	List<ReadingModel> sectionLemmata;
-        	try {
-        		if (startRdg != null) {
-        			startRank = rankForReading(startRdg, tx);
-        		}
-        		if (endRdg != null) {
-        			endRank = rankForReading(endRdg, tx);
-        		}
-        		sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank, tx);
-        		// Add on the end node, so we know whether a lacuna marker is needed.
-        		sectionLemmata.add(new ReadingModel(VariantGraphService.getEndNode(tx, sectId)));
-        	} catch (Exception e) {
-        		return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        	}
-        	TextSequenceModel lm = new TextSequenceModel(
-        			ReadingService.textOfReadings(sectionLemmata, true, followFinal.equals("false")));
-        	return Response.ok(lm).build();
+            List<ReadingModel> sectionLemmata;
+            try {
+                if (startRdg != null) {
+                    startRank = rankForReading(startRdg, tx);
+                }
+                if (endRdg != null) {
+                    endRank = rankForReading(endRdg, tx);
+                }
+                sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank, tx);
+                // Add on the end node, so we know whether a lacuna marker is needed.
+                sectionLemmata.add(new ReadingModel(VariantGraphService.getEndNode(tx, sectId)));
+            } catch (Exception e) {
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            }
+            TextSequenceModel lm = new TextSequenceModel(
+                    ReadingService.textOfReadings(sectionLemmata, true, followFinal.equals("false")));
+            return Response.ok(lm).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
     /**
@@ -521,30 +450,24 @@ public class Section {
                                      @QueryParam("endRank")   @DefaultValue("E") String endRank,
                                      @QueryParam("startRdg") String startRdg,
                                      @QueryParam("endRdg")   String endRdg) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
-        		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
+                return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
 
-        	List<ReadingModel> sectionLemmata;
-        	try {
-        		if (startRdg != null) startRank = rankForReading(startRdg, tx);
-        		if (endRdg != null) endRank = rankForReading(endRdg, tx);
-        		sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank, tx);
-        	} catch (Exception e) {
-        		e.printStackTrace();
-        		return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        	}
-        	return Response.ok(sectionLemmata).build();
+            List<ReadingModel> sectionLemmata;
+            try {
+                if (startRdg != null) startRank = rankForReading(startRdg, tx);
+                if (endRdg != null) endRank = rankForReading(endRdg, tx);
+                sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank, tx);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            }
+            return Response.ok(sectionLemmata).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
     private List<ReadingModel> collectLemmaReadings(Boolean followFinal, String startFrom, String endAt, Transaction tx) {
@@ -614,7 +537,7 @@ public class Section {
     public Response getAnnotationsOnSection(@QueryParam("label") List<String> filterLabels,
                                             @QueryParam("recursive") @DefaultValue("false") String recurse) {
     	try (Transaction tx = db.beginTx()) {
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         	List<AnnotationModel> result = new ArrayList<>();
     		// We want to find all annotation nodes that are linked both to the tradition node
@@ -674,27 +597,21 @@ public class Section {
                                                          @QueryParam("base_witness") String baseWitness,
                                                          @QueryParam("normalize") String conflate,
                                                          @QueryParam("exclude_witness") List<String> excWitnesses) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	if (!sectionInTradition(tx)) {
-        		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-    	    }        	
-        	
-        	Node sectionNode = tx.getNodeByElementId(sectId);
-        	VariantListModel vlocs = new VariantListModel(
-        			tx, sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
-        			!excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
+        try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
+                return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            }
 
-        	return Response.ok(vlocs).build();
+            Node sectionNode = tx.getNodeByElementId(sectId);
+            VariantListModel vlocs = new VariantListModel(
+                    tx, sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
+                    !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
+
+            return Response.ok(vlocs).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
 
@@ -719,7 +636,7 @@ public class Section {
     @ReturnType("java.lang.Void")
     public Response reorderSectionAfter(@PathParam("priorSectID") String priorSectID) {
         try (Transaction tx = db.beginTx()) {
-            if (!sectionInTradition(tx))
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
                 return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
             if (!priorSectID.equals("none") && !VariantGraphService.sectionInTradition(tx, tradId, priorSectID))
                 return Response.status(Response.Status.NOT_FOUND).entity("Requested prior section not found").build();
@@ -801,7 +718,7 @@ public class Section {
     	Transaction tx = null;
     	try {
         	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	
         	Long rank = Long.valueOf(rankstr);
@@ -965,7 +882,7 @@ public class Section {
     	Transaction tx = null;
     	try {
         	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         	if (!VariantGraphService.sectionInTradition(tx, tradId, otherId))
         		return Response.status(Response.Status.NOT_FOUND).entity("Requested other section not found").build();
@@ -1084,21 +1001,16 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON)
     @MireDotIgnore
     public Response initRanks() {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
+    	try (Transaction tx = db.beginTx()) {
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
 
         	ReadingService.recalculateRank(tx, VariantGraphService.getStartNode(tx, sectId), true);
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
-		}
+        }
         return Response.ok(jsonresp("result", "success")).build();
 
     }
@@ -1134,46 +1046,38 @@ public class Section {
             @DefaultValue("10") @QueryParam("threshold") long threshold,
             @DefaultValue("") @QueryParam("text") String limitText) {
 
-    	Node startNode = null;
     	try (Transaction tx = db.beginTx()) {
-    		startNode = VariantGraphService.getStartNode(tx, sectId);
+    		Node startNode = VariantGraphService.getStartNode(tx, sectId);
             if (startNode == null) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(jsonerror("Tradition and/or section not found")).build();
             }
 
             // Parse the start and end rank into longs
-            Map<String,String> useRanks;
-            try {
-                useRanks = getLongRanks(startRank, endRank);
-            } catch (NumberFormatException e) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
-            }
+            Map<String,String> useRanks = getLongRanks(tx, startRank, endRank);
 
             List<List<ReadingModel>> couldBeIdenticalReadings;
-            List<Node> questionedReadings = getReadingsBetweenRanks(
+            List<Node> questionedReadings = VariantGraphService.getReadingsBetweenRanks(
             		Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")), startNode, limitText, tx);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(tx, questionedReadings, threshold);
             return Response.ok(couldBeIdenticalReadings).build();
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
+        }catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 
-    private Map<String,String> getLongRanks(String startRank, String endRank)
+    private Map<String,String> getLongRanks(Transaction tx, String startRank, String endRank)
         throws NumberFormatException {
         Map<String,String> result = new HashMap<>();
         String startRankL = startRank.equals("start")
                     ? "1"
                     : startRank;
-    	Node endNode = null;
-    	try (Transaction tx = db.beginTx()) {
-    		endNode = VariantGraphService.getEndNode(tx, sectId);
-            tx.close();
-        }
+    	Node endNode = VariantGraphService.getEndNode(tx, sectId);
         String endRankL = endRank.equals("end")
                     ? endNode.getElementId()
                     : endRank;
@@ -1201,8 +1105,7 @@ public class Section {
             long aRank = Long.parseLong(nodeA.getProperty("rank").toString());
             List<Node> sameText = questionedReadings.stream().filter(x -> !x.equals(nodeA)
                 && x.getProperty("text").equals(nodeA.getProperty("text"))
-                && Math.abs(Long.parseLong(x.getProperty("rank").toString()) - aRank) < threshold)
-                    .collect(Collectors.toList());
+                && Math.abs(Long.parseLong(x.getProperty("rank").toString()) - aRank) < threshold).toList();
             for (Node n : sameText) {
                 if (processed.contains(n.getElementId()))
                     continue;
@@ -1228,23 +1131,6 @@ public class Section {
         return Math.abs(pair.get(1).getRank() - pair.get(0).getRank());
     }
 
-    // Retrieve all readings of a tradition between two ranks as Nodes
-    private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode, String limitText, Transaction tx) throws Exception {
-        List<Node> readings;
-        PathExpander<Transaction> e = new AlignmentTraverse(startNode);
-        Stream<Node> readingStream = StreamSupport.stream(tx.traversalDescription().depthFirst()
-        		.expand(e, new InitialBranchState.State<>(tx, tx)).uniqueness(Uniqueness.NODE_GLOBAL)
-        		.traverse(startNode).nodes().spliterator(), false)
-        		.filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
-        		endRank >= Long.parseLong(x.getProperty("rank").toString()));
-        if (!limitText.isEmpty())
-        	readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
-        readings = readingStream.collect(Collectors.toList());
-
-        return readings;
-    }
-
-
     /**
      * Get all readings which have the same text and the same rank, between the given ranks.
      * This is a constrained version of {@code mergeablereadings}.
@@ -1263,85 +1149,22 @@ public class Section {
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getIdenticalReadings(@PathParam("startRank") String startRank,
                                          @PathParam("endRank") String endRank) {
-        Map<String,String> useRanks;
-        try {
-            useRanks = getLongRanks(startRank, endRank);
-        } catch (NumberFormatException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
-        }
-
         try (Transaction tx = db.beginTx()) {
-        	ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(
-        			Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")), tx);
-        	tx.close();
-
+            Map<String,String> useRanks = getLongRanks(tx, startRank, endRank);
+        	ArrayList<List<ReadingModel>> identicalReadings = VariantGraphService.collectIdenticalReadings(
+        			tx, sectId, Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")));
         	if (identicalReadings == null) {
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("no identical readings were found")).build();
         	}
         	return Response.ok(identicalReadings).build();
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
+        }catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
-    }
-
-    // We want access within net.stemmaweb.parser as well
-    public ArrayList<List<ReadingModel>> collectIdenticalReadings(long startRank, long endRank, Transaction tx) {
-        Node startNode = VariantGraphService.getStartNode(tx, sectId);
-        if (startNode == null) return null;
-
-        ArrayList<List<ReadingModel>> identicalReadings;
-        try {
-            ArrayList<ReadingModel> readingModels =
-                    getAllReadingsFromSectionBetweenRanks(startNode, startRank, endRank, tx);
-            identicalReadings = identifyIdenticalReadings(readingModels, startRank, endRank);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-
-        ArrayList<List<ReadingModel>> result = identicalReadings.stream().filter(x -> !x.isEmpty())
-                .collect(Collectors.toCollection(ArrayList::new));
-        if (result.isEmpty()) return null;
-        return result;
-    }
-
-    // Retrieve all readings of a tradition between two ranks as ReadingModels
-    private ArrayList<ReadingModel> getAllReadingsFromSectionBetweenRanks(
-            Node startNode, long startRank, long endRank, Transaction tx) throws Exception {
-        ArrayList<ReadingModel> readingModels = new ArrayList<>();
-        getReadingsBetweenRanks(startRank, endRank, startNode, "", tx)
-                .forEach(x -> readingModels.add(new ReadingModel(x)));
-        readingModels.sort(Comparator.comparing(ReadingModel::getRank));
-        return readingModels;
-    }
-
-    // Gets identical readings in a list of ReadingModels sorted by rank.
-    private ArrayList<List<ReadingModel>> identifyIdenticalReadings(
-            ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
-        ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<>();
-
-        HashMap<String, List<ReadingModel>> rankSet = new HashMap<>();
-        for (ReadingModel rm : readingModels) {
-            String normReading = Normalizer.normalize(rm.getText(), Normalizer.Form.NFC);
-            if (rm.getRank() > endRank)
-                break;
-            if (rm.getRank() > startRank) {
-                for (String k : rankSet.keySet())
-                    if (rankSet.get(k).size() > 1)
-                        identicalReadingsList.add(rankSet.get(k));
-                rankSet.clear();
-                rankSet.put(normReading, new ArrayList<>(Collections.singletonList(rm)));
-                startRank = rm.getRank();
-            }
-            else if (rankSet.containsKey(normReading))
-                rankSet.get(normReading).add(rm);
-            else
-                rankSet.put(normReading, new ArrayList<>(Collections.singletonList(rm)));
-        }
-        return identicalReadingsList;
     }
 
     /**
@@ -1363,7 +1186,7 @@ public class Section {
     	Transaction tx = null;
     	try {
         	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
     		Node startNode = VariantGraphService.getStartNode(tx, sectId);
     		Node endNode = VariantGraphService.getEndNode(tx, sectId);
@@ -1377,8 +1200,7 @@ public class Section {
     		// Go through the section readings collecting and ordering lemmata
     		
     		List<ReadingModel> sectionLemmata = sectionReadings(tx).stream().filter(ReadingModel::getIs_lemma)
-    				.sorted(ReadingModel::compareTo)
-    				.collect(Collectors.toList());
+    				.sorted(ReadingModel::compareTo).toList();
     		
     		// Recreate links, checking for branching
     		Node priorLemma = startNode;
@@ -1438,35 +1260,29 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response getEmendations() {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
-        		return Response.status(Response.Status.NOT_FOUND)
-        				.entity(jsonerror("Tradition and/or section not found")).build();
-        	GraphModel result = new GraphModel();
-    		// Crawl the section looking for all emendations
-    		Node sectionNode = tx.getNodeByElementId(sectId);
-    		List<Node> emended = new ArrayList<>();
-    		for (Relationship r : sectionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_EMENDATION))
-    			emended.add(r.getEndNode());
-    		result.setReadings(emended.stream().map(ReadingModel::new).collect(Collectors.toList()));
-    		List<SequenceModel> emendSeqs = new ArrayList<>();
-    		for (Node n : emended) {
-    			for (Relationship r : n.getRelationships(ERelations.EMENDED)) {
-    				emendSeqs.add(new SequenceModel(r));
-    			}
-    		}
-    		result.setSequences(emendSeqs);
-    		return Response.ok(result).build();
+        try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
+                return Response.status(Status.NOT_FOUND)
+                        .entity(jsonerror("Tradition and/or section not found")).build();
+            GraphModel result = new GraphModel();
+            // Crawl the section looking for all emendations
+            Node sectionNode = tx.getNodeByElementId(sectId);
+            List<Node> emended = new ArrayList<>();
+            for (Relationship r : sectionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_EMENDATION))
+                emended.add(r.getEndNode());
+            result.setReadings(emended.stream().map(ReadingModel::new).collect(Collectors.toList()));
+            List<SequenceModel> emendSeqs = new ArrayList<>();
+            for (Node n : emended) {
+                for (Relationship r : n.getRelationships(ERelations.EMENDED)) {
+                    emendSeqs.add(new SequenceModel(r));
+                }
+            }
+            result.setSequences(emendSeqs);
+            return Response.ok(result).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
     }
 
     /**
@@ -1491,7 +1307,7 @@ public class Section {
     	Transaction tx = null;
     	try {
         	tx = db.beginTx();
-        	if (!sectionInTradition(tx))
+        	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND)
         				.entity(jsonerror("Tradition and/or section not found")).build();
         	GraphModel result = new GraphModel();
@@ -1557,39 +1373,34 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response getGraphModel() {
-        // TODO does this check make sense, or does the not-found happen already in Tradition.java?
-    	Node traditionNode = null;
+
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-            tx.close();
-        }
+            // TODO does this check make sense, or does the not-found happen already in Tradition.java?
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+            if (traditionNode == null)
+                return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
+                        .entity("No such tradition found").build();
 
-    	if (traditionNode == null)
-            return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
-                    .entity("No such tradition found").build();
-
-        GraphModel thisSection = new GraphModel();
-        try (Transaction tx = db.beginTx()) {
+            GraphModel thisSection = new GraphModel();
             // Add the readings
             thisSection.addReadings(StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId)
-                    .nodes().spliterator(), false).filter(x -> x.hasLabel(Nodes.READING))
+                            .nodes().spliterator(), false).filter(x -> x.hasLabel(Nodes.READING))
                     .map(ReadingModel::new).collect(Collectors.toSet()));
             // Add the relations
             thisSection.addRelations(StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId)
-                    .relationships().spliterator(), false).filter(x -> x.isType(ERelations.RELATED))
+                            .relationships().spliterator(), false).filter(x -> x.isType(ERelations.RELATED))
                     .map(RelationModel::new).collect(Collectors.toSet()));
             // Add the sequences
             thisSection.addSequences(StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId)
-                    .relationships().spliterator(), false)
+                            .relationships().spliterator(), false)
                     .filter(x -> x.isType(ERelations.SEQUENCE) || x.isType(ERelations.LEMMA_TEXT) || x.isType(ERelations.EMENDED))
                     .map(SequenceModel::new).collect(Collectors.toSet()));
-
-            tx.close();
+            return Response.ok(thisSection).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(thisSection).build();
+
     }
 
     // Export the dot / SVG for a particular section
@@ -1615,6 +1426,9 @@ public class Section {
 
             GraphMLExporter exporter = new GraphMLExporter(tx);
             return exporter.writeNeo4J(tradId, sectId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 
@@ -1654,9 +1468,10 @@ public class Section {
             // Make the dot.
             DotExporter exporter = new DotExporter(tx);
             return exporter.writeNeo4J(tradId, sectId, dm);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-
-
     }
 
     /**
@@ -1675,15 +1490,12 @@ public class Section {
     public Response getJson(@QueryParam("conflate") String toConflate,
                             @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        Response response;
         try (Transaction tx = db.beginTx()) {
-        	response = new TabularExporter(tx).exportAsJSON(tradId, toConflate, thisSection, "true".equals(excludeLayers));
-        	tx.close();
+        	return new TabularExporter(tx).exportAsJSON(tradId, toConflate, thisSection, "true".equals(excludeLayers));
         } catch (Exception e) {
         	e.printStackTrace();
-        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        	return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return response;
     }
 
     /**
@@ -1702,18 +1514,13 @@ public class Section {
     public Response getCsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        Response response;
-
         try (Transaction tx = db.beginTx()) {
-        	response = new TabularExporter(tx).exportAsCSV(tradId, ',', toConflate,
+        	return new TabularExporter(tx).exportAsCSV(tradId, ',', toConflate,
         			thisSection, "true".equals(excludeLayers));
-        	tx.close();
         } catch (Exception e) {
         	e.printStackTrace();
-        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        	return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-
-        return response;
     }
 
     /**
@@ -1732,16 +1539,13 @@ public class Section {
     public Response getTsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        Response response;
         try (Transaction tx = db.beginTx()) {
-        	response = new TabularExporter(tx).exportAsCSV(tradId, '\t', toConflate,
+        	return new TabularExporter(tx).exportAsCSV(tradId, '\t', toConflate,
         			thisSection, "true".equals(excludeLayers));
-        	tx.close();
         } catch (Exception e) {
         	e.printStackTrace();
-        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        	return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return response;
     }
 
     /**
@@ -1762,18 +1566,13 @@ public class Section {
                                   @QueryParam("exclude_layers") String excludeLayers,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        Response response;
-
         try (Transaction tx = db.beginTx()) {
-        	response = new TabularExporter(tx).exportAsCharMatrix(tradId, maxVars, toConflate,
+        	return new TabularExporter(tx).exportAsCharMatrix(tradId, maxVars, toConflate,
         			thisSection, "true".equals(excludeLayers));
-        	tx.close();
         } catch (Exception e) {
         	e.printStackTrace();
-        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        	return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-
-        return response;
     }
 
     /**
@@ -1803,35 +1602,20 @@ public class Section {
                                 @QueryParam("base_witness") String baseWitness,
                                 @QueryParam("normalize") String conflate,
                                 @QueryParam("exclude_witness") List<String> excWitnesses) {
-    	Node traditionNode = null;
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-            tx.close();
-        }
-
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
-
-        TEIExporter exp = new TEIExporter();
-        Response response;
-        Transaction tx = null;
-
-        try {
-        	tx = db.beginTx();
-            response = exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, conflate, suppressMatching,
-                    Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), significant,
-                    Boolean.getBoolean(combine), tx);
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
+            TEIExporter exp = new TEIExporter();
+            return exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, conflate, suppressMatching,
+                        Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), significant,
+                        Boolean.getBoolean(combine), tx);
         } catch (Exception e) {
             e.printStackTrace();
-            response = Response.serverError().build();
+            return Response.serverError().build();
         }
-        if (tx != null) {
-        	tx.close();
-        }
-        return response;
     }
 
-    // For use in a transaction!
     private void removeFromSequence (Node thisSection) {
         Node priorSection = null;
         Node nextSection = null;
@@ -1849,10 +1633,4 @@ public class Section {
             priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
         }
     }
-    
-
-    private Boolean sectionInTradition(Transaction tx) {
-        return VariantGraphService.sectionInTradition(tx, tradId, sectId);
-    }
-
 }

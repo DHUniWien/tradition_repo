@@ -29,7 +29,6 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -61,7 +60,6 @@ public class TEIParallelSegParser {
      */
     public Response parseTEIParallelSeg(InputStream xmldata, Node parentNode) {
         // Main XML parser loop
-        String tradId;
         String parentId;
         Node startNode;
         Node endNode = null;
@@ -71,7 +69,6 @@ public class TEIParallelSegParser {
             reader = factory.createXMLStreamReader(xmldata);
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             parentId = parentNode.getElementId();
-            tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
             startNode = Util.createStartNode(tx, parentNode);
 
@@ -195,7 +192,24 @@ public class TEIParallelSegParser {
             recalculateRank(tx, startNode, false);
             // Calculate which nodes are common
             VariantGraphService.calculateCommon(tx, parentNode);
-            tx.close();
+
+            // Merge all mergeable readings to get rid of duplicates across apparatus entries.
+            assert(endNode != null);
+            long endRank = Long.parseLong(endNode.getProperty("rank").toString());
+            for (List<ReadingModel> identSet : VariantGraphService.collectIdenticalReadings(tx, parentId, 0, endRank)) {
+                ReadingModel first = identSet.removeFirst();
+                Reading rd = new Reading(first.getId());
+                for (ReadingModel identical : identSet) {
+                    try (Response done = rd.mergeReadings(Long.parseLong(identical.getId()))) {
+                        if (done.getStatus() != Response.Status.OK.getStatusCode())
+                            return Response.serverError().entity(done.getEntity()).build();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return Response.serverError().entity(jsonerror(e.getMessage())).build();
+                    }
+
+                }
+            }
         } catch (XMLStreamException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(jsonerror("Parsing of tradition file failed: " + e.getMessage()))
@@ -213,25 +227,6 @@ public class TEIParallelSegParser {
             return Response.serverError()
                     .entity(jsonerror("Parsing of tradition file failed at " + location + ": " + e.getMessage()))
                     .build();
-        }
-
-        // Merge all mergeable readings, to get rid of duplicates across apparatus entries.
-        assert(endNode != null);
-        long endRank = Long.parseLong(endNode.getProperty("rank").toString());
-        Section s = new Section(tradId, parentId);
-        for (List<ReadingModel> identSet : s.collectIdenticalReadings(0, endRank, tx)) {
-            ReadingModel first = identSet.removeFirst();
-            Reading rd = new Reading(first.getId());
-            for (ReadingModel identical : identSet) {
-                try (Response done = rd.mergeReadings(Long.parseLong(identical.getId()))) {
-                    if (done.getStatus() != Response.Status.OK.getStatusCode())
-                        return Response.serverError().entity(done.getEntity()).build();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
-                }
-
-            }
         }
 
         return Response.status(Response.Status.CREATED)
