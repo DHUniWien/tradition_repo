@@ -21,7 +21,6 @@ import org.apache.commons.collections4.iterators.PeekingIterator;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -38,13 +37,16 @@ import net.stemmaweb.model.VariantLocationModel;
 import net.stemmaweb.model.VariantModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 public class TEIExporter {
-	private final GraphDatabaseService db = (new GraphDatabaseServiceProvider()).getDatabase();
+	private final Transaction tx;
 
-	private static String writeRespStatement(XMLStreamWriter writer, Map<String, String> extraParams, String tag) {
+    public TEIExporter(Transaction tx) {
+        this.tx = tx;
+    }
+
+    private static String writeRespStatement(XMLStreamWriter writer, Map<String, String> extraParams, String tag) {
 		AtomicReference<String> errorMsg = new AtomicReference<>();
 		errorMsg.set("");
 		extraParams.keySet().stream().filter(x -> x.startsWith(tag)).forEach(x -> {
@@ -188,11 +190,11 @@ public class TEIExporter {
 	 *
 	 * @return a Response containing an XML string that represents the requested
 	 *         tradition/section
-	 * @throws Exception 
+	 * @throws Exception - either XMLStreamException, IOException, or a problem with variant list generation
 	 */
 	public Response writeTEI(String tradId, String sectionId, Map<String, String> extraParams, String baseWitness,
 							 List<String> excludeWitnesses, String conflate, String suppress, Boolean filterNonsense,
-							 Boolean filterTypeOne, String significant, Boolean combine, Transaction tx)
+							 Boolean filterTypeOne, String significant, Boolean combine)
 			throws Exception {
 		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
 		if (traditionNode == null)

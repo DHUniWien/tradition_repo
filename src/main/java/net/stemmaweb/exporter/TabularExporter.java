@@ -3,6 +3,7 @@ package net.stemmaweb.exporter;
 import static net.stemmaweb.Util.jsonerror;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,7 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
@@ -115,7 +115,7 @@ public class TabularExporter {
 
         // We will count on the order of the witness columns remaining constant.
         List<String> witnessSigla = wholeTradition.getAlignment().stream()
-                .map(WitnessTokensModel::constructSigil).collect(Collectors.toList());
+                .map(WitnessTokensModel::constructSigil).toList();
         // Collect the character rows as they are built for each witness.
         HashMap<String, StringBuilder> witnessRows = new HashMap<>();
         for (String sigil : witnessSigla) witnessRows.put(sigil, new StringBuilder());
@@ -124,7 +124,7 @@ public class TabularExporter {
         for (int i = 0; i < wholeTradition.getLength(); i++) {
             AtomicInteger ai = new AtomicInteger(i);
             List<ReadingModel> row = wholeTradition.getAlignment().stream()
-                    .map(x -> x.getTokens().get(ai.get())).collect(Collectors.toList());
+                    .map(x -> x.getTokens().get(ai.get())).toList();
             // Make reading-to-character lookup
             HashMap<String, Character> charMap = new HashMap<>();
             char curr = 'A';
@@ -222,7 +222,7 @@ public class TabularExporter {
         // seen with a set.
         HashSet<String> allWitnesses = new HashSet<>();
         ArrayList<AlignmentModel> tables = new ArrayList<>();
-        int length = 0;
+        long length = 0;
         for (Node sectionNode : traditionSections) {
             if (collapseRelated != null) VariantGraphService.normalizeGraph(tx, sectionNode, collapseRelated);
             AlignmentModel asJson = new AlignmentModel(sectionNode, excludeLayers, tx);
@@ -277,6 +277,7 @@ public class TabularExporter {
     }
 
     private static class TabularExporterException extends Exception {
+        @Serial
         private static final long serialVersionUID = 3735060874050003930L;
 
 		TabularExporterException (String message) {

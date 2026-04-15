@@ -919,10 +919,10 @@ public class Tradition {
             if (traditionNode == null)
                 return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 
-            TEIExporter exp = new TEIExporter();
+            TEIExporter exp = new TEIExporter(tx);
             return exp.writeTEI(traditionId, null, null, baseWitness, excWitnesses, conflate,
                     suppressMatching, Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1),
-                    significant, Boolean.getBoolean(combine), tx);
+                    significant, Boolean.getBoolean(combine));
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();

@@ -23,7 +23,6 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-import org.apache.commons.compress.utils.IOUtils;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Entity;
 import org.neo4j.graphdb.Node;
@@ -306,23 +305,16 @@ public class GraphMLExporter {
             }
 
             // Finally, assemble the contents of tmpdir into a zip file.
-            ByteArrayOutputStream result;
-            result = new ByteArrayOutputStream();
-            BufferedOutputStream bos = new BufferedOutputStream(result);
-            ZipOutputStream zipOut = new ZipOutputStream(bos);
-            for (String fn : outputFiles) {
-                zipOut.putNextEntry(new ZipEntry(fn));
-                FileInputStream fis = new FileInputStream(tmpdir + "/" + fn);
-
-                IOUtils.copy(fis, zipOut);
-                fis.close();
-                zipOut.closeEntry();
+            ByteArrayOutputStream result = new ByteArrayOutputStream();
+            try (ZipOutputStream zipOut = new ZipOutputStream(new BufferedOutputStream(result))) {
+                for (String fn : outputFiles) {
+                    zipOut.putNextEntry(new ZipEntry(fn));
+                    try (FileInputStream fis = new FileInputStream(tmpdir + "/" + fn)) {
+                        fis.transferTo(zipOut);
+                    }
+                    zipOut.closeEntry();
+                }
             }
-            zipOut.finish();
-            zipOut.flush();
-            IOUtils.closeQuietly(zipOut);
-            IOUtils.closeQuietly(bos);
-            IOUtils.closeQuietly(result);
 
             String sectionAppend = sectionId != null ? "-section-" + sectionId : "";
             String cdisp = String.format("attachment; filename=\"%s%s.zip\"", tradId, sectionAppend);
