@@ -280,8 +280,9 @@ public class VariantLocationModel {
         if (toRemove != null) this.variants.remove(toRemove);
 
         // Any time we add a variant we should update the list of relations pertaining to this VLM
-        // Keep the variant list sorted
-        this.variants.sort(Comparator.comparingInt(x -> x.getReadings().size()));
+        // Keep the variant list sorted, first by length of reading chain then by string representation
+        this.variants.sort(Comparator.comparingInt((VariantModel x) -> x.getReadings().size())
+                .thenComparing(String::valueOf));
     }
 
     public void setRelations(List<RelationModel> relations) {

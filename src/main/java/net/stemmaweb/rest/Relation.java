@@ -122,13 +122,13 @@ public class Relation {
                 HashSet<Node> ourA = tradReadings.stream()
                         .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA)) && !x.equals(readingA))
                         .collect(Collectors.toCollection(HashSet::new));
-                HashMap<String, HashSet<Long>> ranks = new HashMap<>();
+                HashMap<String, HashSet<String>> ranks = new HashMap<>();
                 for (Node cur_node : ourA) {
                     long node_rank = (Long) cur_node.getProperty("rank");
                     String node_section = cur_node.getProperty("section_id").toString();
                     String key = node_section + "/" + node_rank;
-                    HashSet<Long> cur_set = ranks.getOrDefault(key, new HashSet<>());
-                    cur_set.add(node_rank);
+                    HashSet<String> cur_set = ranks.getOrDefault(key, new HashSet<>());
+                    cur_set.add(cur_node.getElementId());
                     ranks.putIfAbsent(key, cur_set);
                 }
 
@@ -138,18 +138,17 @@ public class Relation {
                         .collect(Collectors.toCollection(HashSet::new));
                 RelationModel userel;
                 for (Node cur_node : ourB) {
-                    String node_id = cur_node.getElementId();
+                    String nodeB_id = cur_node.getElementId();
                     long node_rank = (Long) cur_node.getProperty("rank");
                     String node_section = cur_node.getProperty("section_id").toString();
                     String key = node_section + "/" + node_rank;
 
-                    HashSet<Long> cur_set = ranks.get(key);
+                    HashSet<String> cur_set = ranks.get(key);
                     if (cur_set != null) {
-                        for (Long id : cur_set) {
-                            // TODO URGENT are we using ranks as node IDs?!
+                        for (String nodeA_id : cur_set) {
                             userel = new RelationModel(thisRelation);
-                            userel.setSource(Long.toString(id));
-                            userel.setTarget(node_id);
+                            userel.setSource(nodeA_id);
+                            userel.setTarget(nodeB_id);
                             try {
                                 GraphModel createResult = RelationService.createLocalRelation(tx, tradId, userel);
                                 relationChanges.addReadings(createResult.getReadings());

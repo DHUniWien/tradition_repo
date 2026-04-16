@@ -214,8 +214,8 @@ public class VariantListModel {
         for (VariantLocationModel vlm : this.getVariantlist())
             vlm.collectRelationsInLocation(tx, this.dislocationTypes);
         // Sort the result by rank index and base text length, and return
-        this.getVariantlist().sort(Comparator.comparingInt(x -> x.getBase().size()));
-        this.getVariantlist().sort(Comparator.comparingLong(VariantLocationModel::getRankIndex));
+        this.getVariantlist().sort(Comparator.comparingLong(VariantLocationModel::getRankIndex)
+                .thenComparing(x -> x.getBase().size()));
     }
 
     private VariantLocationModel getVLM(List<Node> baseChain,

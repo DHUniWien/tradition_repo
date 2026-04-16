@@ -721,13 +721,13 @@ public class Reading {
     @Path("merge/{secondReadId}")
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
-    public Response mergeWithReading(@PathParam("secondReadId") long secondReadId) {
+    public Response mergeWithReading(@PathParam("secondReadId") String secondReadId) {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         GraphModel result;
 
         try (Transaction tx = db.beginTx()) {
             Node keepingReading = tx.getNodeByElementId(readId);
-            Node deletingReading = tx.getNodeByElementId(String.valueOf(secondReadId));
+            Node deletingReading = tx.getNodeByElementId(secondReadId);
 
             ReadingModel drm = new ReadingModel(deletingReading);
 
@@ -741,7 +741,7 @@ public class Reading {
                     Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE);
             Node aPriorNode = null;
             if (priorRels.iterator().hasNext())
-                aPriorNode = priorRels.iterator().next().getStartNode();
+                aPriorNode = priorRels.getFirst().getStartNode();
             if (aPriorNode == null) {
                 errorMessage = "Node to be merged has no prior node!";
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
@@ -903,8 +903,8 @@ public class Reading {
         ArrayList<SequenceModel> createdSequences = new ArrayList<>();
 
         // Get the sequence relationships that came out of the original reading
-        ArrayList<Relationship> originalOutgoingRels = new ArrayList<>();
-        DatabaseService.getRelationships(originalReading, Direction.OUTGOING, ERelations.SEQUENCE).forEach(originalOutgoingRels::add);
+        ArrayList<Relationship> originalOutgoingRels = new ArrayList<>(
+                DatabaseService.getRelationships(originalReading, Direction.OUTGOING, ERelations.SEQUENCE));
 
         // Get the sequence of reading text that should be created
         String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
@@ -1059,7 +1059,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
-    public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
+    public Response compressReadings(@PathParam("read2Id") String readId2, ReadingBoundaryModel boundary) {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         Node read1, read2;
         // some defaults if we fall through and haven't changed it
@@ -1068,7 +1068,7 @@ public class Reading {
 
         try (Transaction tx = db.beginTx()) {
             read1 = tx.getNodeByElementId(readId);
-            read2 = tx.getNodeByElementId(String.valueOf(readId2));
+            read2 = tx.getNodeByElementId(readId2);
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
                 errorMessage = "the first reading has a higher rank then the second reading";
                 resp =  errorResponse(Status.CONFLICT);

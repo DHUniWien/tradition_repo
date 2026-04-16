@@ -2,7 +2,6 @@ package net.stemmaweb.services;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
@@ -340,12 +339,12 @@ public class ReadingService {
         String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
         List<Relationship> seqs = DatabaseService.getRelationships(read, dir, ERelations.SEQUENCE);
         // Get the list of relations matching the given layer
-        Collection<Relationship> matching = StreamSupport.stream(seqs.spliterator(), false)
+        Collection<Relationship> matching = seqs.stream()
                 .filter(x -> isPathFor(x, witnessId, layer))
                 .collect(Collectors.toList());
         // If none and we are looking for a layer, re-fetch the list of relations matching the base layer
         if (matching.isEmpty() && !layer.equals("witnesses")) {
-            matching = StreamSupport.stream(seqs.spliterator(), false)
+            matching = seqs.stream()
                     .filter(x -> isPathFor(x, witnessId, "witnesses"))
                     .toList();
         }
@@ -491,7 +490,7 @@ public class ReadingService {
     	allNodes.forEach(x -> x.setProperty("touched", true));
 
     	// At this point we can start to reassign ranks
-    	ArrayList<Node> touched = new ArrayList<>();
+    	Set<Node> touched = new HashSet<>();
     	tx.traversalDescription().depthFirst()
     			.expand(a, new InitialBranchState.State<>(tx, tx))
     			.evaluator(e)
@@ -580,11 +579,9 @@ public class ReadingService {
         }
 
         private ResourceIterable<Relationship> expansion(Path path, Direction dir) {
-            ArrayList<Relationship> relevantRelations = new ArrayList<>();
             // Get the sequence relationships
-            for (Relationship relationship : DatabaseService.getRelationships(path.endNode(),
-                    dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED))
-                relevantRelations.add(relationship);
+            ArrayList<Relationship> relevantRelations = new ArrayList<>(DatabaseService.getRelationships(path.endNode(),
+                    dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED));
             // Get the alignment relationships and filter them
             for (Relationship r : DatabaseService.getRelationships(path.endNode(), Direction.BOTH, ERelations.RELATED)) {
                 if (includeRelationTypes.contains(r.getProperty("type").toString()))
