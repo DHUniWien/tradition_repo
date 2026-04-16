@@ -82,7 +82,8 @@ public class RelationModel {
     private String type;                // de11
 
     public RelationModel(){
-
+        // Set default scope
+        this.scope = "local";
     }
 
     public RelationModel(Relationship rel) {
@@ -95,8 +96,8 @@ public class RelationModel {
      * @param includeReadings - Whether to set the source_reading and target_reading fields
      */
     public RelationModel(Relationship rel, Boolean includeReadings){
-        source = rel.getStartNode().getElementId() + "";
-        target = rel.getEndNode().getElementId() + "";
+        source = rel.getStartNode().getElementId();
+        target = rel.getEndNode().getElementId();
         if (includeReadings) {
             source_reading = new ReadingModel(rel.getStartNode());
             target_reading = new ReadingModel(rel.getEndNode());
@@ -229,7 +230,7 @@ public class RelationModel {
     }
 
     public void setIs_significant(String is_significant) {
-        if(!is_significant.equals(""))
+        if(!is_significant.isEmpty())
             this.is_significant = Significance.valueOf(is_significant);
     }
 

@@ -354,9 +354,9 @@ public class RelationService {
         // Remove any weak relations that might conflict
         Boolean colocation = rmodel.getIs_colocation();
         if (colocation) {
-            ArrayList<Relationship> existing = new ArrayList<>();
-            DatabaseService.getRelationships(readingA, ERelations.RELATED).forEach(existing::add);
-            DatabaseService.getRelationships(readingB, ERelations.RELATED).forEach(existing::add);
+            HashSet<Relationship> existing = new HashSet<>();
+            existing.addAll(DatabaseService.getRelationships(readingA, ERelations.RELATED));
+            existing.addAll(DatabaseService.getRelationships(readingB, ERelations.RELATED));
             for (Relationship r : existing) {
                 RelationTypeModel rm = returnRelationType(tx, tradId, r.getProperty("type").toString());
                 if (rm == null)
