@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.ReadingService;
 
 @XmlRootElement
@@ -97,7 +98,7 @@ public class VariantLocationModel {
                 vModelForReading.put(vrdg, vm);
             }
         for (Node n : clusterNodes) {
-            for (Relationship rel : n.getRelationships(Direction.OUTGOING, ERelations.RELATED))
+            for (Relationship rel : DatabaseService.getRelationships(n, Direction.OUTGOING, ERelations.RELATED))
                 // Add any relation we find that links to another node in this variant location
                 if (clusterNodes.contains(rel.getEndNode()))
                     relations.add(rel);

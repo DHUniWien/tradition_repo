@@ -48,6 +48,7 @@ import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationService;
@@ -206,7 +207,7 @@ public class Reading {
             // Get all its relationships for deletion
             boolean onLemmaPath = false;
             List<SequenceModel> deletedSeqs = new ArrayList<>();
-            for (Relationship r : reading.getRelationships()) {
+            for (Relationship r : DatabaseService.getRelationships(reading)) {
                 if (r.isType(ERelations.LEMMA_TEXT)) {
                     onLemmaPath = true;
                 } else {
@@ -467,7 +468,7 @@ public class Reading {
         ArrayList<RelationModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = tx.getNodeByElementId(readId);
-            for (Relationship rel : reading.getRelationships(ERelations.RELATED)) {
+            for (Relationship rel : DatabaseService.getRelationships(reading, ERelations.RELATED)) {
                 deleted.add(new RelationModel(rel));
                 rel.delete();
             }
@@ -736,7 +737,7 @@ public class Reading {
             // See if they are on the same rank; if not, we will have to re-rank the graph
             // from the node before the one removed.
             boolean samerank = keepingReading.getProperty("rank").equals(deletingReading.getProperty("rank"));
-            Iterable<Relationship> priorRels = deletingReading.getRelationships(
+            List<Relationship> priorRels = DatabaseService.getRelationships(deletingReading,
                     Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE);
             Node aPriorNode = null;
             if (priorRels.iterator().hasNext())
@@ -903,7 +904,7 @@ public class Reading {
 
         // Get the sequence relationships that came out of the original reading
         ArrayList<Relationship> originalOutgoingRels = new ArrayList<>();
-        originalReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).forEach(originalOutgoingRels::add);
+        DatabaseService.getRelationships(originalReading, Direction.OUTGOING, ERelations.SEQUENCE).forEach(originalOutgoingRels::add);
 
         // Get the sequence of reading text that should be created
         String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
@@ -1148,7 +1149,7 @@ public class Reading {
      */
     private Set<SequenceModel> copySequences(Node read1, Node read2) {
         Set<SequenceModel> newCopies = new HashSet<>();
-        for (Relationship tempRel : read2.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+        for (Relationship tempRel : DatabaseService.getRelationships(read2, Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
             Node tempNode = tempRel.getOtherNode(read2);
             Relationship rel1 = read1.createRelationshipTo(tempNode, tempRel.getType());
             for (String key : tempRel.getPropertyKeys()) {
@@ -1194,7 +1195,7 @@ public class Reading {
 
     private int getEffectiveDegree(Node reading, Direction direction) {
         HashSet<Node> connected = new HashSet<>();
-        for (Relationship rel : reading.getRelationships(direction, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+        for (Relationship rel : DatabaseService.getRelationships(reading, direction, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
             connected.add(rel.getOtherNode(reading));
         }
         return connected.size();
@@ -1209,7 +1210,7 @@ public class Reading {
      * @return true if it has, false otherwise
      */
     private boolean hasNonSequenceRelationships(Node read) {
-        for (Relationship rel : read.getRelationships()) {
+        for (Relationship rel : DatabaseService.getRelationships(read)) {
             String type = rel.getType().name();
 
             if (!type.equals(ERelations.SEQUENCE.toString()) && !type.equals(ERelations.LEMMA_TEXT.toString())) {
@@ -1235,7 +1236,7 @@ public class Reading {
      */
     private List<Relationship> getSequenceBetweenReadings(Node read1, Node read2) {
         ArrayList<Relationship> foundRels = new ArrayList<>();
-        for (Relationship tempRel : read1.getRelationships(ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+        for (Relationship tempRel : DatabaseService.getRelationships(read1, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
             if (tempRel.getOtherNode(read1).equals(read2)) {
                 foundRels.add(tempRel);
             }

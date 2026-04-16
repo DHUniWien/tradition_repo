@@ -164,7 +164,7 @@ public class DotExporter
                 // Collect any emendation anchors
                 ArrayList<Relationship> emendationAnchors = new ArrayList<>();
                 representatives.values().stream().filter(x -> x.hasLabel(Nodes.EMENDATION)).forEach(e ->
-                        e.getRelationships(Direction.BOTH, ERelations.EMENDED)
+                        DatabaseService.getRelationships(e, Direction.BOTH, ERelations.EMENDED)
                                 .forEach(x ->
                                 {
                                     if (representatives.get(x.getOtherNode(e)).equals(x.getOtherNode(e)))
@@ -191,7 +191,7 @@ public class DotExporter
                     // This node is automatically in a requested witness if it is the start node, or if there
                     // is no witness filter.
                     boolean inRequestedWitness = node.equals(sectionStartNode) || dm.getExcludeWitnesses().isEmpty();
-                    for (Relationship rel : node.getRelationships(Direction.INCOMING, seqLabel)) {
+                    for (Relationship rel : DatabaseService.getRelationships(node, Direction.INCOMING, seqLabel)) {
                         if (rel == null)
                             continue;
                         Node relStartNode = rel.getStartNode();
@@ -241,7 +241,7 @@ public class DotExporter
 
                         // Retrieve reading relations, if requested
                         if (dm.getIncludeRelated()) {
-                            for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
+                            for (Relationship relatedRel : DatabaseService.getRelationships(node, Direction.INCOMING, ERelations.RELATED)) {
                                 // Only include the relations that are on our representative nodes
                                 if (dm.getNormaliseOn() != null) {
                                     if (!representatives.getOrDefault(relatedRel.getStartNode(), relatedRel.getStartNode())

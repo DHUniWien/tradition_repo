@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -30,6 +31,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -293,10 +295,7 @@ public class StemmawebExporter {
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(traditionStartNode)
                     .nodes()) {
-
-                Iterable<Relationship> rels;
-                rels = node.getRelationships(Direction.OUTGOING, ERelations.RELATED);
-                for(Relationship rel : rels) {
+                for(Relationship rel : DatabaseService.getRelationships(node, Direction.OUTGOING, ERelations.RELATED)) {
                     edgeCountGraph2++;
                     props = rel.getPropertyKeys();
                     writer.writeStartElement("edge");

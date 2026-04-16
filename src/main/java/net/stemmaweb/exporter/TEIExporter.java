@@ -37,6 +37,7 @@ import net.stemmaweb.model.VariantLocationModel;
 import net.stemmaweb.model.VariantModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 public class TEIExporter {
@@ -342,7 +343,7 @@ public class TEIExporter {
 					.getStartNode();
 			extraParams.put("owner", (new UserModel(ownNode)).getId());
 		}
-		for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
+		for (Relationship r : DatabaseService.getRelationships(traditionNode, Direction.OUTGOING, ERelations.HAS_WITNESS)) {
 			WitnessModel wm = new WitnessModel(r.getEndNode());
 			extraParams.put("witness:" + wm.getId(), wm.getSigil());
 		}

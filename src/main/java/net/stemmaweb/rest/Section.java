@@ -197,7 +197,7 @@ public class Section {
                 VariantGraphService.returnTraditionSection(tx, foundSection).nodes()
                         .forEach(x -> {
                             removableNodes.add(x);
-                            x.getRelationships(Direction.BOTH).forEach(removableRelations::add);
+                            DatabaseService.getRelationships(x, Direction.BOTH).forEach(removableRelations::add);
                         });
 
                 // Remove said nodes and relationships.
@@ -811,7 +811,7 @@ public class Section {
     		Node thisSection = tx.getNodeByElementId(sectId);
     		Node firstSection = null;
     		Node secondSection = null;
-    		for (Relationship r : thisSection.getRelationships(ERelations.NEXT)) {
+    		for (Relationship r : DatabaseService.getRelationships(thisSection, ERelations.NEXT)) {
     			if (otherId.equals(r.getEndNode().getElementId()))
     				secondSection = r.getEndNode();
     			else if (otherId.equals(r.getStartNode().getElementId()))
@@ -841,7 +841,7 @@ public class Section {
     				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().spliterator(), false)
     		.filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
     		
-    		for (Relationship r : secondSection.getRelationships(ERelations.HAS_EMENDATION)) {
+    		for (Relationship r : DatabaseService.getRelationships(secondSection, ERelations.HAS_EMENDATION)) {
     			Node e = r.getEndNode();
     			r.delete();
     			firstSection.createRelationshipTo(e, ERelations.HAS_EMENDATION);
@@ -849,7 +849,7 @@ public class Section {
     		
     		// Collect the last readings from the first section, for later rank recalculation
     		List<Node> firstSectionEnd = new ArrayList<>();
-    		oldEnd.getRelationships(Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE)
+    		DatabaseService.getRelationships(oldEnd, Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE)
     		.forEach(x -> firstSectionEnd.add(x.getStartNode()));
     		
     		// First we turn oldEnd and oldStart into placeholder readings, linked to each other
@@ -859,10 +859,10 @@ public class Section {
     		oldStart.setProperty("is_placeholder", true);
     		HashSet<String> oldWitnesses = new HashSet<>();
     		HashSet<String> newWitnesses = new HashSet<>();
-    		for (Relationship r : oldEnd.getRelationships(ERelations.SEQUENCE))
+    		for (Relationship r : DatabaseService.getRelationships(oldEnd, ERelations.SEQUENCE))
     			for (String key : r.getPropertyKeys())
     				oldWitnesses.addAll(Arrays.asList((String[]) r.getProperty(key)));
-    		for (Relationship r : oldStart.getRelationships(ERelations.SEQUENCE))
+    		for (Relationship r : DatabaseService.getRelationships(oldStart, ERelations.SEQUENCE))
     			for (String key : r.getPropertyKeys())
     				newWitnesses.addAll(Arrays.asList((String[]) r.getProperty(key)));
     		newWitnesses.stream().filter(x -> !oldWitnesses.contains(x))
@@ -1180,12 +1180,12 @@ public class Section {
             // Crawl the section looking for all emendations
             Node sectionNode = tx.getNodeByElementId(sectId);
             List<Node> emended = new ArrayList<>();
-            for (Relationship r : sectionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_EMENDATION))
+            for (Relationship r : DatabaseService.getRelationships(sectionNode, Direction.OUTGOING, ERelations.HAS_EMENDATION))
                 emended.add(r.getEndNode());
             result.setReadings(emended.stream().map(ReadingModel::new).collect(Collectors.toList()));
             List<SequenceModel> emendSeqs = new ArrayList<>();
             for (Node n : emended) {
-                for (Relationship r : n.getRelationships(ERelations.EMENDED)) {
+                for (Relationship r : DatabaseService.getRelationships(n, ERelations.EMENDED)) {
                     emendSeqs.add(new SequenceModel(r));
                 }
             }

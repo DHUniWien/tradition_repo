@@ -6,7 +6,6 @@ import static net.stemmaweb.services.AnnotationService.findExistingLink;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -31,6 +30,7 @@ import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.services.AnnotationService;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -130,7 +130,7 @@ public class Annotation {
         	} else {
         		Node a = tx.getNodeByElementId(annoId);
         		// Delete all outgoing relationships, which makes this a dangling annotation
-        		a.getRelationships(Direction.OUTGOING).forEach(Relationship::delete);
+        		DatabaseService.getRelationships(a, Direction.OUTGOING).forEach(Relationship::delete);
         		// Make this node no longer a primary, since we are deleting it explicitly
         		a.removeProperty("__primary");
         		// Delete the annotation and any other non-primary annotations that it leaves dangling
@@ -155,7 +155,7 @@ public class Annotation {
         if (!a.hasRelationship(Direction.OUTGOING) && a.getProperty("__primary", false).equals(false)) {
             result.add(new AnnotationModel(a));
             ArrayList<Node> parents = new ArrayList<>();
-            a.getRelationships(Direction.INCOMING).forEach(x -> {parents.add(x.getStartNode()); x.delete();});
+            DatabaseService.getRelationships(a, Direction.INCOMING).forEach(x -> {parents.add(x.getStartNode()); x.delete();});
             for (Node p : parents)
                 result.addAll(deleteIfDangling(p));
             a.delete();
@@ -282,7 +282,7 @@ public class Annotation {
                     .traverse(aNode).nodes().forEach(result::add);
             return result;
         } else {
-            return StreamSupport.stream(aNode.getRelationships(Direction.INCOMING).spliterator(), false)
+            return DatabaseService.getRelationships(aNode, Direction.INCOMING).stream()
                     .filter(x -> !x.getType().equals(ERelations.HAS_ANNOTATION))
                     .map(Relationship::getStartNode).collect(Collectors.toList());
         }

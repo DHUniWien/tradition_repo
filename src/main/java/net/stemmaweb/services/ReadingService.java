@@ -84,7 +84,7 @@ public class ReadingService {
         HashSet<String> normalWitnesses = new HashSet<>();
         // Look at all incoming SEQUENCE relationships to the reading
         // First get the "normal" witnesses
-        Iterable<Relationship> readingSeqs = reading.getRelationships(Direction.BOTH, ERelations.SEQUENCE);
+        List<Relationship> readingSeqs = DatabaseService.getRelationships(reading, Direction.BOTH, ERelations.SEQUENCE);
         for (Relationship r : readingSeqs)
             if (r.hasProperty("witnesses"))
                 Collections.addAll(normalWitnesses, (String[]) r.getProperty("witnesses"));
@@ -117,7 +117,7 @@ public class ReadingService {
      */
     public static Relationship addWitnessLink (Node start, Node end, String sigil, String witClass, RelationshipType seqType) {
         Relationship link = null;
-        for (Relationship r : start.getRelationships(Direction.OUTGOING, seqType))
+        for (Relationship r : DatabaseService.getRelationships(start, Direction.OUTGOING, seqType))
             if (r.getEndNode().equals(end))
                 link = r;
         if (link == null)
@@ -171,16 +171,16 @@ public class ReadingService {
         ArrayList<String> orphans = new ArrayList<>();
         if (witClass.equals("witnesses")) {
             if (ocStart) {
-                for (Relationship r : start.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+                for (Relationship r : DatabaseService.getRelationships(start, Direction.INCOMING, ERelations.SEQUENCE)) {
                     orphans.addAll(findWitLayers(r, sigil));
                 }
             }
             if (ocEnd) {
-                for (Relationship r : end.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+                for (Relationship r : DatabaseService.getRelationships(end, Direction.OUTGOING, ERelations.SEQUENCE)) {
                     orphans.addAll(findWitLayers(r, sigil));
                 }
                 // Any outgoing layers of this witness that arrive via another link are not orphans.
-                for (Relationship r : end.getRelationships(Direction.INCOMING, ERelations.SEQUENCE))
+                for (Relationship r : DatabaseService.getRelationships(end, Direction.INCOMING, ERelations.SEQUENCE))
                     if (!r.getStartNode().equals(start))
                         orphans.removeAll(findWitLayers(r, sigil));
             }
@@ -189,7 +189,7 @@ public class ReadingService {
         // Next, go through the outgoing sequences to find the appropriate link. As before, any
         // incoming orphans that leave through a different link aren't really orphans.
         Relationship link = null;
-        for (Relationship r : start.getRelationships(Direction.OUTGOING, seqType)) {
+        for (Relationship r : DatabaseService.getRelationships(start, Direction.OUTGOING, seqType)) {
             if (r.getEndNode().equals(end))
                 link = r;
             else if (witClass.equals("witnesses") && ocStart) {
@@ -265,7 +265,7 @@ public class ReadingService {
         // Make a map of class -> witness -> node on the outgoing side
         HashMap<String, Node> readingWitnessToMap = new HashMap<>();
         HashMap<String, HashMap<String, Node>> readingWitnessExtraMap = new HashMap<>();
-        for (Relationship r : placeholderNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+        for (Relationship r : DatabaseService.getRelationships(placeholderNode, Direction.OUTGOING, ERelations.SEQUENCE)) {
             for (String prop : r.getPropertyKeys()) {
                 String[] relWits = (String[]) r.getProperty(prop);
                 for (String w : relWits)
@@ -285,7 +285,7 @@ public class ReadingService {
         // Go through relationships on the incoming side, re-routing them according to the map above.
         // Keep a list of layer readings on the incoming side for matching after the fact.
         HashMap<String, Node> deferredLinks = new HashMap<>();
-        for (Relationship r : placeholderNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+        for (Relationship r : DatabaseService.getRelationships(placeholderNode, Direction.INCOMING, ERelations.SEQUENCE)) {
             Node priorReading = r.getStartNode();
             for (String prop : r.getPropertyKeys()) {
                 String[] relWits = (String[]) r.getProperty(prop);
@@ -338,7 +338,7 @@ public class ReadingService {
                 throw new IllegalArgumentException("Requested witness layer " + wholesigil + "does not pass through this node");
         }
         String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
-        Iterable<Relationship> seqs = read.getRelationships(dir, ERelations.SEQUENCE);
+        List<Relationship> seqs = DatabaseService.getRelationships(read, dir, ERelations.SEQUENCE);
         // Get the list of relations matching the given layer
         Collection<Relationship> matching = StreamSupport.stream(seqs.spliterator(), false)
                 .filter(x -> isPathFor(x, witnessId, layer))
@@ -454,9 +454,9 @@ public class ReadingService {
             }
             for (Node n : toCheck) {
                 ArrayList<Node> parents = new ArrayList<>();
-                n.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)
+                DatabaseService.getRelationships(n, Direction.INCOMING, ERelations.SEQUENCE)
                         .forEach(x -> parents.add(x.getStartNode()));
-                n.getRelationships(Direction.INCOMING, ERelations.EMENDED)
+                DatabaseService.getRelationships(n, Direction.INCOMING, ERelations.EMENDED)
                         .forEach(x -> parents.add(x.getStartNode()));
                 for (Node p: parents) {
                     String rankprop = p.hasProperty("touched") ? "newrank" : "rank";
@@ -579,11 +579,11 @@ public class ReadingService {
         private ResourceIterable<Relationship> expansion(Path path, Direction dir) {
             ArrayList<Relationship> relevantRelations = new ArrayList<>();
             // Get the sequence relationships
-            for (Relationship relationship : path.endNode()
-                    .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED))
+            for (Relationship relationship : DatabaseService.getRelationships(path.endNode(),
+                    dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED))
                 relevantRelations.add(relationship);
             // Get the alignment relationships and filter them
-            for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
+            for (Relationship r : DatabaseService.getRelationships(path.endNode(), Direction.BOTH, ERelations.RELATED)) {
                 if (includeRelationTypes.contains(r.getProperty("type").toString()))
                     relevantRelations.add(r);
             }

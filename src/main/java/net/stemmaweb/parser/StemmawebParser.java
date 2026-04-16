@@ -14,6 +14,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Entity;
@@ -108,7 +109,7 @@ public class StemmawebParser {
 									// Sequence relationships are specified multiple times in the GraphML, once
 									// per witness. Reading relationships should be specified only once.
 									if (from.hasRelationship(Direction.BOTH, relKind)) {
-										for (Relationship qr : from.getRelationships(Direction.BOTH, relKind)) {
+										for (Relationship qr : DatabaseService.getRelationships(from, Direction.BOTH, relKind)) {
 											if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
 												// If a RELATED link already exists, we have a problem.
 												if (relKind.equals(ERelations.RELATED))

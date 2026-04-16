@@ -90,7 +90,7 @@ public class VariantCrawler {
                 // Now for each witness sigil in witsSoFar, find the relationship that continues it.
                 Map<String, Relationship> continuations = new HashMap<>();
                 Set<String> baseWits = witsSoFar.getOrDefault("witnesses", new HashSet<>());
-                for (Relationship r : path.endNode().getRelationships(Direction.OUTGOING, followType)) {
+                for (Relationship r : DatabaseService.getRelationships(path.endNode(), Direction.OUTGOING, followType)) {
                     // Do the base layer first.
                     Set<String> relBaseWits = new HashSet<>(Arrays.asList(
                             (String[]) r.getProperty("witnesses", new String[0])));

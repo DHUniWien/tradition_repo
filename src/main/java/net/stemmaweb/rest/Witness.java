@@ -67,7 +67,7 @@ public class Witness {
         try (Transaction tx = db.beginTx()) {
         	Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
             Node found = null;
-            for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
+            for (Relationship r : DatabaseService.getRelationships(tradNode, Direction.OUTGOING, ERelations.HAS_WITNESS)) {
                 if (r.getEndNode().getElementId().equals(nodeId))
                     found = r.getEndNode();
             }
@@ -79,7 +79,7 @@ public class Witness {
 
     private Node getWitnessBySigil(Transaction tx) {
         Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
-        for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
+        for (Relationship r : DatabaseService.getRelationships(tradNode, Direction.OUTGOING, ERelations.HAS_WITNESS)) {
             Node wit = r.getEndNode();
             if (wit.hasProperty("sigil") && wit.getProperty("sigil").equals(sigil)) {
                 return wit;
@@ -158,7 +158,7 @@ public class Witness {
             for (Node orphan : orphanReadings) {
                 if (orphan.hasRelationship()) {
                     // Check that no SEQUENCE or LEMMA_TEXT relationships are left
-                    for (Relationship r : orphan.getRelationships()) {
+                    for (Relationship r : DatabaseService.getRelationships(orphan)) {
                         if (r.isType(ERelations.SEQUENCE) || r.isType(ERelations.LEMMA_TEXT))
                             return Response.serverError()
                                     .entity(String.format("Reading %s (%s) still has sequence links",
@@ -169,13 +169,13 @@ public class Witness {
                 }
             }
             // Look through any stemmata and turn the witness hypothetical in each of them
-            for (Relationship r : witnessNode.getRelationships(ERelations.HAS_WITNESS)) {
+            for (Relationship r : DatabaseService.getRelationships(witnessNode, ERelations.HAS_WITNESS)) {
                 Node owner = r.getStartNode();
                 if (owner.hasLabel(Nodes.STEMMA)) {
                     Node newHypothetical = tx.createNode(Nodes.WITNESS);
                     DatabaseService.copyProperties(witnessNode, newHypothetical);
                     newHypothetical.setProperty("hypothetical", true);
-                    for (Relationship link : witnessNode.getRelationships(ERelations.TRANSMITTED)) {
+                    for (Relationship link : DatabaseService.getRelationships(witnessNode, ERelations.TRANSMITTED)) {
                         Relationship copy;
                         if (link.getStartNode().equals(witnessNode))
                             copy = newHypothetical.createRelationshipTo(link.getEndNode(), ERelations.TRANSMITTED);

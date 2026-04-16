@@ -221,7 +221,7 @@ public class Tradition {
         int depth = sectionNodes.size();
         if (depth > 0) {
             for(Node n: sectionNodes) {
-                if (n.getRelationships(Direction.INCOMING, ERelations.NEXT).stream().findAny().isEmpty()) {
+                if (DatabaseService.getRelationships(n, Direction.INCOMING, ERelations.NEXT).stream().findAny().isEmpty()) {
                     tx.traversalDescription()
                             .depthFirst()
                             .relationships(ERelations.NEXT, Direction.OUTGOING)
@@ -661,7 +661,7 @@ public class Tradition {
 
             List<AnnotationModel> result;
             ArrayList<AnnotationModel> allAnnotations = new ArrayList<>();
-            traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION)
+            DatabaseService.getRelationships(traditionNode, Direction.OUTGOING, ERelations.HAS_ANNOTATION)
                     .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode())));
             if (!filterLabels.isEmpty())
                 result = allAnnotations.stream().filter(x -> filterLabels.contains(x.getLabel()))
@@ -698,7 +698,7 @@ public class Tradition {
                         .entity(jsonerror("There is no tradition with this id")).build();
 
             List<AnnotationLabelModel> result = new ArrayList<>();
-            traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE)
+            DatabaseService.getRelationships(traditionNode, Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE)
                     .forEach(x -> result.add(new AnnotationLabelModel(x.getEndNode())));
             return Response.ok(result).build();
         } catch (Exception e) {
@@ -833,7 +833,7 @@ public class Tradition {
                 Set<Node> removableNodes = new HashSet<>();
                 VariantGraphService.returnEntireTradition(tx, foundTradition)
                         .nodes().forEach(x -> {
-                    x.getRelationships().forEach(removableRelations::add);
+                    DatabaseService.getRelationships(x).forEach(removableRelations::add);
                     removableNodes.add(x);
                 });
 

@@ -161,7 +161,7 @@ public class RelationService {
         }
         assert(traditionNode != null);
         // ...and query its relation types.
-        traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE).forEach(
+        DatabaseService.getRelationships(traditionNode, Direction.OUTGOING, ERelations.HAS_RELATION_TYPE).forEach(
                 x -> result.add(new RelationTypeModel(x.getEndNode()))
         );
         return result;
@@ -233,7 +233,7 @@ public class RelationService {
                 UnionFind uf = new UnionFind(sectionNodes);
                 for (Node sectionNode : sectionNodes)
                     // based on the relevant relations.
-                    for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING, ERelations.RELATED))
+                    for (Relationship rel : DatabaseService.getRelationships(sectionNode, Direction.OUTGOING, ERelations.RELATED))
                         if (relatedTypes.contains(rel.getProperty("type").toString()))
                             uf.union(sectionNode, rel.getEndNode());
                 // Filter the result to remove the sets of size 1 (i.e. the non-clusters)
@@ -355,8 +355,8 @@ public class RelationService {
         Boolean colocation = rmodel.getIs_colocation();
         if (colocation) {
             ArrayList<Relationship> existing = new ArrayList<>();
-            readingA.getRelationships(ERelations.RELATED).forEach(existing::add);
-            readingB.getRelationships(ERelations.RELATED).forEach(existing::add);
+            DatabaseService.getRelationships(readingA, ERelations.RELATED).forEach(existing::add);
+            DatabaseService.getRelationships(readingB, ERelations.RELATED).forEach(existing::add);
             for (Relationship r : existing) {
                 RelationTypeModel rm = returnRelationType(tx, tradId, r.getProperty("type").toString());
                 if (rm == null)
@@ -374,7 +374,7 @@ public class RelationService {
         }
 
         // Check if relation already exists
-        Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
+        List<Relationship> relationships = DatabaseService.getRelationships(readingA, ERelations.RELATED);
         for (Relationship relationship : relationships) {
             if (relationship.getOtherNode(readingA).equals(readingB)) {
                 RelationModel thisRel = new RelationModel(relationship);
@@ -483,7 +483,7 @@ public class RelationService {
             while (!iterateNodes.isEmpty()) {
                 Node readingA = iterateNodes.removeFirst();
                 HashSet<Node> alreadyRelated = new HashSet<>();
-                readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
+                DatabaseService.getRelationships(readingA, ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
                         GraphModel interim = createSingleRelation(tx, readingA, readingB, rm, rtm);
@@ -498,7 +498,7 @@ public class RelationService {
                 HashMap<Node, Relationship> connections = new HashMap<>();
                 // Get the nodes we are directly related to, and the relations involved, if
                 // they meet the criteria
-                for (Relationship r : sibling.getRelationships(ERelations.RELATED)) {
+                for (Relationship r : DatabaseService.getRelationships(sibling, ERelations.RELATED)) {
                     RelationTypeModel othertm = returnRelationType(tx, tradId, r.getProperty("type").toString());
                     if (othertm == null)
                         throw new IllegalStateException("Sibling relation type " + r.getProperty("type") + " does not exist");

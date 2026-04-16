@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantCrawler;
 import net.stemmaweb.services.VariantGraphService;
@@ -157,7 +158,7 @@ public class VariantListModel {
             baseText = new ArrayList<>();
             Node prior = baseReadings.removeFirst();
             for (Node curr : baseReadings) {
-                prior.getRelationships(Direction.OUTGOING, follow).forEach(x -> {
+                DatabaseService.getRelationships(prior, Direction.OUTGOING, follow).forEach(x -> {
                     if (x.getEndNode().equals(curr)) baseText.add(x);
                 });
                 prior = curr;

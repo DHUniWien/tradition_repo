@@ -210,7 +210,7 @@ public class AnnotationLabel {
                             .build();
 
             // Delete the label's properties and links
-            for (Relationship r : ourNode.getRelationships(Direction.OUTGOING)) {
+            for (Relationship r : DatabaseService.getRelationships(ourNode, Direction.OUTGOING)) {
                 r.getEndNode().delete();
                 r.delete();
             }

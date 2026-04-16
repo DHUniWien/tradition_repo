@@ -1,6 +1,7 @@
 package net.stemmaweb.services;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.neo4j.graphdb.*;
 
@@ -52,7 +53,7 @@ public class DatabaseService {
      */
     public static ArrayList<Relationship> getRelationshipTo(Node startNode, Node endNode, RelationshipType rtype) {
         ArrayList<Relationship> found = new ArrayList<>();
-        for (Relationship r : startNode.getRelationships(Direction.BOTH, rtype)) {
+        for (Relationship r : getRelationships(startNode, Direction.BOTH, rtype)) {
             if (r.getOtherNode(startNode).equals(endNode)) {
                 found.add(r);
             }
@@ -74,6 +75,36 @@ public class DatabaseService {
         Node extantUser;
         extantUser = tx.findNode(Nodes.USER, "id", userId);
         return extantUser != null;
+    }
+
+    //
+
+    /*
+     * Convenience functions for getting contents of Neo4J ResourceIterables from node.getRelationships()
+     * and closing the resources. Takes the same arguments as .getRelationships()
+     */
+    public static List<Relationship> getRelationships(Node node) {
+        try (ResourceIterable<Relationship> rels = node.getRelationships()) {
+            return rels.stream().toList();
+        }
+    }
+
+    public static List<Relationship> getRelationships(Node node, Direction direction) {
+        try (ResourceIterable<Relationship> rels = node.getRelationships(direction)) {
+            return rels.stream().toList();
+        }
+    }
+
+    public static List<Relationship> getRelationships(Node node, RelationshipType... types) {
+        try (ResourceIterable<Relationship> rels = node.getRelationships(types)) {
+            return rels.stream().toList();
+        }
+    }
+
+    public static List<Relationship> getRelationships(Node node, Direction direction, RelationshipType... types) {
+        try (ResourceIterable<Relationship> rels = node.getRelationships(direction, types)) {
+            return rels.stream().toList();
+        }
     }
 
     /**

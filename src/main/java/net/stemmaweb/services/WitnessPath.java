@@ -1,6 +1,7 @@
 package net.stemmaweb.services;
 
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -53,7 +54,7 @@ public class WitnessPath {
             Relationship correct = null;
             for (String layer : alternative) {
                 Node priorNode = path.lastRelationship().getStartNode();
-                for (Relationship r : priorNode.getRelationships(Direction.OUTGOING, seqType))
+                for (Relationship r : DatabaseService.getRelationships(priorNode, Direction.OUTGOING, seqType))
                     if (r.hasProperty(layer) && witnessIn(r.getProperty(layer)))
                         if (correct != null) // There is more than one relevant path; cut the tree off.
                             return Evaluation.EXCLUDE_AND_PRUNE;

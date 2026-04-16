@@ -3,6 +3,7 @@ package net.stemmaweb.parser;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -128,7 +129,7 @@ public class Util {
     // NOTE: For use inside a transaction
     static Relationship getSequenceIfExists (Node source, Node target) {
         Relationship found = null;
-        Iterable<Relationship> allseq = source.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+        List<Relationship> allseq = DatabaseService.getRelationships(source, Direction.OUTGOING, ERelations.SEQUENCE);
         for (Relationship r : allseq) {
             if (r.getEndNode().equals(target)) {
                 found = r;
@@ -142,7 +143,7 @@ public class Util {
     // NOTE: For use inside a transaction
     static void setColocationFlags (Transaction tx, Node traditionNode) {
         HashSet<String> colocatedTypes = new HashSet<>();
-        for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
+        for (Relationship r : DatabaseService.getRelationships(traditionNode, Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
             RelationTypeModel relType = new RelationTypeModel(r.getEndNode());
             if (relType.getIs_colocation()) colocatedTypes.add(relType.getName());
         }
@@ -162,8 +163,7 @@ public class Util {
             @Override
             public ResourceIterable<Relationship> expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
-                for (Relationship link : path.endNode()
-                        .getRelationships(d, ERelations.TRANSMITTED)) {
+                for (Relationship link : DatabaseService.getRelationships(path.endNode(), d, ERelations.TRANSMITTED)) {
                     if (link.getProperty("hypothesis").equals(pStemmaName)) {
                         goodPaths.add(link);
                     }

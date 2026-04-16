@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -282,8 +283,8 @@ public class TEIParallelSegParser {
                             // this is to catch witnesses that appear only via special witness classes, or
                             // <witStart/> / <witEnd/> apps.
                             HashSet<String> hasWitnesses = new HashSet<>();
-                            Iterable<Relationship> outgoing = appStart.getRelationships(
-                                    Direction.OUTGOING, ERelations.SEQUENCE);
+                            List<Relationship> outgoing = DatabaseService.getRelationships(
+                                    appStart, Direction.OUTGOING, ERelations.SEQUENCE);
                             // Note the witness links that already exist in this app
                             for (Relationship rel : outgoing)
                                 if (rel.hasProperty("witnesses"))

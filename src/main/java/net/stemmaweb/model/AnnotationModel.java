@@ -3,6 +3,8 @@ package net.stemmaweb.model;
 import org.neo4j.graphdb.*;
 
 import java.util.ArrayList;
+
+import net.stemmaweb.services.DatabaseService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +54,7 @@ public class AnnotationModel {
         props.remove("__primary");
         this.setProperties(props);
         this.links = new ArrayList<>();
-        for (Relationship r : annNode.getRelationships(Direction.OUTGOING))
+        for (Relationship r : DatabaseService.getRelationships(annNode, Direction.OUTGOING))
             this.addLink(new AnnotationLinkModel(r));
     }
 

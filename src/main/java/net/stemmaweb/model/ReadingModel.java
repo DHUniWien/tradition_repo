@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 
 /**
  * Provides a model for a reading outside of the database. Can be parsed into a
@@ -187,8 +188,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
         // If we are operating under normalization, we need to look at the NSEQUENCE links rather than
         // the SEQUENCE links, but in this case the SEQUENCE links will be redundant so there is no
         // harm in looking at them anyway.
-        node.getRelationships(Direction.BOTH, ERelations.SEQUENCE).forEach(seq::add);
-        node.getRelationships(Direction.BOTH, ERelations.NSEQUENCE).forEach(seq::add);
+        DatabaseService.getRelationships(node, Direction.BOTH, ERelations.SEQUENCE).forEach(seq::add);
+        DatabaseService.getRelationships(node, Direction.BOTH, ERelations.NSEQUENCE).forEach(seq::add);
         for (Relationship r : seq) {
             for (String prop : r.getPropertyKeys()) {
                 String[] sigla = (String[]) r.getProperty(prop);
@@ -202,7 +203,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
         this.witnesses = new ArrayList<>(collectedWits);
         this.witnesses.sort(String::compareTo);
         // Get any represented readings
-        for (Relationship r : node.getRelationships(Direction.OUTGOING, ERelations.REPRESENTS)) {
+        for (Relationship r : DatabaseService.getRelationships(node, Direction.OUTGOING, ERelations.REPRESENTS)) {
             this.addRepresented(new ReadingModel(r.getEndNode()));
         }
     }

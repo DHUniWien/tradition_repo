@@ -330,7 +330,7 @@ public class VariantGraphService {
                 Traverser theseAnnotations = returnTraverser(tx, n, nodeAnnotations, PathExpanders.forDirection(Direction.INCOMING));
                 theseAnnotations.nodes().forEach(foundAnns::add);
             } else {
-                for (Relationship r : n.getRelationships(Direction.INCOMING))
+                for (Relationship r : DatabaseService.getRelationships(n, Direction.INCOMING))
                     if (r.getStartNode().hasRelationship(Direction.INCOMING, ERelations.HAS_ANNOTATION))
                         foundAnns.add(r.getStartNode());
             }
@@ -544,7 +544,7 @@ public class VariantGraphService {
         Node traditionNode = getTraditionNode(tx, tradId);
         Node sectionStart = getStartNode(tx, sectId);
         ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
-        for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE))
+        for (Relationship relationship : DatabaseService.getRelationships(sectionStart, ERelations.SEQUENCE))
             for (String witClass : relationship.getPropertyKeys())
                 for (String sigil : (String[]) relationship.getProperty(witClass))
                     for (Node curWitness : traditionWitnesses)
@@ -583,7 +583,7 @@ public class VariantGraphService {
                 .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .uniqueness(Uniqueness.NODE_GLOBAL)
                 .traverse(startNode).nodes().forEach(
-                n -> n.getRelationships(Direction.OUTGOING, ERelations.RELATED).forEach(
+                n -> DatabaseService.getRelationships(n, Direction.OUTGOING, ERelations.RELATED).forEach(
                         r -> relList.add(new RelationModel(r, includeReadings)))
         );
 
@@ -934,12 +934,12 @@ public class VariantGraphService {
         // Remove any existing relations between the readings
         deleteRelationBetweenReadings(stayingReading, deletingReading);
         // Transfer the witnesses of the to-be-deleted reading to the staying reading
-        for (Relationship r : deletingReading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+        for (Relationship r : DatabaseService.getRelationships(deletingReading, Direction.INCOMING, ERelations.SEQUENCE)) {
             ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r).stream().map(SequenceModel::new)
                     .forEach(merged.getSequences()::add);
             r.delete();
         }
-        for (Relationship r : deletingReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+        for (Relationship r : DatabaseService.getRelationships(deletingReading, Direction.OUTGOING, ERelations.SEQUENCE)) {
             ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r).stream().map(SequenceModel::new)
                     .forEach(merged.getSequences()::add);
             r.delete();
@@ -966,7 +966,7 @@ public class VariantGraphService {
      * @return true if the readings have a non-colocation relation
      */
     private static boolean hasNonColoRelations(Node stayingReading, Node deletingReading) {
-        for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
+        for (Relationship stayingRel : DatabaseService.getRelationships(stayingReading, ERelations.RELATED)) {
             if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)) {
                 return !(stayingRel.hasProperty("colocation") && stayingRel.getProperty("colocation").equals(true));
             }
@@ -981,8 +981,8 @@ public class VariantGraphService {
      * @param deletingReading the reading which will be deleted from the database
      */
     private static void deleteRelationBetweenReadings(Node stayingReading, Node deletingReading) {
-        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
-            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
+        for (Relationship firstRel : DatabaseService.getRelationships(stayingReading, ERelations.RELATED)) {
+            for (Relationship secondRel : DatabaseService.getRelationships(deletingReading, ERelations.RELATED)) {
                 if (firstRel.equals(secondRel)) {
                     firstRel.delete();
                 }
@@ -1003,7 +1003,7 @@ public class VariantGraphService {
                                                                     String traditionId) throws IllegalStateException {
         Set<RelationModel> addedRels = new HashSet<>();
         // copy any relevant and nonexistent relationships from deletingReading to stayingReading
-        for (Relationship oldRel : deletingReading.getRelationships(
+        for (Relationship oldRel : DatabaseService.getRelationships(deletingReading,
         		Direction.BOTH, ERelations.RELATED)) {
             RelationModel rel = new RelationModel(oldRel);
             if (oldRel.getStartNode().equals(deletingReading))
@@ -1022,7 +1022,7 @@ public class VariantGraphService {
         }
         // Now delete all the relations from deletingReading, including any that were created just now
         // as transitive relation artifacts
-        deletingReading.getRelationships(ERelations.RELATED).forEach(Relationship::delete);
+        DatabaseService.getRelationships(deletingReading, ERelations.RELATED).forEach(Relationship::delete);
         return addedRels;
     }
 }

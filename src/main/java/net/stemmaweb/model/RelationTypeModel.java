@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 
 /**
  * This model describes the properties of a particular relationship type.
@@ -215,7 +216,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         Node relTypeNode = null;
 
     	// First see if there is a type with this name
-        for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
+        for (Relationship r : DatabaseService.getRelationships(traditionNode, Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
             if (r.getEndNode().getProperty("name").toString().equals(this.thename)) {
                 relTypeNode = r.getEndNode();
                 break;

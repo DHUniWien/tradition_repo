@@ -112,7 +112,7 @@ public class AnnotationService {
     }
 
     public static String findExistingLink(Node aNode, AnnotationLinkModel linkModel) {
-        for (Relationship r : aNode.getRelationships(Direction.OUTGOING)) {
+        for (Relationship r : DatabaseService.getRelationships(aNode, Direction.OUTGOING)) {
             if (r.getType().name().equals(linkModel.getType())
                     && r.getEndNode().getElementId().equals(linkModel.getTarget())) {
                 return r.getElementId();
@@ -127,7 +127,7 @@ public class AnnotationService {
             boolean isPrimary = a.getProperty("primary", false).equals(true);
             if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
                 deleted.add(new AnnotationModel(a));
-                a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
+                DatabaseService.getRelationships(a, Direction.INCOMING).forEach(Relationship::delete);
                 a.delete();
             }
         }

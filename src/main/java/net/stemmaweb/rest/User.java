@@ -152,7 +152,7 @@ public class User {
                             .build();
 
                 // Otherwise, do the deed.
-                foundUser.getRelationships().forEach(Relationship::delete);
+                DatabaseService.getRelationships(foundUser).forEach(Relationship::delete);
                 foundUser.delete();
                 tx.commit();
             } else {

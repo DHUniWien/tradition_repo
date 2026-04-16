@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.parser.NewickParser;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
@@ -169,17 +170,17 @@ public class Stemma {
         removableRelations.add(stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING));
 
         // Its HAS_WITNESS relations are removable
-        stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)
+        DatabaseService.getRelationships(stemmaNode, Direction.OUTGOING, ERelations.HAS_WITNESS)
                 .forEach(x -> {
                     removableRelations.add(x);
                     removableNodes.add(x.getEndNode());
                 });
-        stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE)
+        DatabaseService.getRelationships(stemmaNode, Direction.OUTGOING, ERelations.HAS_ARCHETYPE)
                 .forEach(removableRelations::add);
 
         // Its associated TRANSMISSION relations are removable
         removableNodes
-                .forEach(n -> n.getRelationships(Direction.BOTH, ERelations.TRANSMITTED)
+                .forEach(n -> DatabaseService.getRelationships(n, Direction.BOTH, ERelations.TRANSMITTED)
                         .forEach(r -> {
                                     if (r.getProperty("hypothesis").equals(name))
                                         removableRelations.add(r);

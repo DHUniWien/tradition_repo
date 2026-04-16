@@ -10,6 +10,7 @@ import org.neo4j.graphdb.Transaction;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 
 /**
  * This is the model to specify a valid annotation label for a given text tradition.
@@ -58,7 +59,7 @@ public class AnnotationLabelModel {
     public AnnotationLabelModel(String tradId, String name, Transaction tx) {
     	Node alNode = null;
         Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
-        for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE))
+        for (Relationship r : DatabaseService.getRelationships(tradNode, Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE))
         	if (r.getEndNode().getProperty("name", "").equals(name)) {
         		alNode = r.getEndNode();
         	}

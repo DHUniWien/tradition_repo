@@ -35,6 +35,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -335,7 +336,7 @@ public class GraphMLExporter {
         // Add the relationships pointing from the annotations to the section and to each other
         List<Relationship> extraSectRels = new ArrayList<>();
         for (Node n : extraNodes)
-            for (Relationship r : n.getRelationships(Direction.OUTGOING))
+            for (Relationship r : DatabaseService.getRelationships(n, Direction.OUTGOING))
                 if (startingNodes.contains(r.getEndNode()))
                     extraSectRels.add(r);
         startingEdges.addAll(extraSectRels);
