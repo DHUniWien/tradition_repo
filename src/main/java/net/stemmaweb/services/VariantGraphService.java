@@ -260,9 +260,12 @@ public class VariantGraphService {
         }
 
         // Now that we have done this, make the shadow sequence
-        for (Relationship r : tx.traversalDescription().breadthFirst()
+        ArrayList<Relationship> shadowRels = new ArrayList<>();
+        tx.traversalDescription().breadthFirst()
                 .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart).relationships()) {
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart).relationships()
+                .forEach(shadowRels::add);
+        for (Relationship r : shadowRels) {
             Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
             Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
             ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
@@ -901,11 +904,13 @@ public class VariantGraphService {
         boolean aligned = false;
         RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
                 tx, keepingReading, RelationTypeModel::getIs_colocation);
-        for (Node n : tx.traversalDescription().depthFirst()
+        ArrayList<Node> relatedNodes = new ArrayList<>();
+        tx.traversalDescription().depthFirst()
                 .relationships(ERelations.RELATED)
                 .evaluator(rt)
                 .uniqueness(Uniqueness.NODE_GLOBAL)
-                .traverse(keepingReading).nodes()) {
+                .traverse(keepingReading).nodes().forEach(relatedNodes::add);
+        for (Node n : relatedNodes) {
             if (n.equals(deletingReading)) {
                 aligned = true;
                 break;

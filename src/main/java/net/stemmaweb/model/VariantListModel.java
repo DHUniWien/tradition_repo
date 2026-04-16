@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
@@ -136,9 +135,8 @@ public class VariantListModel {
             // We use the requested witness text, which is connected via SEQUENCE or NSEQUENCE
             // links and so unproblematic.
             baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
-//                baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
-            baseText = StreamSupport.stream(baseWalker.traverse(startNode).relationships().spliterator(), false)
-                    .collect(Collectors.toList());
+            baseText = new ArrayList<>();
+            baseWalker.traverse(startNode).relationships().forEach(baseText::add);
             this.basisText = baseWitness;
         } else {
             // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the base text.
@@ -146,9 +144,8 @@ public class VariantListModel {
             if (startNode.hasRelationship(Direction.OUTGOING, ERelations.LEMMA_TEXT)) {
                 // We traverse the lemma text
                 baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
-//                    baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
-                baseReadings = StreamSupport.stream(baseWalker.traverse(startNode).nodes().spliterator(), false)
-                        .collect(Collectors.toList());
+                baseReadings = new ArrayList<>();
+                baseWalker.traverse(startNode).nodes().forEach(baseReadings::add);
                 this.basisText = "lemma";
             } else {
                 // We calculate and use the majority text
@@ -199,7 +196,9 @@ public class VariantListModel {
         baseChain.addFirst(sequence.getFirst().getStartNode());
         // We have to run the traverser from each node in the base chain, to get any variants that start there.
         for (Node n : baseChain) {
-            for (org.neo4j.graphdb.Path v : traverser.traverse(n)) {
+            ArrayList<org.neo4j.graphdb.Path> paths = new ArrayList<>();
+            traverser.traverse(n).forEach(paths::add);
+            for (org.neo4j.graphdb.Path v : paths) {
                 VariantModel vm = new VariantModel(v, crawler.getWitnessesForPath(v));
                 // Sanity check
                 // if (!baseChain.contains(v.startNode()) || !baseChain.contains(v.endNode()))

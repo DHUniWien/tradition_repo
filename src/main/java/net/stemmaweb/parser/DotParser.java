@@ -186,9 +186,10 @@ public class DotParser {
         			// If this witness has already been visited in another traversal, skip it.
         			if (witnessesVisited.get(witness))
         				continue;
-        			Iterable<Node> pathNodes = tx.traversalDescription().depthFirst()
-        					.expand(Util.getExpander(Direction.INCOMING, stemmaName))
-        					.traverse(witness).nodes();
+        			ArrayList<Node> pathNodes = new ArrayList<>();
+        				tx.traversalDescription().depthFirst()
+        						.expand(Util.getExpander(Direction.INCOMING, stemmaName))
+        						.traverse(witness).nodes().forEach(pathNodes::add);
         			Node pathEnd = null;
         			for (Node pNode : pathNodes) {
         				// If we have been to this point of a path before we can stop checking it.

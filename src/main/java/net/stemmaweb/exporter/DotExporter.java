@@ -565,10 +565,12 @@ public class DotExporter
 
         // We need to traverse only those paths that belong to this stemma.
         PathExpander e = getExpander(useDir, stemmaName);
-        for (Path nodePath: tx.traversalDescription().breadthFirst()
-        		.expand(e)
-        		.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-        		.traverse(archetype)) {
+        ArrayList<Path> stemmaPaths = new ArrayList<>();
+        tx.traversalDescription().breadthFirst()
+                .expand(e)
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                .traverse(archetype).forEach(stemmaPaths::add);
+        for (Path nodePath: stemmaPaths) {
         	Iterator<Node> orderedNodes = nodePath.nodes().iterator();
         	Node sourceNode = orderedNodes.next();
         	while (orderedNodes.hasNext()) {

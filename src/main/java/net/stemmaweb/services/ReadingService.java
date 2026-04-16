@@ -484,16 +484,19 @@ public class ReadingService {
     public static Set<Node> recalculateRank (Transaction tx, Node startNode, boolean recalculateAll) throws Exception {
     	RankCalcEvaluate e = new RankCalcEvaluate(tx, startNode, recalculateAll);
     	AlignmentTraverse a = new AlignmentTraverse(startNode);
-    	StreamSupport.stream(tx.traversalDescription().depthFirst()
+    	ArrayList<Node> allNodes = new ArrayList<>();
+    	tx.traversalDescription().depthFirst()
     			.expand(a, new InitialBranchState.State<>(tx, tx)).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-    			.traverse(startNode).nodes().spliterator(), false).forEach(x -> x.setProperty("touched", true));
+    			.traverse(startNode).nodes().forEach(allNodes::add);
+    	allNodes.forEach(x -> x.setProperty("touched", true));
 
     	// At this point we can start to reassign ranks
-    	Iterable<Node> touched = tx.traversalDescription().depthFirst()
+    	ArrayList<Node> touched = new ArrayList<>();
+    	tx.traversalDescription().depthFirst()
     			.expand(a, new InitialBranchState.State<>(tx, tx))
     			.evaluator(e)
     			.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-    			.traverse(startNode).nodes();
+    			.traverse(startNode).nodes().forEach(touched::add);
     	// Run the traverser and commit the updated ranks
     	Set<Node> changed = new HashSet<>();
     	for (Node n : touched) {
@@ -650,10 +653,13 @@ public class ReadingService {
         RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
         for (Node lower : reverse ? secondCluster : firstCluster) {
             boolean followed_sequence = false;
-            for (Relationship r : tx.traversalDescription()
+            ArrayList<Relationship> lowerRels = new ArrayList<>();
+            tx.traversalDescription()
                     .depthFirst()
                     .evaluator(rankEvaluator)
-                    .expand(alignmentEvaluator, new InitialBranchState.State<>(tx, tx)).traverse(lower).relationships()) {
+                    .expand(alignmentEvaluator, new InitialBranchState.State<>(tx, tx)).traverse(lower).relationships()
+                    .forEach(lowerRels::add);
+            for (Relationship r : lowerRels) {
                 // TODO does this need to include EMENDED links?
                 if (r.getType().name().equals(ERelations.SEQUENCE.name()))
                     followed_sequence = true;

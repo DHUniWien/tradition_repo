@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
 import net.stemmaweb.services.*;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -197,7 +195,7 @@ public class Section {
                 VariantGraphService.returnTraditionSection(tx, foundSection).nodes()
                         .forEach(x -> {
                             removableNodes.add(x);
-                            DatabaseService.getRelationships(x, Direction.BOTH).forEach(removableRelations::add);
+                            removableRelations.addAll(DatabaseService.getRelationships(x, Direction.BOTH));
                         });
 
                 // Remove said nodes and relationships.
@@ -255,11 +253,9 @@ public class Section {
     }
 
     private List<Node> collectSectionAnnotations(boolean collectReferents, Transaction tx) {
-        return VariantGraphService.collectAnnotationsOnSet(tx,
-				StreamSupport
-						.stream(VariantGraphService.returnTraditionSection(tx, sectId).nodes().spliterator(), false)
-						.collect(Collectors.toList()),
-                collectReferents);
+        ArrayList<Node> sectionNodes = new ArrayList<>();
+        VariantGraphService.returnTraditionSection(tx, sectId).nodes().forEach(sectionNodes::add);
+        return VariantGraphService.collectAnnotationsOnSet(tx, sectionNodes, collectReferents);
     }
 
     /**
@@ -455,24 +451,22 @@ public class Section {
                 ? Long.parseLong(sectionEnd.getProperty("rank").toString()) - 1
                 : Long.parseLong(endAt);
         if (followFinal) {
-            Iterable<Node> sectionLemmata = tx.traversalDescription().depthFirst()
+            ArrayList<Node> sectionLemmata = new ArrayList<>();
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart)
-                    .nodes();
+                    .nodes().forEach(sectionLemmata::add);
             // Limit to the requested rank range
-//                result = sectionLemmata.stream().map(ReadingModel::new)
-            result = StreamSupport.stream(sectionLemmata.spliterator(), false).map(ReadingModel::new)
+            result = sectionLemmata.stream().map(ReadingModel::new)
                     .filter(x -> x.getRank() >= startRank && x.getRank() <= endRank)
                     .collect(Collectors.toList());
         } else {
-//                result = tx.traversalDescription().depthFirst()
-//                        .expand(new AlignmentTraverse())
-//                        .uniqueness(Uniqueness.NODE_GLOBAL)
-//                        .traverse(sectionStart).nodes().stream()
-			result = StreamSupport
-					.stream(tx.traversalDescription().depthFirst().expand(new AlignmentTraverse())
-							.uniqueness(Uniqueness.NODE_GLOBAL).traverse(sectionStart).nodes().spliterator(), false)
+            ArrayList<Node> alignedNodes = new ArrayList<>();
+            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse())
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(sectionStart).nodes()
+                    .forEach(alignedNodes::add);
+            result = alignedNodes.stream()
                     .filter(x -> x.hasLabel(Nodes.READING)
                             && x.hasProperty("is_lemma")
                             && x.getProperty("is_lemma").equals(true)
@@ -737,10 +731,12 @@ public class Section {
 //            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
 //                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
 //                    .stream().forEach(x -> {
-    		StreamSupport.stream(tx.traversalDescription().depthFirst()
+    		ArrayList<Node> newSectionNodes = new ArrayList<>();
+    		tx.traversalDescription().depthFirst()
     				.expand(new AlignmentTraverse(newStart), new InitialBranchState.State<>(tx, tx))
-    				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes().spliterator(), false)
-    		.forEach(x -> {
+    				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
+    				.forEach(newSectionNodes::add);
+    		newSectionNodes.forEach(x -> {
                             if (x.hasLabel(Nodes.EMENDATION)) {
                                 x.getSingleRelationship(ERelations.HAS_EMENDATION, Direction.INCOMING).delete();
                                 newSection.createRelationshipTo(x, ERelations.HAS_EMENDATION);
@@ -771,8 +767,9 @@ public class Section {
     @SuppressWarnings("SameParameterValue")
     private List<Relationship> sequencesCrossingRank(Long rank, Boolean leftfencepost, Transaction tx) {
         Node startNode = VariantGraphService.getStartNode(tx, sectId);
-//        return VariantGraphService.returnAllSequences(startNode).relationships().stream()
-        return StreamSupport.stream(VariantGraphService.returnAllSequences(tx, startNode).relationships().spliterator(), false)
+        ArrayList<Relationship> allSequences = new ArrayList<>();
+        VariantGraphService.returnAllSequences(tx, startNode).relationships().forEach(allSequences::add);
+        return allSequences.stream()
                 .filter(x -> crossesRank(x, rank, leftfencepost))
                 .collect(Collectors.toList());
     }
@@ -836,10 +833,13 @@ public class Section {
     		final String keptId = firstSection.getElementId();
 //            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
 //            		.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().stream()
-    		StreamSupport.stream(tx.traversalDescription().depthFirst()
+    		ArrayList<Node> oldSectionNodes = new ArrayList<>();
+    		tx.traversalDescription().depthFirst()
     				.expand(new AlignmentTraverse(oldStart), new InitialBranchState.State<>(tx, tx))
-    				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().spliterator(), false)
-    		.filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
+    				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes()
+    				.forEach(oldSectionNodes::add);
+    		oldSectionNodes.stream().filter(x -> x.hasLabel(Nodes.READING))
+    				.forEach(x -> x.setProperty("section_id", keptId));
     		
     		for (Relationship r : DatabaseService.getRelationships(secondSection, ERelations.HAS_EMENDATION)) {
     			Node e = r.getEndNode();
@@ -1105,11 +1105,12 @@ public class Section {
     		Node startNode = VariantGraphService.getStartNode(tx, sectId);
     		Node endNode = VariantGraphService.getEndNode(tx, sectId);
     		// Delete any existing lemma text links
-    		Iterable<Relationship> lemmaLinks = tx.traversalDescription().depthFirst()
+    		List<Relationship> lemmaLinks = new ArrayList<>();
+    		tx.traversalDescription().depthFirst()
     				.relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
     				.evaluator(Evaluators.all())
     				.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-    				.relationships();
+    				.relationships().forEach(lemmaLinks::add);
     		lemmaLinks.forEach(Relationship::delete);
     		// Go through the section readings collecting and ordering lemmata
     		
@@ -1289,17 +1290,19 @@ public class Section {
                         .entity("No such tradition found").build();
 
             GraphModel thisSection = new GraphModel();
+            // Collect section nodes and relationships once
+            ArrayList<Node> sectionNodes = new ArrayList<>();
+            VariantGraphService.returnTraditionSection(tx, sectId).nodes().forEach(sectionNodes::add);
+            ArrayList<Relationship> sectionRels = new ArrayList<>();
+            VariantGraphService.returnTraditionSection(tx, sectId).relationships().forEach(sectionRels::add);
             // Add the readings
-            thisSection.addReadings(StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId)
-                            .nodes().spliterator(), false).filter(x -> x.hasLabel(Nodes.READING))
+            thisSection.addReadings(sectionNodes.stream().filter(x -> x.hasLabel(Nodes.READING))
                     .map(ReadingModel::new).collect(Collectors.toSet()));
             // Add the relations
-            thisSection.addRelations(StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId)
-                            .relationships().spliterator(), false).filter(x -> x.isType(ERelations.RELATED))
+            thisSection.addRelations(sectionRels.stream().filter(x -> x.isType(ERelations.RELATED))
                     .map(RelationModel::new).collect(Collectors.toSet()));
             // Add the sequences
-            thisSection.addSequences(StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId)
-                            .relationships().spliterator(), false)
+            thisSection.addSequences(sectionRels.stream()
                     .filter(x -> x.isType(ERelations.SEQUENCE) || x.isType(ERelations.LEMMA_TEXT) || x.isType(ERelations.EMENDED))
                     .map(SequenceModel::new).collect(Collectors.toSet()));
             return Response.ok(thisSection).build();

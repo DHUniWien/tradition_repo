@@ -1,5 +1,6 @@
 package net.stemmaweb.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -8,7 +9,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -71,13 +71,15 @@ public class SectionModel {
 
         // Get the traverser for the tradition readings
         Node startNode = VariantGraphService.getStartNode(tx, node.getElementId());
-        Traverser traversedTradition = tx.traversalDescription().depthFirst()
+        ArrayList<Node> traversedNodes = new ArrayList<>();
+        tx.traversalDescription().depthFirst()
                 .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .evaluator(Evaluators.all())
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                .nodes().forEach(traversedNodes::add);
 
         witnesses = new HashSet<>();
-        for (Node readingNode : traversedTradition.nodes()) {
+        for (Node readingNode : traversedNodes) {
             ReadingModel rm = new ReadingModel(readingNode);
             witnesses.addAll(rm.getWitnesses());
         }

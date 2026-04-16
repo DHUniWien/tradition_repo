@@ -2,7 +2,10 @@ package net.stemmaweb.rest;
 
 import static net.stemmaweb.Util.jsonerror;
 
-import java.util.stream.StreamSupport;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.neo4j.graphdb.Relationship;
 
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.RelationService;
@@ -158,9 +161,9 @@ public class RelationType {
         		return Response.serverError().entity(jsonerror(e.getMessage())).build();
         	}
             // Do we have any relations that use this type?
-//        	if (VariantGraphService.returnTraditionRelations(tradition).relationships().stream()
-            if (StreamSupport.stream(VariantGraphService.returnTraditionRelations(tx, tradition).relationships().spliterator(), false)
-                    .anyMatch(x -> x.getProperty("type", "").equals(typeName)))
+            List<Relationship> rels = new ArrayList<>();
+            VariantGraphService.returnTraditionRelations(tx, tradition).relationships().forEach(rels::add);
+            if (rels.stream().anyMatch(x -> x.getProperty("type", "").equals(typeName)))
                 return Response.status(Response.Status.CONFLICT)
                         .entity(jsonerror("Relations of this type still exist; please alter them then try again.")).build();
 

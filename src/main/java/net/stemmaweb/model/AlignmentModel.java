@@ -12,9 +12,7 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -65,10 +63,12 @@ public class AlignmentModel {
             seqType = ERelations.NSEQUENCE;
 
         // Get the traverser for the tradition readings
-        Traverser traversedTradition = tx.traversalDescription().depthFirst()
+        ArrayList<Relationship> allRels = new ArrayList<>();
+        tx.traversalDescription().depthFirst()
                 .relationships(seqType, Direction.OUTGOING)
                 .evaluator(Evaluators.all())
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                .relationships().forEach(allRels::add);
 
         // Now make the alignment.
         alignment = new ArrayList<>();
@@ -81,7 +81,7 @@ public class AlignmentModel {
             HashSet<String> layers = new HashSet<>();
             layers.add("base");
             if (!excludeLayers) {
-                for (Relationship seq : traversedTradition.relationships()) {
+                for (Relationship seq : allRels) {
                     for (String layer : seq.getPropertyKeys()) {
                         if (!layer.equals("witnesses")) {
                             ArrayList<String> layerwits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(layer)));
@@ -107,12 +107,14 @@ public class AlignmentModel {
                 if (!layer.equals("base")) alternatives.add(layer);
                 Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
                 ReadingModel filler;
-                for (Node r : tx.traversalDescription().depthFirst()
+                ArrayList<Node> witReadings = new ArrayList<>();
+                tx.traversalDescription().depthFirst()
                         .relationships(seqType, Direction.OUTGOING)
                         .evaluator(e)
                         .uniqueness(Uniqueness.NODE_PATH)
                         .traverse(startNode)
-                        .nodes()) {
+                        .nodes().forEach(witReadings::add);
+                for (Node r : witReadings) {
                     if (r.hasProperty("is_end"))
                         continue;
 

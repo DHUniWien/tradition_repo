@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import net.stemmaweb.model.RelationTypeModel;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -115,11 +114,12 @@ public class Relation {
                 Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
 
                 // Get all the readings that belong to our tradition or section
-                Iterable<Node> tradReadings = VariantGraphService.returnEntireTradition(tx, startingPoint).nodes();
+                ArrayList<Node> tradReadings = new ArrayList<>();
+                VariantGraphService.returnEntireTradition(tx, startingPoint).nodes().forEach(tradReadings::add);
                 // Pick out the ones that share the readingA text
                 Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
                         ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
-                HashSet<Node> ourA = StreamSupport.stream(tradReadings.spliterator(), false)
+                HashSet<Node> ourA = tradReadings.stream()
                         .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA)) && !x.equals(readingA))
                         .collect(Collectors.toCollection(HashSet::new));
                 HashMap<String, HashSet<Long>> ranks = new HashMap<>();
@@ -133,7 +133,7 @@ public class Relation {
                 }
 
                 // Pick out the ones that share the readingB text
-                HashSet<Node> ourB = StreamSupport.stream(tradReadings.spliterator(), false).filter(x -> x.hasProperty("text")
+                HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
                         && nodefilter.apply(x).equals(nodefilter.apply(readingB)) && !x.equals(readingB))
                         .collect(Collectors.toCollection(HashSet::new));
                 RelationModel userel;

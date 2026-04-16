@@ -5,6 +5,7 @@ import static net.stemmaweb.Util.jsonerror;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -197,10 +198,12 @@ public class StemmawebExporter {
 
             long nodeId = 0;
             long edgeId = 0;
-            for (Node node : tx.traversalDescription().depthFirst()
+            ArrayList<Node> graph1Nodes = new ArrayList<>();
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(traditionStartNode).nodes()) {
+                    .traverse(traditionStartNode).nodes().forEach(graph1Nodes::add);
+            for (Node node : graph1Nodes) {
                 nodeCountGraph1++;
                 props = node.getPropertyKeys();
                 writer.writeStartElement("node");
@@ -223,11 +226,13 @@ public class StemmawebExporter {
 
             String startNode;
             String endNode;
-            for ( Relationship rel : tx.traversalDescription()
+            ArrayList<Relationship> graph1Rels = new ArrayList<>();
+            tx.traversalDescription()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(traditionStartNode)
-                    .relationships() ) {
+                    .relationships().forEach(graph1Rels::add);
+            for ( Relationship rel : graph1Rels ) {
                 if(rel!=null) {
                     edgeCountGraph1++;
                     for (String property : rel.getPropertyKeys()) {
@@ -274,11 +279,13 @@ public class StemmawebExporter {
 
             nodeId = 0;
             edgeId = 0;
-            for (Node node : tx.traversalDescription().depthFirst()
+            ArrayList<Node> graph2Nodes = new ArrayList<>();
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(traditionStartNode)
-                    .nodes()) {
+                    .nodes().forEach(graph2Nodes::add);
+            for (Node node : graph2Nodes) {
                 nodeCountGraph2++;
                 writer.writeStartElement("node");
                 writer.writeAttribute("id", node.getElementId());
@@ -289,12 +296,7 @@ public class StemmawebExporter {
                 writer.writeEndElement(); // end node
             }
 
-            for (Node node : tx.traversalDescription()
-                    .depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(traditionStartNode)
-                    .nodes()) {
+            for (Node node : graph2Nodes) {
                 for(Relationship rel : DatabaseService.getRelationships(node, Direction.OUTGOING, ERelations.RELATED)) {
                     edgeCountGraph2++;
                     props = rel.getPropertyKeys();
