@@ -2,6 +2,7 @@ package net.stemmaweb.rest;
 
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
+import static net.stemmaweb.rest.Tradition.parseDispatcher;
 
 import java.io.File;
 import java.io.IOException;
@@ -167,41 +168,34 @@ public class Root {
             tradId = this.createTradition(tx, name, direction, language, is_public);
             // Link the given user to the created tradition.
             this.linkUserToTradition(tx, userId, tradId);
-            tx.commit();
-        } catch (Exception e) {
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
 
-        // Now read whatever data was sent into the tradition node we just created.
-        Tradition tradRest = new Tradition(tradId);
-        if (empty == null) {
-            try (Transaction tx = db.beginTx()) {
-                Response dataResult = tradRest.parseDispatcher("DEFAULT", filetype, uploadedInputStream, false, tx);
-                // If something went wrong, delete the new tradition immediately and return the error.
+            // Now read whatever data was sent into the tradition node we just created.
+            if (empty == null) {
+                Response dataResult = parseDispatcher(tradId, "DEFAULT", filetype, uploadedInputStream, false, tx);
+                // If we had an error, skip ahead and return it.
                 if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode())
-                    throw new Exception(dataResult.getEntity().toString());
-            	// If we just parsed GraphML (the only format that can preserve prior tradition IDs),
-            	// get the actual tradition ID in case it was preserved from a prior export.
-            	if (filetype.startsWith("graphml")) {
+                    return dataResult;
+                // If we just parsed GraphML (the only format that can preserve prior tradition IDs),
+                // get the actual tradition ID in case it was preserved from a prior export.
+                if (filetype.startsWith("graphml")
+                        && dataResult.getStatus() == Response.Status.CREATED.getStatusCode()) {
                     JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
                     tradId = dataValues.get("parentId").toString();
-            	}
-                tx.commit();
-            } catch (JSONException e) {
-                e.printStackTrace();
-                tradRest.deleteTraditionById();
-                return Response.serverError().entity(jsonerror("Bad file parse response")).build();
-            } catch (IllegalArgumentException e) {
-                tradRest.deleteTraditionById();
-                return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
-            } catch(Exception e) {
-                tradRest.deleteTraditionById();
-                e.printStackTrace();
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(jsonerror("Tradition could not be imported!"))
-                        .build();
+                }
             }
+            tx.commit();
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror("Bad file parse response")).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+        } catch(Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(jsonerror("Tradition could not be imported!"))
+                    .build();
         }
+
 
         // Handle direct non-Jersey calls from our test suite
         if (uri == null)

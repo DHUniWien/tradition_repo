@@ -275,7 +275,7 @@ public class Tradition {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
         	ArrayList<SectionModel> existingSections = produceSectionList(traditionNode, tx);
         	
-        	Response result = this.parseDispatcher(sectionName, filetype, uploadedInputStream, true, tx);
+        	Response result = parseDispatcher(traditionId, sectionName, filetype, uploadedInputStream, true, tx);
         	
         	// Handle the result
         	if (result.getStatus() == Status.CREATED.getStatusCode()) {
@@ -317,6 +317,7 @@ public class Tradition {
     /**
      * A package-private method to add sections to a given tradition, used by POST /tradition and POST /section
      *
+     * @param tradId - the ID of the tradition to which the new sections should be added
      * @param sectionName - the name to be given to the new section created. Will be overridden for GraphML parsing
      * @param filetype    - indicates which of the supported filetypes we are parsing
      * @param uploadedInputStream - the data to parse
@@ -324,10 +325,10 @@ public class Tradition {
      *                          a new tradition entirely
      * @return a Response indicating the result
      */
-    protected Response parseDispatcher(String sectionName, String filetype, InputStream uploadedInputStream,
+    protected static Response parseDispatcher(String tradId, String sectionName, String filetype, InputStream uploadedInputStream,
                              boolean addToExisting, Transaction tx) {
         Response result = null;
-        Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         Node sectionNode = null;
         // If we are adding a section to an existing tradition, or we are parsing anything except
         // GraphML, we have to start by creating the section node
