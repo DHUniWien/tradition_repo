@@ -26,19 +26,20 @@ import net.stemmaweb.rest.Nodes;
 public class ReadingService {
 
     /**
-     * Returns the ID of the tradition to which a reading belongs.
+     * Returns the ID of the tradition to which a reading belongs, or the empty string
+     * if no tradition was found.
      *
      * @param tx - the transaction within which we are working
      * @param readId - the ID of the reading to check
      * @return - the ID of the tradition
      */
     public static String getTraditionId (Transaction tx, String readId) {
-        Node rdg = tx.getNodeByElementId(readId);
         try {
+            Node rdg = tx.getNodeByElementId(readId);
             return tx.getNodeByElementId(rdg.getProperty("section_id").toString())
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING)
                     .getStartNode().getProperty("id").toString();
-        } catch (NullPointerException e) {
+        } catch (NullPointerException | NotFoundException | IllegalArgumentException e) {
             return "";
         }
     }

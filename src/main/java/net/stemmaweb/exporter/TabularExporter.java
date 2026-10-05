@@ -207,7 +207,7 @@ public class TabularExporter {
         for (String sectionId : sectionList) {
             try {
                 collectedSections.add(tx.getNodeByElementId(sectionId));
-            } catch (NotFoundException e) {
+            } catch (NotFoundException | IllegalArgumentException e) {
                 throw new TabularExporterException("Section " + sectionId + " not found in tradition");
             }
         }

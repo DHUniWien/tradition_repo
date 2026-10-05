@@ -99,7 +99,11 @@ public class VariantGraphService {
         }
 
         // If we didn't find a tradition node with the ID, assume we wanted a section node.
-		currentNode = tx.getNodeByElementId(nodeId);
+        try {
+            currentNode = tx.getNodeByElementId(nodeId);
+        } catch (NotFoundException | IllegalArgumentException e) {
+            return null;
+        }
 		if (currentNode != null && currentNode.hasLabel(Nodes.SECTION))
 			boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
 

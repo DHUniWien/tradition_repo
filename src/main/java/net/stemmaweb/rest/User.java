@@ -99,8 +99,9 @@ public class User {
                     extantUser.setProperty("email", userModel.getEmail());
                 if (extantUser.getProperty("active") != userModel.getActive())
                     extantUser.setProperty("active", userModel.getActive());
+                UserModel updatedUser = new UserModel(extantUser);
                 tx.commit();
-                return Response.ok(new UserModel(extantUser)).build();
+                return Response.ok(updatedUser).build();
             } else {
                 // User doesn't exist, so create it
                 Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
@@ -113,8 +114,9 @@ public class User {
 
                 rootNode.createRelationshipTo(extantUser, ERelations.SYSTEMUSER);
 
+                UserModel createdUser = new UserModel(extantUser);
                 tx.commit();
-                return Response.status(Status.CREATED).entity(new UserModel(extantUser)).build();
+                return Response.status(Status.CREATED).entity(createdUser).build();
             }
         } catch (Exception e){
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

@@ -77,7 +77,7 @@ public class StemmawebInputOutputTest {
     public void graphMLImportNonexistentFileTest() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaFileNotExisting.xml", "stemmaweb");
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         assertFalse(traditionNodeExists());
     }
 
@@ -89,7 +89,7 @@ public class StemmawebInputOutputTest {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaWithError.xml", "stemmaweb");
         assertNotNull(response);
-        assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
+        assertEquals(Response.status(Response.Status.BAD_REQUEST).build().getStatus(),
                     response.getStatus());
         assertFalse(traditionNodeExists());
     }
@@ -320,9 +320,9 @@ public class StemmawebInputOutputTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // Merge a couple of nodes
-        Node blasphemias;
-        Node aporia;
-        Node blasphemia;
+        String blasphemias;
+        String aporia;
+        String blasphemia;
         try(Transaction tx = db.beginTx()) {
             // With this query we are working around some obnoxious problems with divergent
             // Unicode renderings of some Greek letters.
@@ -330,27 +330,26 @@ public class StemmawebInputOutputTest {
                     "(q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
             assertTrue (result.hasNext());
             Map<String, Object> row = result.next();
-            blasphemias = (Node) row.get("bs");
-            aporia = (Node) row.get("a");
-            blasphemia = (Node) row.get("b");
-            tx.close();
+            blasphemias = ((Node) row.get("bs")).getElementId();
+            aporia = ((Node) row.get("a")).getElementId();
+            blasphemia = ((Node) row.get("b")).getElementId();
         }
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel(); // take all the defaults
         jerseyResponse = jerseyTest
-                .target("/reading/" + blasphemias.getElementId() + "/concatenate/" + aporia.getElementId())
+                .target("/reading/" + blasphemias + "/concatenate/" + aporia)
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(readingBoundaryModel));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         try(Transaction tx = db.beginTx()) {
-            assertEquals("βλασφημίας ἀπορία", blasphemias.getProperty("text"));
-            tx.close();
+            Node bsNode = tx.getNodeByElementId(blasphemias);
+            assertEquals("βλασφημίας ἀπορία", bsNode.getProperty("text"));
         }
 
         // Add a new
         RelationModel relationship = new RelationModel();
-        relationship.setSource(blasphemias.getElementId());
-        relationship.setTarget(blasphemia.getElementId());
+        relationship.setSource(blasphemias);
+        relationship.setTarget(blasphemia);
         relationship.setType("lexical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");

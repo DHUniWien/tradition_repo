@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.stemmaweb.services.DatabaseService;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -211,14 +212,12 @@ public class TraditionTest {
     @Test
     public void changeMetadataOfATraditionTest() {
 
-        Result result;
-        Node newUser;
         /*
          * Create a second user with id 42
          */
         try (Transaction tx = db.beginTx()) {
             Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
-            newUser = tx.createNode(Nodes.USER);
+            Node newUser = tx.createNode(Nodes.USER);
             newUser.setProperty("id", "42");
             newUser.setProperty("role", "admin");
 
@@ -226,29 +225,25 @@ public class TraditionTest {
             tx.commit();
         }
 
-        /*
-         * The user with id 42 has no tradition
-         */
         try (Transaction tx = db.beginTx()) {
-            Iterable<Relationship> ownedTraditions = newUser.getRelationships(ERelations.OWNS_TRADITION);
-            tx.close();
-            assertFalse(ownedTraditions.iterator().hasNext());
-        }
+            /*
+             * The user with id 42 has no tradition
+             */
+            Node newUser = tx.findNode(Nodes.USER, "id", "42");
+            List<Relationship> ownedTraditions = DatabaseService.getRelationships(newUser, ERelations.OWNS_TRADITION);
+            assertEquals(0, ownedTraditions.size());
 
-        /*
-         * Verify that user 1 has tradition
-         */
-        try (Transaction tx = db.beginTx()) {
+            /*
+             * Verify that user 1 has tradition
+             */
             Node origUser = tx.findNode(Nodes.USER, "id", "1");
-            Iterable<Relationship> ownership = origUser.getRelationships(ERelations.OWNS_TRADITION);
-            assertTrue(ownership.iterator().hasNext());
-            Node tradNode = ownership.iterator().next().getEndNode();
+            List<Relationship> ownership = DatabaseService.getRelationships(origUser, ERelations.OWNS_TRADITION);
+            assertEquals(1, ownership.size());
+            Node tradNode = ownership.get(0).getEndNode();
             TraditionModel tradition = new TraditionModel(tradNode);
 
             assertEquals(tradId, tradition.getId());
             assertEquals("Tradition", tradition.getName());
-
-            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -270,10 +265,10 @@ public class TraditionTest {
                 .put(Entity.json(textInfo));
         assertEquals(Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
-        /*
-         * Test if user with id 42 has now the tradition
-         */
         try (Transaction tx = db.beginTx()) {
+            /*
+             * Test if user with id 42 has now the tradition
+             */
             Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             TraditionModel tradition = new TraditionModel(tradNode);
 
@@ -282,19 +277,14 @@ public class TraditionTest {
             assertEquals("RenamedTraditionName", tradition.getName());
             assertEquals("RL", tradition.getDirection());
             assertEquals(Integer.valueOf(3), tradition.getStemweb_jobid());
-            tx.close();
 
-        }
-
-        /*
-         * The user with id 1 has no tradition
-         */
-        try (Transaction tx = db.beginTx()) {
-            result = tx.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            assertFalse(tradIterator.hasNext());
-
-            tx.close();
+            /*
+             * The user with id 1 has no tradition
+             */
+            try (Result result = tx.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n")) {
+                Iterator<Node> tradIterator = result.columnAs("n");
+                assertFalse(tradIterator.hasNext());
+            }
         }
 
         /*
@@ -377,7 +367,7 @@ public class TraditionTest {
             node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.close();
+            tx.commit();
         }
 
         /*
@@ -394,7 +384,7 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         List<TraditionModel> tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
-        assertEquals(tradId, tradList.get(0).getId());
+        assertEquals(tradId, tradList.getFirst().getId());
 
         /*
          * Change the owner of the tradition

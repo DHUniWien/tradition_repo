@@ -205,7 +205,7 @@ public class ReadingTest {
 
         // Now try to get the same reading via the new tradition
         r = jerseyTest.target("/tradition/" + newTradId + "/reading/" + rid).request().get();
-        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        assertEquals(Status.NO_CONTENT.getStatusCode(), r.getStatus());
 
         // Add a second section to the first text
         r = Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml", "stemmaweb", "1");
@@ -214,7 +214,7 @@ public class ReadingTest {
 
         // Try to get the reading as above, but from the wrong section
         r = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId +  "/reading/" + rid).request().get();
-        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        assertEquals(Status.NO_CONTENT.getStatusCode(), r.getStatus());
 
         // But we can get a reading from the new section that actually belongs to it...?
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
@@ -1109,8 +1109,8 @@ public class ReadingTest {
         int origRelCt = rms.size();
 
         // duplicate reading
-        String jsonPayload = "{\"readings\":[" + ofId
-                + "], \"witnesses\":[\"B\" ]}";
+        String jsonPayload = "{\"readings\":[\"" + ofId
+                + "\"], \"witnesses\":[\"B\" ]}";
         Response response = jerseyTest
                 .target("/reading/" + ofId + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
@@ -1139,14 +1139,14 @@ public class ReadingTest {
     public void duplicateWithNoWitnessesInJSONTest() {
         String rwId = readingLookup.get("rood-of-the-world/16");
         // duplicate reading
-        String jsonPayload = "{\"readings\":[" + rwId
-                + "], \"witnesses\":[]}";
+        String jsonPayload = "{\"readings\":[\"" + rwId
+                + "\"], \"witnesses\":[]}";
         Response response = jerseyTest
                 .target("/reading/" + rwId + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(jsonPayload));
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         assertEquals(
@@ -1158,14 +1158,14 @@ public class ReadingTest {
     public void duplicateWithOnlyOneWitnessTest() {
         String rwId = readingLookup.get("rood-of-the-world/16");
         // duplicate reading
-        String jsonPayload = "{\"readings\":[" + rwId
-                + "], \"witnesses\":[\"C\"]}";
+        String jsonPayload = "{\"readings\":[\"" + rwId
+                + "\"], \"witnesses\":[\"C\"]}";
         Response response = jerseyTest
                 .target("/reading/" + rwId + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(jsonPayload));
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         assertEquals("The reading cannot be split between fewer than two witnesses",
@@ -1176,14 +1176,14 @@ public class ReadingTest {
     public void duplicateWithNotAllowedWitnessesTest() {
         String rootId = readingLookup.get("root/17");
         // duplicate reading
-        String jsonPayload = "{\"readings\":[" + rootId
-                + "], \"witnesses\":[\"C\"]}";
+        String jsonPayload = "{\"readings\":[\"" + rootId
+                + "\"], \"witnesses\":[\"C\"]}";
         Response response = jerseyTest
                 .target("/reading/" + rootId + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(jsonPayload));
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         assertEquals(
@@ -1206,7 +1206,7 @@ public class ReadingTest {
         // Test one: duplicate a reading that has an a.c. link pointing at it
         // "νόσοις", rank 69
         String nosois = Util.getSpecificReading(jerseyTest, newTradId, florSectId, "νόσοις", 69L);
-        String request = "{\"readings\":[" + nosois + "], \"witnesses\":[\"A\", \"C\"]}";
+        String request = "{\"readings\":[\"" + nosois + "\"], \"witnesses\":[\"A\", \"C\"]}";
         response = jerseyTest
                 .target("/reading/" + nosois + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
@@ -1225,7 +1225,7 @@ public class ReadingTest {
         // Test two: duplicate a reading for an a.c. witness
         // "κρίνεται", rank 34
         String krinetai = Util.getSpecificReading(jerseyTest, newTradId, florSectId, "κρίνει", 37L);
-        request = "{\"readings\":[" + krinetai + "], \"witnesses\":[\"Q (a.c.)\"]}";
+        request = "{\"readings\":[\"" + krinetai + "\"], \"witnesses\":[\"Q (a.c.)\"]}";
         response = jerseyTest
                 .target("/reading/" + krinetai + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
@@ -1246,7 +1246,7 @@ public class ReadingTest {
         // Test three: duplicate a reading right after an a.c. witness has ended
         // "τῇ", rank 47
         String entautha = Util.getSpecificReading(jerseyTest, newTradId, florSectId, "ἐνταῦθα", 89L);
-        request = "{\"readings\":[" + entautha + "], \"witnesses\":[\"Q\"]}";
+        request = "{\"readings\":[\"" + entautha + "\"], \"witnesses\":[\"Q\"]}";
         response = jerseyTest
                 .target("/reading/" + entautha + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
@@ -1285,7 +1285,7 @@ public class ReadingTest {
 
         // Test three: duplicate a reading that has only a witness and the beginning of its a.c. layer
         String brnjin = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "դաւ", 50L);
-        String request = "{\"readings\":[" + brnjin + "], \"witnesses\":[\"A\"]}";
+        String request = "{\"readings\":[\"" + brnjin + "\"], \"witnesses\":[\"A\"]}";
         response = jerseyTest
                 .target("/reading/" + brnjin + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
@@ -1311,7 +1311,7 @@ public class ReadingTest {
 
         // Now try duplicating the reading where the layer ends
         String thi = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "թի", 52L);
-        request = "{\"readings\":[" + thi + "], \"witnesses\":[\"A\"]}";
+        request = "{\"readings\":[\"" + thi + "\"], \"witnesses\":[\"A\"]}";
         response = jerseyTest
                 .target("/reading/" + brnjin + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
@@ -1326,9 +1326,9 @@ public class ReadingTest {
             for (ResourceIterator<Node> it = tx.findNodes(Nodes.READING); it.hasNext(); ) {
                 Node r = it.next();
                 if (r.hasProperty("is_start")) continue;
-                assertTrue("dangling reading " + r.getElementId(), r.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).iterator().hasNext());
+                assertFalse("dangling reading " + r.getElementId(),
+                        DatabaseService.getRelationships(r, Direction.INCOMING, ERelations.SEQUENCE).isEmpty());
             }
-            tx.commit();
         }
     }
 
@@ -2408,11 +2408,11 @@ public class ReadingTest {
         String first_id = null;
         String second_id = null;
         try (Transaction tx = db.beginTx()) {
-            Result tomerge = tx.execute("MATCH (a:READING {rank:3})-[:SEQUENCE {witnesses:['D']}]->(b:READING {rank:4}) RETURN id(a), id(b)");
+            Result tomerge = tx.execute("MATCH (a:READING {rank:3})-[:SEQUENCE {witnesses:['D']}]->(b:READING {rank:4}) RETURN elementId(a) as aid, elementId(b) as bid");
             while (tomerge.hasNext()) {
                 Map<String,Object> row = tomerge.next();
-                first_id = String.valueOf(row.get("id(a)"));
-                second_id = String.valueOf(row.get("id(b)"));
+                first_id = String.valueOf(row.get("aid"));
+                second_id = String.valueOf(row.get("bid"));
             }
             tx.commit();
         }
@@ -2567,7 +2567,7 @@ public class ReadingTest {
                 "John verse", "LR", "1","src/TestFiles/john.csv", "csv"), "tradId");
         Response r = jerseyTest.target("/tradition/" + secondTrad + "/reading/" + r1lookup.get("when/1"))
                 .request().get();
-        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        assertEquals(Status.NO_CONTENT.getStatusCode(), r.getStatus());
         r = jerseyTest.target("/tradition/" + tradId + "/reading/" + r1lookup.get("when/1"))
                 .request().get();
         assertEquals(Status.OK.getStatusCode(), r.getStatus());
@@ -2588,11 +2588,12 @@ public class ReadingTest {
     @Test
     public void randomNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = tx.execute("match (w:READING {text:'april'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            long rank = 2;
-            assertEquals(rank, nodes.next().getProperty("rank"));
+            try (Result result = tx.execute("match (w:READING {text:'april'}) return w")) {
+                Iterator<Node> nodes = result.columnAs("w");
+                assert (nodes.hasNext());
+                long rank = 2;
+                assertEquals(rank, nodes.next().getProperty("rank"));
+            }
             tx.commit();
         }
     }

@@ -73,18 +73,24 @@ public class Reading {
     private final String traditionId;
 
     public Reading(String requestedId) {
+        String foundTradId = null;
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
-        readId = requestedId; // This might be set to -1 if the reading was requested
-                              // via a tradition it doesn't belong to
-        traditionId = null;
+        // The requested ID might be set to -1 if the reading was requested via a tradition it doesn't belong to
+        if (!requestedId.equals("-1")) {
+            // Assume the reading was requested via the bare URI. Deprecate this eventually.
+            try (Transaction tx = db.beginTx()) {
+                // If something goes wrong this will return an empty string
+                foundTradId = ReadingService.getTraditionId(tx, requestedId);
+            }
+        }
+        traditionId = foundTradId;
+        readId = requestedId;
     }
 
     public Reading(String requestedId, String tradId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
         readId = requestedId;
         traditionId = tradId;
     }
@@ -102,11 +108,13 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getReading() {
-        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId) || "".equals(traditionId))
+            return Response.noContent().build();
         ReadingModel reading;
         try (Transaction tx = db.beginTx()) {
             reading = new ReadingModel(tx.getNodeByElementId(readId));
-        } catch (NotFoundException e) {
+        } catch (NotFoundException | IllegalArgumentException e) {
+            // The tradition and reading were set, but to something that doesn't exist
             return Response.noContent().build();
         } catch (Exception e) {
             errorMessage = e.getMessage();
@@ -547,7 +555,7 @@ public class Reading {
                 List<String> newWitnesses = duplicateModel.getWitnesses();
 
                 if (!canBeDuplicated(originalReading, newWitnesses)) {
-                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                    return errorResponse(Status.BAD_REQUEST);
                 }
 
                 Node newNode = tx.createNode();

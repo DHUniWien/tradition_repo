@@ -128,43 +128,43 @@ public class DotOutputTest {
         exp[57] = String.format("%s \\[id=\"n%s\", label=\"rood\"\\]", readingLookup.get("rood/17"), readingLookup.get("rood/17"));
         exp[59] = String.format("%s \\[id=\"n%s\", label=\"root\"\\]", readingLookup.get("root/18"), readingLookup.get("root/18"));
         exp[61] = String.format("%s \\[id=\"__END__\", label=\"#END#\"\\]", readingLookup.get("#END#/19"));
-        exp[8] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("#START#/0"), readingLookup.get("when/1"));
-        exp[10] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("when/1"), readingLookup.get("april/2"));
-        exp[12] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("april/2"), readingLookup.get("with/3"));
-        exp[13] = String.format("%s->%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\", minlen=\"4\"\\]", readingLookup.get("when/1"), readingLookup.get("showers/5"));
-        exp[15] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("with/3"), readingLookup.get("his/4"));
-        exp[17] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("showers/5"), readingLookup.get("sweet/6"));
-        exp[19] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("his/4"), readingLookup.get("showers/5"));
-        exp[21] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("sweet/6"), readingLookup.get("with/7"));
-        exp[23] = String.format("%s->%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("with/7"), readingLookup.get("april/8"));
-        exp[25] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("with/7"), readingLookup.get("fruit/9"));
-        exp[26] = String.format("%s->%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("april/8"), readingLookup.get("fruit/9"));
-        exp[28] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("fruit/9"), readingLookup.get("teh/10"));
-        exp[30] = String.format("%s->%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("fruit/9"), readingLookup.get("the/10"));
-        exp[32] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/10"), readingLookup.get("drought/11"));
-        exp[33] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("drought/11"));
-        exp[35] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("march/11"));
-        exp[37] = String.format("%s->%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("drought/11"), readingLookup.get("of/12"));
-        exp[38] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("march/11"), readingLookup.get("of/12"));
-        exp[40] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("of/12"), readingLookup.get("drought/13"));
-        exp[42] = String.format("%s->%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("of/12"), readingLookup.get("march/13"));
-        exp[44] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("drought/13"), readingLookup.get("has/14"));
-        exp[45] = String.format("%s->%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("march/13"), readingLookup.get("has/14"));
-        exp[47] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("has/14"), readingLookup.get("pierced/15"));
-        exp[49] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("to/16"));
-        exp[51] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("unto/16"));
-        exp[53] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("teh/16"));
-        exp[55] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("unto/16"), readingLookup.get("the/17"));
-        exp[56] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("to/16"), readingLookup.get("the/17"));
-        exp[58] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/16"), readingLookup.get("rood/17"));
-        exp[60] = String.format("%s->%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("the/17"), readingLookup.get("root/18"));
-        exp[62] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("rood/17"), readingLookup.get("#END#/19"));
-        exp[63] = String.format("%s->%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("root/18"), readingLookup.get("#END#/19"));
+        exp[8] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.4\"\\]", readingLookup.get("#START#/0"), readingLookup.get("when/1"));
+        exp[10] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("when/1"), readingLookup.get("april/2"));
+        exp[12] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("april/2"), readingLookup.get("with/3"));
+        exp[13] = String.format("%s->%s \\[label=\"B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\", minlen=\"4\"\\]", readingLookup.get("when/1"), readingLookup.get("showers/5"));
+        exp[15] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("with/3"), readingLookup.get("his/4"));
+        exp[17] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.4\"\\]", readingLookup.get("showers/5"), readingLookup.get("sweet/6"));
+        exp[19] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("his/4"), readingLookup.get("showers/5"));
+        exp[21] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.4\"\\]", readingLookup.get("sweet/6"), readingLookup.get("with/7"));
+        exp[23] = String.format("%s->%s \\[label=\"B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("with/7"), readingLookup.get("april/8"));
+        exp[25] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("with/7"), readingLookup.get("fruit/9"));
+        exp[26] = String.format("%s->%s \\[label=\"B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("april/8"), readingLookup.get("fruit/9"));
+        exp[28] = String.format("%s->%s \\[label=\"C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("fruit/9"), readingLookup.get("teh/10"));
+        exp[30] = String.format("%s->%s \\[label=\"A, B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("fruit/9"), readingLookup.get("the/10"));
+        exp[32] = String.format("%s->%s \\[label=\"C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/10"), readingLookup.get("drought/11"));
+        exp[33] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("drought/11"));
+        exp[35] = String.format("%s->%s \\[label=\"B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("march/11"));
+        exp[37] = String.format("%s->%s \\[label=\"A, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("drought/11"), readingLookup.get("of/12"));
+        exp[38] = String.format("%s->%s \\[label=\"B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("march/11"), readingLookup.get("of/12"));
+        exp[40] = String.format("%s->%s \\[label=\"B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("of/12"), readingLookup.get("drought/13"));
+        exp[42] = String.format("%s->%s \\[label=\"A, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("of/12"), readingLookup.get("march/13"));
+        exp[44] = String.format("%s->%s \\[label=\"B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("drought/13"), readingLookup.get("has/14"));
+        exp[45] = String.format("%s->%s \\[label=\"A, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("march/13"), readingLookup.get("has/14"));
+        exp[47] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.4\"\\]", readingLookup.get("has/14"), readingLookup.get("pierced/15"));
+        exp[49] = String.format("%s->%s \\[label=\"B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("to/16"));
+        exp[51] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("unto/16"));
+        exp[53] = String.format("%s->%s \\[label=\"C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("teh/16"));
+        exp[55] = String.format("%s->%s \\[label=\"A\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("unto/16"), readingLookup.get("the/17"));
+        exp[56] = String.format("%s->%s \\[label=\"B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("to/16"), readingLookup.get("the/17"));
+        exp[58] = String.format("%s->%s \\[label=\"C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/16"), readingLookup.get("rood/17"));
+        exp[60] = String.format("%s->%s \\[label=\"A, B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("the/17"), readingLookup.get("root/18"));
+        exp[62] = String.format("%s->%s \\[label=\"C\", id=\"e[0-9a-f:-]+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("rood/17"), readingLookup.get("#END#/19"));
+        exp[63] = String.format("%s->%s \\[label=\"A, B\", id=\"e[0-9a-f:-]+\", penwidth=\"1.2\"\\]", readingLookup.get("root/18"), readingLookup.get("#END#/19"));
 
         for (String anExp : exp) {
             Pattern p = Pattern.compile(anExp);
             Matcher m = p.matcher(str);
-            assertTrue("seeking pattern" + m, m.find());
+            assertTrue("seeking pattern " + p, m.find());
         }
     }
 
@@ -253,11 +253,11 @@ public class DotOutputTest {
         // There should only be one link out from the start
         Optional<String> startNode = Arrays.stream(dotLines).filter(x -> x.contains("__START__")).findFirst();
         assertTrue(startNode.isPresent());
-        Long startId = getNodeFromDot(startNode.get());
+        String startId = getNodeFromDot(startNode.get());
         assertEquals(1, Arrays.stream(dotLines).filter(x -> x.contains("\t" + startId + "->")).count());
         List<String> gars = Arrays.stream(dotLines).filter(x -> x.contains("γὰρ")).collect(Collectors.toList());
         assertEquals(1, gars.size());
-        Long garId = getNodeFromDot(gars.get(0));
+        String garId = getNodeFromDot(gars.get(0));
         List<String> garLink = Arrays.stream(dotLines).filter(x -> x.contains("\t" + garId + "->"))
                 .collect(Collectors.toList());
         assertEquals(2, garLink.size());
@@ -266,8 +266,8 @@ public class DotOutputTest {
         }
     }
 
-    private Long getNodeFromDot(String dotLine) {
-        return Long.valueOf(dotLine.replaceAll("\\s+", "").split("\\[")[0]);
+    private String getNodeFromDot(String dotLine) {
+        return dotLine.replaceAll("\\s+", "").split("\\[")[0];
     }
 
     @Test

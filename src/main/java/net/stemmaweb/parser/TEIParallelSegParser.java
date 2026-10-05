@@ -199,7 +199,7 @@ public class TEIParallelSegParser {
             for (List<ReadingModel> identSet : VariantGraphService.collectIdenticalReadings(tx, parentId, 0, endRank)) {
                 ReadingModel first = identSet.removeFirst();
                 for (ReadingModel identical : identSet) {
-                    String tradId = traditionNode.getProperty("tradition_id").toString();
+                    String tradId = traditionNode.getProperty("id").toString();
                     try {
                         VariantGraphService.mergeReadings(tx, first.getId(), identical.getId(), tradId);
                     } catch (IllegalStateException e) {

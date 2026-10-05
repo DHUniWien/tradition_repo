@@ -201,13 +201,13 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-            tx.execute(createTradition);
+            tx.execute(createTradition).close();
             String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            tx.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery).close();
 
             tx.commit();
         }
@@ -219,13 +219,13 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'843' })";
-            tx.execute(createTradition);
+            tx.execute(createTradition).close();
             String createNewRelationQuery = "MATCH(user:USER {id:'2'}) "
                     + "MATCH(tradition: TRADITION {id:'843'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            tx.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery).close();
             tx.commit();
         }
 
@@ -314,13 +314,13 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-            tx.execute(createTradition);
+            tx.execute(createTradition).close();
             String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            tx.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery).close();
 
             /*
              * Remove user 2 with all his traditions
@@ -334,31 +334,37 @@ public class UserTest {
             /*
              * Check if user 1 still exists
              */
-            Result result = tx.execute("match (userId:USER {id:'1'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-            assertTrue(nodes.hasNext());
+            try (Result result = tx.execute("match (userId:USER {id:'1'}) return userId")) {
+                Iterator<Node> nodes = result.columnAs("userId");
+                assertTrue(nodes.hasNext());
+            }
+
 
             /*
              * Check if tradition 842 still exists
              */
-            result = tx.execute("match (tradId:TRADITION {id:'842'}) return tradId");
-            nodes = result.columnAs("tradId");
-            assertTrue(nodes.hasNext());
+            try (Result result = tx.execute("match (tradId:TRADITION {id:'842'}) return tradId")) {
+                Iterator<Node> nodes = result.columnAs("tradId");
+                assertTrue(nodes.hasNext());
+            }
+
 
             /*
              * Check if user 2 does not exist
              */
-            result = tx.execute("match (userId:USER {id:'2'}) return userId");
-            nodes = result.columnAs("userId");
-            assertFalse(nodes.hasNext());
+            try (Result result = tx.execute("match (userId:USER {id:'2'}) return userId")) {
+                Iterator<Node> nodes = result.columnAs("userId");
+                assertFalse(nodes.hasNext());
+            }
+
 
             /*
              * Check if tradition 843 does not exist
              */
-            result = tx.execute("match (tradId:TRADITION {id:'843'}) return tradId");
-            nodes = result.columnAs("tradId");
-            assertFalse(nodes.hasNext());
-            tx.close();
+            try (Result result = tx.execute("match (tradId:TRADITION {id:'843'}) return tradId")) {
+                Iterator<Node> nodes = result.columnAs("tradId");
+                assertFalse(nodes.hasNext());
+            }
         }
     }
 
@@ -377,13 +383,13 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-            tx.execute(createTradition);
+            tx.execute(createTradition).close();
             String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            tx.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery).close();
 
             tx.commit();
         }

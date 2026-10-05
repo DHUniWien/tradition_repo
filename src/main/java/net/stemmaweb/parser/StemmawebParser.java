@@ -312,7 +312,6 @@ public class StemmawebParser {
 							break;
 					}
 				} catch (XMLStreamException e) {
-					e.printStackTrace();
 					return Response.status(Response.Status.BAD_REQUEST)
 							.entity(jsonerror("Parsing of tradition file failed: " + e.getMessage()))
 							.build();

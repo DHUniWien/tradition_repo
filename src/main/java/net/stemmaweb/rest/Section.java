@@ -691,7 +691,7 @@ public class Section {
     		newEnd.setProperty("is_end", true);
     		newEnd.setProperty("text", "#END#");
     		newEnd.setProperty("rank", rank);
-    		newEnd.setProperty("section_id", Long.valueOf(sectId));
+    		newEnd.setProperty("section_id", sectId);
     		thisSection.createRelationshipTo(newEnd, ERelations.HAS_END);
     		
     		Node newStart = tx.createNode(Nodes.READING);
@@ -1242,7 +1242,7 @@ public class Section {
     		emendation.setProperty("text", proposal.getText());
     		emendation.setProperty("authority", proposal.getAuthority());
     		emendation.setProperty("rank", proposal.getFromRank());
-    		emendation.setProperty("section_id", Long.valueOf(sectId));
+    		emendation.setProperty("section_id", sectId);
     		ReadingModel emrm = new ReadingModel(emendation);
     		result.setReadings(Collections.singletonList(emrm));
     		// Connect it in the graph

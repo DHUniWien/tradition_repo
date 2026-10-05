@@ -619,9 +619,9 @@ public class Tradition {
                         .entity(jsonerror("There is no tradition with this id")).build();
 
             ArrayList<SectionModel> allSections = produceSectionList(traditionNode, tx);
+            // If there are no sections, there are also no readings
             if (allSections.isEmpty())
-                return Response.serverError()
-                        .entity(jsonerror("Tradition has no sections")).build();
+                return Response.ok(new ArrayList<ReadingModel>()).build();
 
             ArrayList<ReadingModel> readingModels = new ArrayList<>();
             for (SectionModel sm : allSections) {
