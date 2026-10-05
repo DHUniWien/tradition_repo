@@ -174,9 +174,10 @@ public class AnnotationLabel {
                             "Linked node label " + key + " not found in this tradition")).build();
                 }
             }
+            AnnotationLabelModel returnedModel = new AnnotationLabelModel(ourNode);
             tx.commit();
             return Response.status(isNew ? Response.Status.CREATED : Response.Status.OK)
-            		.entity(new AnnotationLabelModel(ourNode)).build();
+            		.entity(returnedModel).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

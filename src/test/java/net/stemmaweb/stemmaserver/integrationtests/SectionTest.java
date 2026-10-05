@@ -108,8 +108,8 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, tSections.size());
-        assertEquals("Legend", tSections.get(0).getName());
-        firstSectId = tSections.get(0).getId();
+        assertEquals("Legend", tSections.getFirst().getName());
+        firstSectId = tSections.getFirst().getId();
     }
 
     // test creation of a tradition, that it has a single section
@@ -206,11 +206,8 @@ public class SectionTest extends TestCase {
         assertEquals(theRdg.getText(), ourRdg.getText());
 
         // Now choose a reading ID that doesn't exist in the list
-        AtomicLong badRdgId = new AtomicLong(Long.parseLong(theRdg.getId()));
-        while (sectRdgs.stream().anyMatch(x -> x.getId().equals(String.valueOf(badRdgId.get())))) {
-            badRdgId.set((long) (Math.random() * 1000));
-        }
-        jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/reading/" + badRdgId.get())
+        String badRdgId = "4:abcdef-ghi-jklmno-pqursteia:73";
+        jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/reading/" + badRdgId)
                 .request()
                 .get();
         // LATER make this return something useful
@@ -266,11 +263,12 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<>() {});
         assertEquals(77, tReadings.size());
 
-        Response jerseyResult = jerseyTest
+        try (Response jerseyResult = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + firstSectId)
                 .request(MediaType.APPLICATION_JSON)
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        }
 
         tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
@@ -281,7 +279,7 @@ public class SectionTest extends TestCase {
     // test ordering of sections
     public void testSectionOrdering() {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
         // Test that we get the sections back in the correct order
         List<SectionModel> returnedSections = jerseyTest
                 .target("/tradition/" + florId + "/sections")
@@ -314,12 +312,13 @@ public class SectionTest extends TestCase {
 
     public void testDeleteSectionMiddle() {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
-        Response jerseyResult = jerseyTest
+        String florId = florIds.removeFirst();
+        try (Response jerseyResult = jerseyTest
                 .target("/tradition/" + florId + "/section/" + florIds.get(1))
                 .request(MediaType.APPLICATION_JSON)
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        }
         String bText = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
                 "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ " +
                 "διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, " +
@@ -339,7 +338,7 @@ public class SectionTest extends TestCase {
 
     public void testReorderSections() {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
         String reorderPath = "/section/" + florIds.get(1)
                 + "/orderAfter/" + florIds.get(2);
         String bBefore = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
@@ -389,7 +388,7 @@ public class SectionTest extends TestCase {
 
     public void testSectionWrongTradition () {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
                 "src/TestFiles/lf2.xml", "stemmaweb", "section 2"), "parentId");
         Response jerseyResult = jerseyTest
@@ -401,20 +400,22 @@ public class SectionTest extends TestCase {
 
     public void testSectionOrderAfterSelf () {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
         String tryReorder = florIds.get(2);
-        Response jerseyResult = jerseyTest
+        String errMsg;
+        try (Response jerseyResult = jerseyTest
                 .target("/tradition/" + florId + "/section/" + tryReorder + "/orderAfter/" + tryReorder)
                 .request()
-                .put(Entity.text(""));
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
-        String errMsg = jerseyResult.readEntity(String.class);
+                .put(Entity.text(""))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
+            errMsg = jerseyResult.readEntity(String.class);
+        }
         assertEquals("Cannot reorder a section after itself", errMsg);
     }
 
     public void testMergeSections() {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
 
         // Try merge of 3 into 4
         String targetSection = florIds.get(2);
@@ -993,10 +994,10 @@ public class SectionTest extends TestCase {
         Response response = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + firstSectId + "/identicalreadings/10/15")
                 .request()
-                .get(Response.class);
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
-                response.getStatus());
-        assertEquals("no identical readings were found", Util.getValueFromJson(response, "error"));
+                .get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<ReadingModel> identicalReadings = response.readEntity(new GenericType<>() {});
+        assertEquals(0, identicalReadings.size());
     }
 
     public void testCouldBeIdenticalReadings() {

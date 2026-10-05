@@ -707,7 +707,7 @@ public class Section {
     			newLacuna.setProperty("is_lacuna", true);
     			newLacuna.setProperty("text", "#LACUNA#");
     			newLacuna.setProperty("rank", 1L);
-    			newLacuna.setProperty("section_id", Long.valueOf(sectId));
+    			newLacuna.setProperty("section_id", sectId);
     		}
     		
     		// Reattach the readings to their respective new end/start nodes
