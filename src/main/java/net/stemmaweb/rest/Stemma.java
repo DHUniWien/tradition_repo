@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import net.stemmaweb.parser.StemmaImportException;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -108,22 +109,21 @@ public class Stemma {
             if (!this.newCreated)
                 doStemmaDeletion(tx);
 
-            Response replaceResult;
             if (stemmaSpec.getNewick() != null) {
                 // We are importing a Newick tree; roleplay accordingly.
                 NewickParser parser = new NewickParser(tx);
-                replaceResult = parser.importStemmaFromNewick(tradId, stemmaSpec);
+                parser.importStemmaFromNewick(tradId, stemmaSpec);
             } else {
                 DotParser parser = new DotParser(tx);
-                replaceResult = parser.importStemmaFromDot(tradId, stemmaSpec);
+                parser.importStemmaFromDot(tradId, stemmaSpec);
             }
-            if (replaceResult.getStatus() != 201)
-                return replaceResult;
 
-            // OK, we can commit it.
             tx.commit();
         }  catch (IllegalStateException e) {
             return Response.status(Status.NOT_FOUND).build();
+        } catch (StemmaImportException e) {
+            e.printStackTrace();
+            return Response.status(e.getStatus()).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

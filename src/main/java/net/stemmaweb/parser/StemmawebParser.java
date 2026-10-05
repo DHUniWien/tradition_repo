@@ -342,8 +342,12 @@ public class StemmawebParser {
                 DotParser parser = new DotParser(tx);
                 StemmaModel sm = new StemmaModel();
                 sm.setDot(graph);
-				try (Response si = parser.importStemmaFromDot(tradId, sm)) {
-					if (si.getStatus() != Response.Status.CREATED.getStatusCode()) return si;
+				try {
+					parser.importStemmaFromDot(tradId, sm);
+				} catch (StemmaImportException e) {
+                    return Response.status(e.getStatus())
+                            .entity(jsonerror(e.getMessage()))
+                            .build();
 				}
             }
         }

@@ -1,7 +1,5 @@
 package net.stemmaweb.parser;
 
-import static net.stemmaweb.Util.jsonresp;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +15,6 @@ import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
@@ -32,7 +29,6 @@ import net.stemmaweb.services.VariantGraphService;
  */
 public class DotParser {
     private final Transaction tx;
-    private String messageValue = null;
 
     public DotParser(Transaction tx) {
         this.tx = tx;
@@ -43,54 +39,42 @@ public class DotParser {
      *
      * @param tradId     - The ID of the tradition to which this stemma should be added
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
-     * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
+     * @return a String containing the name of the new stemma
+     * @throws StemmaImportException - if something goes wrong with the parsing or saving
      */
-    public Response importStemmaFromDot(String tradId, StemmaModel stemmaSpec) {
-        Status result = null;
-        Graph stemma = null;
+    public String importStemmaFromDot(String tradId, StemmaModel stemmaSpec) throws StemmaImportException {
+        Graph stemma;
         try {
             List<Graph> parsedgraphs = parseDot(stemmaSpec.getDot());
-            if (parsedgraphs.isEmpty()) {
-                messageValue = "No graphs were found in this DOT specification.";
-                result = Status.BAD_REQUEST;
-            } else if (parsedgraphs.size() > 1) {
-                messageValue = "More than one graph was found in this DOT specification.";
-                result = Status.BAD_REQUEST;
-            }
+            if (parsedgraphs.isEmpty())
+                throw new StemmaImportException(Status.BAD_REQUEST, "No graphs were found in this DOT specification.");
+            else if (parsedgraphs.size() > 1)
+                throw new StemmaImportException(Status.BAD_REQUEST, "More than one graph was found in this DOT specification.");
             stemma = parsedgraphs.getFirst();
             // Get its name, in case we still don't have one
             if (stemmaSpec.getIdentifier() == null)
                 stemmaSpec.setIdentifier(getDotGraphName(stemma));
         } catch (ParseException e) {
-            messageValue = "Error on attempt to parse dot: " + e.getMessage();
-            result = Status.BAD_REQUEST;
+            throw new StemmaImportException(Status.BAD_REQUEST, "DOT parsing error: " + e.getMessage());
         }
 
         // Save the graph into Neo4J.
-        if (result == null)
-            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier());
-
-        // Return our answer.
-        String returnKey = result == Status.CREATED ? "name" : "error";
-        return Response.status(result)
-                .entity(jsonresp(returnKey, messageValue))
-                .build();
+        return saveToNeo(stemma, tradId, stemmaSpec.getIdentifier());
     }
 
-    private Status saveToNeo(Graph stemma, String tradId, String stemmaName) {
+    private String saveToNeo(Graph stemma, String tradId, String stemmaName) throws StemmaImportException {
         // Check for the existence of the tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
-            return Status.NOT_FOUND;
+            throw new StemmaImportException(Status.NOT_FOUND, "Tradition not found");
 
         // First check that no stemma with this name already exists for this tradition,
         // unless we intend to replace it.
-        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
-        	if (priorStemma.getProperty("name").equals(stemmaName)) {
-        		messageValue = "A stemma by this name already exists for this tradition.";
-        		return Status.CONFLICT;
-        	}
-        }
+        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
+            if (priorStemma.getProperty("name").equals(stemmaName))
+                throw new StemmaImportException(Status.CONFLICT,
+                        "A stemma by this name already exists for this tradition.");
+
         // Get a list of the existing (extant) tradition witnesses
         Map<String, Node> traditionWitnesses = new HashMap<>();
         DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
@@ -110,21 +94,20 @@ public class DotParser {
         // Store the collection of them for later traversal.
         for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
         	String sigil = getNodeSigil(witness);
-        	if (witness.getAttribute("class") == null) {
-        		messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
-        		return Status.BAD_REQUEST;
-        	}
+        	if (witness.getAttribute("class") == null)
+                throw new StemmaImportException(Status.BAD_REQUEST,
+                        String.format("Witness %s not marked as either hypothetical or extant", sigil));
+
         	boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
         	// Check for the existence of a node by this name
         	Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
         	if (existingWitness != null) {
         		// Check that the requested witness isn't hypothetical unless the
         		// existing one is!
-        		if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical"))) {
-        			messageValue = "The extant tradition witness " + sigil
-        					+ " cannot be a hypothetical stemma node.";
-        			return Status.CONFLICT;
-        		}
+        		if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical")))
+                    throw new StemmaImportException(Status.CONFLICT,
+                            "The extant tradition witness " + sigil
+                                    + " cannot be a hypothetical stemma node.");
         	} else {
         		// If the witness doesn't exist yet, create it
         		existingWitness = Util.createWitness(tx, sigil, hypothetical);
@@ -203,10 +186,10 @@ public class DotParser {
         				rootNode = pathEnd;
         			} else if (!rootNode.equals(pathEnd)) {
         				assert pathEnd != null;
-        				messageValue = "Multiple archetype nodes found in this stemma: "
-        						+ rootNode.getProperty("sigil") + " and "
-        						+ pathEnd.getProperty("sigil");
-        				return Status.BAD_REQUEST;
+                        throw new StemmaImportException(Status.BAD_REQUEST,
+                                "Multiple archetype nodes found in this stemma: "
+                                        + rootNode.getProperty("sigil") + " and "
+                                        + pathEnd.getProperty("sigil"));
         			}
         		}
         	// We have a single root node; mark it.
@@ -216,8 +199,7 @@ public class DotParser {
         // Save the stemma to the tradition.
         traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
 
-        messageValue = stemmaName;
-        return Status.CREATED;
+        return stemmaName;
     }
 
     public static String getDotGraphName (String dotSpec) throws ParseException {
@@ -241,9 +223,9 @@ public class DotParser {
         // Split the dot string into separate lines if necessary. Having
         // single-line dot seems to confuse the parser.
         if (dot.indexOf('\n') == -1) {
-            dot = dot.replaceAll("; ", ";\n");
-            dot = dot.replaceAll("\\{ ", "{\n");
-            dot = dot.replaceAll(" }", "\n}");
+            dot = dot.replace("; ", ";\n");
+            dot = dot.replace("{ ", "{\n");
+            dot = dot.replace(" }", "\n}");
         }
         StringBuffer dotstream = new StringBuffer(dot);
         Parser p = new Parser();
