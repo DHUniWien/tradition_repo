@@ -8,8 +8,8 @@ import static org.junit.Assert.fail;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import net.stemmaweb.services.DatabaseService;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -85,7 +85,7 @@ public class WitnessTest {
             fail();
         }
         String tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        assert(tradId.length() != 0);
+        assert(!tradId.isEmpty());
         return tradId;
     }
 
@@ -144,27 +144,31 @@ public class WitnessTest {
 
         // Find the reading that is the period
         Node period;
+        String periodId;
         try (Transaction tx = db.beginTx()) {
             period = tx.findNode(Nodes.READING, "text", ". ");
             assertNotNull(period);
+            periodId = period.getElementId();
             period.setProperty("join_prior", true);
-            tx.close();
+            tx.commit();
         }
         returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
 
         // Now find its predecessors and mark them as join_next
         try (Transaction tx = db.beginTx()) {
-            for (Relationship r : period.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+            period = tx.getNodeByElementId(periodId);
+            for (Relationship r : DatabaseService.getRelationships(period, Direction.INCOMING, ERelations.SEQUENCE)) {
                 Node n = r.getStartNode();
                 n.setProperty("join_next", true);
             }
-            tx.close();
+            tx.commit();
         }
         returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
 
         try (Transaction tx = db.beginTx()) {
+            period = tx.getNodeByElementId(periodId);
             period.removeProperty("join_prior");
             tx.commit();
         }
@@ -180,7 +184,7 @@ public class WitnessTest {
         List<ReadingModel> listOfReadings = jerseyTest
                 .target("/tradition/" + tradId + "/witness/A/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {
+                .get(new GenericType<>() {
                 });
         assertEquals(texts.length, listOfReadings.size());
         for (int i = 0; i < listOfReadings.size(); i++) {
@@ -218,14 +222,10 @@ public class WitnessTest {
                 .get(WitnessModel.class);
         assertEquals("A", witnessA.getSigil());
         assertNotNull(witnessA.getId());
-        try {
-            Long ourId = Long.valueOf(witnessA.getId());
-            assertTrue(ourId > 0);
-        } catch (NumberFormatException n) {
-            fail();
-        }
+        assertNotEquals("", witnessA.getId());
+        assertNotEquals(witnessA.getSigil(), witnessA.getId());
 
-        // Add another tradition with witness A
+        // Add another tradition with a different witness A
         String secondTradId = createTraditionFromFile("Chaucer", "src/TestFiles/Collatex-16.xml");
         assertNotNull(secondTradId);
 
@@ -266,8 +266,8 @@ public class WitnessTest {
         // Now try it with a numeric ID of a node that is not a witness node
         List<SectionModel> ourSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
-        String sectId = ourSections.get(0).getId();
+                .get(new GenericType<>() {});
+        String sectId = ourSections.getFirst().getId();
         response = jerseyTest.target("/tradition/" + tradId + "/witness/" + sectId)
                 .request()
                 .get();
@@ -281,16 +281,17 @@ public class WitnessTest {
         remaining.addAll(jerseyTest.target("/tradition/" + tradId + "/witness/B/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {})
-                .stream().map(ReadingModel::getId).collect(Collectors.toList()));
+                .stream().map(ReadingModel::getId).toList());
         remaining.addAll(jerseyTest.target("/tradition/" + tradId + "/witness/C/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {})
-                .stream().map(ReadingModel::getId).collect(Collectors.toList()));
+                .stream().map(ReadingModel::getId).toList());
         // Try deleting witness A
-        Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
                 .request()
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
         // Check that it is no longer in the witness list
         assertTrue(jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
@@ -318,10 +319,11 @@ public class WitnessTest {
         assertEquals(3, jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
                 .get(new GenericType<List<WitnessModel>>(){}).size());
-        result = jerseyTest.target(String.format("/tradition/%s/witness/%d", tradId, bogusId))
+        try (Response result = jerseyTest.target(String.format("/tradition/%s/witness/%s", tradId, bogusId))
                 .request()
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
         assertEquals(2, jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
                 .get(new GenericType<List<WitnessModel>>(){}).size());
@@ -330,10 +332,11 @@ public class WitnessTest {
         // Now add another tradition with overlapping sigla and try to delete its witness B
         String secondTradId = createTraditionFromFile("Chaucer", "src/TestFiles/Collatex-16.xml");
         assertNotNull(secondTradId);
-        result = jerseyTest.target(String.format("/tradition/%s/witness/B", secondTradId))
+        try (Response result = jerseyTest.target(String.format("/tradition/%s/witness/B", secondTradId))
                 .request()
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
     }
 
     @Ignore
@@ -401,7 +404,6 @@ public class WitnessTest {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.TRADITION, "name", "Tradition");
             assertTrue(tradNodesIt.hasNext());
-            tx.close();
         }
     }
 
@@ -413,7 +415,6 @@ public class WitnessTest {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
-            tx.close();
         }
     }
 

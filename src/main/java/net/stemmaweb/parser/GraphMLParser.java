@@ -65,6 +65,8 @@ public class GraphMLParser {
             // Did something go wrong? If so, exit now
             if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                 return result;
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
