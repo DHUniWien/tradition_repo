@@ -13,7 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.glassfish.jersey.client.ClientProperties;
+import net.stemmaweb.services.DatabaseService;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -107,26 +107,29 @@ public class RelationTest {
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
 
-        Response actualResponse = jerseyTest
+        GraphModel readingsAndRelationships;
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
+            readingsAndRelationships = actualResponse.readEntity(new GenericType<>() {
+            });
+        }
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
+
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
 
             assertEquals(source, loadedRelationship.getStartNode().getElementId());
             assertEquals(target, loadedRelationship.getEndNode().getElementId());
             assertEquals("repetition", loadedRelationship.getProperty("type"));
-            assertEquals(0L,loadedRelationship.getProperty("alters_meaning"));
-            assertEquals("yes",loadedRelationship.getProperty("is_significant"));
-            assertEquals("april",loadedRelationship.getProperty("reading_a"));
-            assertEquals("showers",loadedRelationship.getProperty("reading_b"));
-            tx.close();
+            assertEquals(0L, loadedRelationship.getProperty("alters_meaning"));
+            assertEquals("yes", loadedRelationship.getProperty("is_significant"));
+            assertEquals("april", loadedRelationship.getProperty("reading_a"));
+            assertEquals("showers", loadedRelationship.getProperty("reading_b"));
         }
+
     }
 
     /**
@@ -142,11 +145,12 @@ public class RelationTest {
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
 
-        Response actualResponse = jerseyTest
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
+        }
     }
 
     /**
@@ -162,12 +166,13 @@ public class RelationTest {
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
 
-        Response actualResponse = jerseyTest
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                actualResponse.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    actualResponse.getStatus());
+        }
     }
 
     /**
@@ -189,71 +194,69 @@ public class RelationTest {
         relationship.setIs_significant("yes");
         relationship.setScope("local");
 
-        Response actualResponse = jerseyTest
+        GraphModel readingsAndRelationships;
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
+                .post(Entity.json(relationship))) {
+            readingsAndRelationships = actualResponse.readEntity(new GenericType<>() {
+            });
+        }
         relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
 
-        Response removalResponse = jerseyTest
+        try (Response removalResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation/" + relationshipId)
                 .request()
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), removalResponse.getStatus());
+        }
 
         try (Transaction tx = db.beginTx()) {
-            tx.getRelationshipByElementId(relationshipId);
-            tx.close();
+            Relationship rel = tx.getRelationshipByElementId(relationshipId);
+            assertNotNull(rel);
         }
     }
 
     //also tests the delete method: with the testTradition
     @Test
     public void deleteRelationsTest() {
+        String relId;
         try (Transaction tx = db.beginTx()) {
-            Result result = tx.execute("match (w:READING {text:'march'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node march1 = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node march2 = nodes.next();
-            assertFalse(nodes.hasNext());
+            // For test exercising reasons we plumb around in the database instead of using the API
+            Node march1 = tx.getNodeByElementId(readingLookup.get("march/11"));
+            Node march2 = tx.getNodeByElementId(readingLookup.get("march/13"));
 
             Relationship rel = march1.getSingleRelationship(ERelations.RELATED, Direction.BOTH);
             //checks that the correct relationship has been found
             assertNotNull(rel);
             assertEquals(march2, rel.getOtherNode(march1));
+            relId = rel.getElementId();
+        }
 
-            Response removalResponse = jerseyTest
-                    .target("/tradition/" + tradId + "/relation/" + rel.getElementId())
-                    .request()
-                    .delete();
-            assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation/" + relId)
+                .request()
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), removalResponse.getStatus());
+        }
 
-            result = tx.execute("match (w:READING {text:'march'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            march1 = nodes.next();
-            assertTrue(nodes.hasNext());
-            nodes.next();   // march2
-            assertFalse(nodes.hasNext());
-
+        try (Transaction tx = db.beginTx()) {
+            Node march1 = tx.getNodeByElementId(readingLookup.get("march/11"));
             Iterable<Relationship> rels = march1.getRelationships(ERelations.RELATED);
 
             assertFalse(rels.iterator().hasNext());
-            String expectedText = "when april with his showers sweet with " +
-                    "fruit the drought of march has pierced unto the root";
-            TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
-            assertEquals(expectedText, resp.getText());
-
-            expectedText = "when showers sweet with april fruit the march " +
-                    "of drought has pierced to the root";
-            resp = (TextSequenceModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
-            assertEquals(expectedText, resp.getText());
-
-            tx.close();
         }
+
+        // Check that the witness texts are unchanged
+        String expectedTextA = "when april with his showers sweet with " +
+                "fruit the drought of march has pierced unto the root";
+        TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
+        assertEquals(expectedTextA, resp.getText());
+
+        String expectedTextB = "when showers sweet with april fruit the march " +
+                "of drought has pierced to the root";
+        resp = (TextSequenceModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
+        assertEquals(expectedTextB, resp.getText());
     }
 
     /**
@@ -262,12 +265,13 @@ public class RelationTest {
      */
     @Test
     public void deleteRelationshipThatDoesNotExistTest() {
-        Response removalResponse = jerseyTest
+        try (Response removalResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation/1337")
                 .request()
-                .delete();
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                removalResponse.getStatus());
+                .delete()) {
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    removalResponse.getStatus());
+        }
     }
 
     @Test
@@ -278,8 +282,8 @@ public class RelationTest {
 
         String idThe = getReading("the", highestRank).getElementId();
         String idTeh = getReading("teh", highestRank).getElementId();
-        assertTrue(!idTeh.isBlank());
-        assertTrue(!idThe.isBlank());
+        assertFalse(idTeh.isBlank());
+        assertFalse(idThe.isBlank());
         // Create the test relationship
         RelationModel r = new RelationModel();
         r.setSource(idTeh);
@@ -299,7 +303,7 @@ public class RelationTest {
         List<RelationModel> currentRels = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         int existingRels = currentRels.size();
 
         // Set the test relationship
@@ -308,7 +312,7 @@ public class RelationTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(r));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
-        GraphModel newRels = jerseyResponse.readEntity(new GenericType<GraphModel>() {});
+        GraphModel newRels = jerseyResponse.readEntity(new GenericType<>() {});
         // Test that two new relationships were created
         assertEquals(2, newRels.getRelations().size());
         // Test that they have the same is_significant property
@@ -322,14 +326,14 @@ public class RelationTest {
         currentRels = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(existingRels + 2, currentRels.size());
 
         // ...and that there are still only n relationships in our identical tradition.
         List<RelationModel> secondRels = jerseyTest
                 .target("/tradition/" + secondId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(existingRels, secondRels.size());
     }
 
@@ -354,7 +358,7 @@ public class RelationTest {
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(relationship));
-        GraphModel readingsAndRelationships1 = actualResponse.readEntity(new GenericType<GraphModel>(){});
+        GraphModel readingsAndRelationships1 = actualResponse.readEntity(new GenericType<>(){});
         relationshipId1 = ((RelationModel) readingsAndRelationships1.getRelations().toArray()[0]).getId();
 
         source = readingLookup.getOrDefault("teh/10", "17");
@@ -366,14 +370,14 @@ public class RelationTest {
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(relationship));
-        GraphModel readingsAndRelationships2 = actualResponse.readEntity(new GenericType<GraphModel>(){});
+        GraphModel readingsAndRelationships2 = actualResponse.readEntity(new GenericType<>(){});
         relationshipId2 = ((RelationModel) readingsAndRelationships2.getRelations().toArray()[0]).getId();
 
         // Now try deleting them.
         relationship.setScope("tradition");
         
         // next property is necessary to prevent error "Entity must be null for http method DELETE"
-        jerseyTest.client().property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
+        // jerseyTest.client().property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
 
         Response removalResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation/remove")
@@ -410,7 +414,7 @@ public class RelationTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(relationship));
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-        GraphModel tmpGraphModel = actualResponse.readEntity(new GenericType<GraphModel>(){});
+        GraphModel tmpGraphModel = actualResponse.readEntity(new GenericType<>(){});
         assertEquals(1, tmpGraphModel.getRelations().size());
         assertEquals(3, tmpGraphModel.getReadings().size());
         assertTrue(tmpGraphModel.getReadings().stream().findFirst().isPresent());
@@ -444,12 +448,8 @@ public class RelationTest {
 
         try (Transaction tx = db.beginTx()) {
             Node the = tx.getNodeByElementId(target);
-            Iterator<Relationship> rels = the
-                    .getRelationships(ERelations.RELATED)
-                    .iterator();
-
-            assertFalse(rels.hasNext()); // make sure node 28 does not have a relationship now!
-            tx.close();
+            List<Relationship> rels = DatabaseService.getRelationships(the, ERelations.RELATED);
+            assertTrue(rels.isEmpty()); // make sure node 28 does not have a relationship now!
         }
     }
 
@@ -470,15 +470,14 @@ public class RelationTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(relationship));
         assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
-        GraphModel tmpGraphModel = actualResponse.readEntity(new GenericType<GraphModel>(){});
-        assertEquals(tmpGraphModel.getRelations().size(), 1L);
+        GraphModel tmpGraphModel = actualResponse.readEntity(new GenericType<>(){});
+        assertEquals(1L, tmpGraphModel.getRelations().size());
         String relationshipId = ((RelationModel) tmpGraphModel.getRelations().toArray()[0]).getId();
 
         try (Transaction tx = db.beginTx()) {
             Relationship rel = tx.getRelationshipByElementId(relationshipId);
             assertEquals("root", rel.getStartNode().getProperty("text"));
             assertEquals("teh", rel.getEndNode().getProperty("text"));
-            tx.close();
         }
 
         Response response = jerseyTest
@@ -486,39 +485,22 @@ public class RelationTest {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.readEntity(ReadingModel.class).getRank(), (Long) 18L);
+        assertEquals((Long) 18L, response.readEntity(ReadingModel.class).getRank());
 
         response = jerseyTest
                 .target("/reading/" + target)
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.readEntity(ReadingModel.class).getRank(), (Long)18L);
+        assertEquals((Long) 18L, response.readEntity(ReadingModel.class).getRank());
 
-        try (Transaction tx = db.beginTx()) {
-	        Result result = tx.execute("match (w:READING {text:'rood'}) return w");
-	        Iterator<Node> nodes = result.columnAs("w");
-	        assertTrue(nodes.hasNext());
-	        Node node = nodes.next();
-	        assertFalse(nodes.hasNext());
-	
-	        relationship.setSource(node.getElementId());
-	
-	        result = tx.execute("match (w:READING {text:'unto'}) return w");
-	        nodes = result.columnAs("w");
-	        assertTrue(nodes.hasNext());
-	        node = nodes.next();
-	        assertFalse(nodes.hasNext());
-	
-	        relationship.setTarget(node.getElementId());
-	
-	        relationship.setType("grammatical");
-	        relationship.setAlters_meaning(0L);
-	        relationship.setIs_significant("yes");
-
-	        tx.close();
-        }
         // this one should not be make-able, due to the cross-relationship-constraint!
+        relationship.setSource(readingLookup.getOrDefault("rood/17", "29"));
+        relationship.setTarget(readingLookup.getOrDefault("unto/16", "19"));
+        relationship.setType("grammatical");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
+
         actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
@@ -530,64 +512,60 @@ public class RelationTest {
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
-            Node node22 = tx.getNodeByElementId("22");
-            Iterator<Relationship> rels = node22.getRelationships(ERelations.RELATED).iterator();
-
-            assertFalse(rels.hasNext()); // make sure node 21 does not have a relationship now!
-            tx.close();
+            Node the17 = tx.getNodeByElementId(readingLookup.get("the/17"));
+            List<Relationship> the17rels = DatabaseService.getRelationships(the17, ERelations.RELATED);
+            assertTrue(the17rels.isEmpty()); // make sure node 21 does not have a relationship now!
+            tx.commit();
         }
     }
 
     @Test
     public void createRelationshipTestWithCyclicConstraint() {
         RelationModel relationship = new RelationModel();
-        Node firstNode;
-        Node secondNode;
+        String firstNodeId;
+        String secondNodeId;
 
         try (Transaction tx = db.beginTx()) {
 	        Result result = tx.execute("match (w:READING {text:'showers'}) return w");
 	        Iterator<Node> nodes = result.columnAs("w");
 	        assertTrue(nodes.hasNext());
-	        firstNode = nodes.next();
+	        Node firstNode = nodes.next();
 	        assertFalse(nodes.hasNext());
+            firstNodeId = firstNode.getElementId();
 	
 	        result = tx.execute("match (w:READING {text:'pierced'}) return w");
 	        nodes = result.columnAs("w");
 	        assertTrue(nodes.hasNext());
-	        secondNode = nodes.next();
+	        Node secondNode = nodes.next();
 	        assertFalse(nodes.hasNext());
+            secondNodeId = secondNode.getElementId();
 	
 	        relationship.setSource(firstNode.getElementId());
 	        relationship.setTarget(secondNode.getElementId());
 	        relationship.setType("grammatical");
 	        relationship.setAlters_meaning(0L);
 	        relationship.setIs_significant("yes");
-	        
-	        tx.close();
+
+	        tx.commit();
         }
 
-        Response actualResponse = jerseyTest
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
+                .post(Entity.json(relationship))) {
 
-        assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
-        // TODO (SK): ->TLA fix ErrorMessage (this one does not exist). Maybe we can define an enum?
-/*        assertEquals(
-                "This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.",
-                actualResponse.getEntity(String.class));
-*/
+            assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
+        }
+
         try (Transaction tx = db.beginTx()) {
-            Node node1 = tx.getNodeByElementId(firstNode.getElementId());
-            Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATED).iterator();
+            Node node1 = tx.getNodeByElementId(firstNodeId);
 
-            assertFalse(rels.hasNext()); // make sure node does not have a relationship now!
+            List<Relationship> rels = DatabaseService.getRelationships(node1, ERelations.RELATED);
+            assertTrue(rels.isEmpty()); // make sure node does not have a relationship now!
 
-            Node node2 = tx.getNodeByElementId(secondNode.getElementId());
-            rels = node2.getRelationships(ERelations.RELATED).iterator();
-
-            assertFalse(rels.hasNext()); // make sure node does not have a relationship now!
-            tx.close();
+            Node node2 = tx.getNodeByElementId(secondNodeId);
+            rels = DatabaseService.getRelationships(node2, ERelations.RELATED);
+            assertTrue(rels.isEmpty()); // make sure node does not have a relationship now!
         }
     }
 
@@ -599,14 +577,14 @@ public class RelationTest {
 
         List<RelationModel> allrels = jerseyTest.target("/tradition/" + newTradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
 
         // Try to overwrite a strong relationship
         List<RelationModel> orthorels = allrels.stream().filter(
                 x -> x.getType().equals("orthographic"))
-                .collect(Collectors.toList());
+                .toList();
         assertFalse(orthorels.isEmpty());
-        RelationModel rel = orthorels.get(0);
+        RelationModel rel = orthorels.getFirst();
         rel.setType("spelling");
         rel.setScope("tradition");
         response = jerseyTest.target("/tradition/" + newTradId + "/relation")
@@ -616,9 +594,9 @@ public class RelationTest {
 
         List<RelationModel> collaterels = allrels.stream()
                 .filter(x -> x.getType().equals("collated"))
-                .collect(Collectors.toList());
+                .toList();
         assertFalse(collaterels.isEmpty());
-        rel = collaterels.get(0);
+        rel = collaterels.getFirst();
         // Change this to a stronger relationship type
         rel.setType("other");
         rel.setScope("local");
@@ -641,13 +619,12 @@ public class RelationTest {
         String otherId;
         try (Transaction tx = db.beginTx()) {
             List<Node> henries = tx.findNodes(Nodes.READING, "text", "henricus").stream()
-                    .filter(x -> x.getProperty("rank").equals(4L)).collect(Collectors.toList());
+                    .filter(x -> x.getProperty("rank").equals(4L)).toList();
             Node other = tx.findNode(Nodes.READING, "text", "heinricus");
             assertEquals(1, henries.size());
             assertNotNull(other);
-            myId = henries.get(0).getElementId();
+            myId = henries.getFirst().getElementId();
             otherId = other.getElementId();
-            tx.close();
         }
         RelationModel r = new RelationModel();
         r.setSource(otherId);
@@ -669,48 +646,50 @@ public class RelationTest {
         String the2Id = "";
         try (Transaction tx = db.beginTx()) {
             roodId = tx.findNode(Nodes.READING, "text", "rood").getElementId();
-            List<Node> thes = tx.findNodes(Nodes.READING, "text", "the").stream()
-                    .collect(Collectors.toList());
+            List<Node> thes = tx.findNodes(Nodes.READING, "text", "the").stream().toList();
             for (Node the : thes) {
                 if (the.getProperty("rank").equals(17L))
                     the1Id = the.getElementId();
                 else
                     the2Id = the.getElementId();
             }
-            tx.close();
         }
-        assertTrue(!the1Id.isBlank());
-        assertTrue(!the2Id.isBlank());        // Make a collated relationship between rood and the
+        assertFalse(the1Id.isBlank());
+        assertFalse(the2Id.isBlank());        // Make a collated relationship between rood and the
         RelationModel model = new RelationModel();
         model.setSource(roodId);
         model.setTarget(the1Id);
         model.setType("collated");
 
-        Response response = jerseyTest.target("/tradition/" + tradId + "/relation")
+        try (Response response = jerseyTest.target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(model));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(model))) {
+            assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+        }
 
         // Try to make a transposition relationship between rood and root
 
-        model.setTarget(String.valueOf(the2Id));
+        model.setTarget(the2Id);
         model.setType("orthographic");
-        response = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(model));
-        assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
+                .post(Entity.json(model))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), response2.getStatus());
+        }
 
         // Check that the collated link is still there
         List<RelationModel> allRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(4, allRels.size());
         boolean foundCollated = false;
         for (RelationModel r : allRels) {
             if (r.getType().equals("collated") && r.getSource().equals(String.valueOf(roodId))
-                    && r.getTarget().equals(String.valueOf(the1Id)))
+                    && r.getTarget().equals(the1Id)) {
                 foundCollated = true;
+                break;
+            }
         }
         assertTrue(foundCollated);
     }
@@ -724,8 +703,10 @@ public class RelationTest {
         // We pretend to set a relationship between "ex" and "de"
         List<ReadingModel> lfReadings = jerseyTest.target("/tradition/" + newTradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {}).stream().filter(x -> x.getRank() == 7)
-                .collect(Collectors.toList());
+                .get(new GenericType<List<ReadingModel>>() {})
+                .stream()
+                .filter(x -> x.getRank() == 7)
+                .toList();
         RelationModel model = new RelationModel();
         model.setType("lexical");
         for (ReadingModel rm : lfReadings) {
@@ -757,7 +738,7 @@ public class RelationTest {
                 .request()
                 .get();
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        List<RelationModel> relationships = response.readEntity(new GenericType<List<RelationModel>>() {});
+        List<RelationModel> relationships = response.readEntity(new GenericType<>() {});
         assertEquals(3, relationships.size());
         for (RelationModel rel : relationships) {
             assertEquals("local", rel.getScope());
@@ -771,7 +752,7 @@ public class RelationTest {
                 .queryParam("include_readings", "true")
                 .request().get();
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        relationships = response.readEntity(new GenericType<List<RelationModel>>() {});
+        relationships = response.readEntity(new GenericType<>() {});
         assertEquals(3, relationships.size());
         for (RelationModel rel : relationships) {
             assertEquals("local", rel.getScope());
@@ -791,7 +772,7 @@ public class RelationTest {
                 .target("/tradition/" + tradId + "/relations")
                 .request()
                 .get();
-        assertEquals(Response.ok().build().getStatus(), response.getStatus());
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
     }
 
     /**
@@ -809,7 +790,7 @@ public class RelationTest {
     @Test
     public void getNoRelationshipTest(){
          /*
-         * load a tradition with no Realtionships to the test DB
+         * load a tradition with no Relationships to the test DB
          */
         Response jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTraditionNoRealtions.xml", "stemmaweb");
@@ -830,7 +811,7 @@ public class RelationTest {
             if (c != null)
                 available.sort(c);
             tx.close();
-            result = available.get(0);
+            result = available.getFirst();
         }
         return result;
     }
