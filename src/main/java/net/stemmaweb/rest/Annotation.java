@@ -301,10 +301,17 @@ public class Annotation {
         return Evaluation.INCLUDE_AND_CONTINUE;
     };
 
-    // Check here whether we need to return a 404
+    // Check here whether we need to return a 404 - for example if we have a correct annotation ID
+    // from the wrong tradition
     private boolean annotationNotFound(Transaction tx) {
         boolean found;
-        Node a = tx.getNodeByElementId(annoId);
+        Node a;
+        try {
+            a = tx.getNodeByElementId(annoId);
+        } catch (NotFoundException e) {
+            return true;
+        }
+
         Relationship r = a.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING);
         Node t = r.getStartNode();
         found = t.hasLabel(Nodes.TRADITION) && t.getProperty("id", "NONE").equals(tradId);

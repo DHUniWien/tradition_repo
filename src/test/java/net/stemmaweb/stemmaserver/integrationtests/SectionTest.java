@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -28,6 +27,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.glassfish.jersey.test.JerseyTest;
+import org.jspecify.annotations.NonNull;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -458,7 +458,7 @@ public class SectionTest extends TestCase {
         assertEquals(dText, witFragment);
 
         // Now try merge of 1 into 3, which should fail
-        requestPath = "/tradition/" + florId + "/section/" + florIds.get(0)
+        requestPath = "/tradition/" + florId + "/section/" + florIds.getFirst()
                 + "/merge/" + targetSection;
         jerseyResponse = jerseyTest
                 .target(requestPath)
@@ -514,7 +514,7 @@ public class SectionTest extends TestCase {
 
     public void testSplitSection() {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
 
         String targetSectionId = florIds.get(1);
         SectionModel origSection = jerseyTest
@@ -526,7 +526,7 @@ public class SectionTest extends TestCase {
         ReadingModel targetReading = jerseyTest
                 .target("/tradition/" + florId + "/witness/B/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {}).get(0);
+                .get(new GenericType<List<ReadingModel>>() {}).getFirst();
         assertEquals("τὸ", targetReading.getText());
 
         // Do the split
@@ -653,7 +653,7 @@ public class SectionTest extends TestCase {
     public void testSplitSectionWithLemma() {
         // Use the Florilegium
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
         String flor3 = florIds.get(2);
 
         // Lemmatize section 3 based on majority reading
@@ -667,15 +667,17 @@ public class SectionTest extends TestCase {
             tx.commit();
         }
 
-        Response r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/setlemma")
+        try (Response r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/setlemma")
                 .request(MediaType.APPLICATION_JSON)
-                .post(null);
-        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+                .post(null)) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        }
 
         // Now try splitting the section at the Θάλλει
-        r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/splitAtRank/54")
-                .request(MediaType.APPLICATION_JSON).post(null);
-        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        try (Response r1 = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/splitAtRank/54")
+                .request(MediaType.APPLICATION_JSON).post(null)) {
+            assertEquals(Response.Status.OK.getStatusCode(), r1.getStatus());
+        }
         // Before the split there should be no readings with rank >= endRank
         SectionModel sm = jerseyTest.target("/tradition/" + florId + "/section/" + flor3)
                 .request().get(SectionModel.class);
@@ -701,7 +703,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
 
-        SectionModel origSection = returnedSections.get(0);
+        SectionModel origSection = returnedSections.getFirst();
         String targetSectionId = origSection.getId();
 
         // Do the split
@@ -788,7 +790,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, readingList.size());
-        assertTrue(readingList.get(0).getIs_lacuna());
+        assertTrue(readingList.getFirst().getIs_lacuna());
     }
 
     private static int countOccurrences (String tstr, String substr) {
@@ -930,7 +932,7 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<>() {});
         assertEquals(1, tradSections.size());
         List<List<ReadingModel>> pathClusters = jerseyTest
-                .target("/tradition/" + tradId + "/section/" + tradSections.get(0).getId() + "/colocated")
+                .target("/tradition/" + tradId + "/section/" + tradSections.getFirst().getId() + "/colocated")
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(5, pathClusters.size());
@@ -945,7 +947,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> testSections = jerseyTest.target("/tradition/" + testTradId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        String testSectId = testSections.get(0).getId();
+        String testSectId = testSections.getFirst().getId();
         List<ReadingModel> identicalReadings;
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
@@ -953,11 +955,11 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, listOfIdenticalReadings.size());
-        identicalReadings = listOfIdenticalReadings.get(0);
+        identicalReadings = listOfIdenticalReadings.getFirst();
         assertEquals(2, identicalReadings.size());
         assertEquals("fruit", identicalReadings.get(1).getText());
 
-        assertEquals(identicalReadings.get(0).getText(),
+        assertEquals(identicalReadings.getFirst().getText(),
                 identicalReadings.get(1).getText());
     }
 
@@ -969,7 +971,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> testSections = jerseyTest.target("/tradition/" + testTradId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        String testSectId = testSections.get(0).getId();
+        String testSectId = testSections.getFirst().getId();
         List<ReadingModel> identicalReadings;
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
@@ -978,15 +980,15 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<>() {});
         assertEquals(2, listOfIdenticalReadings.size());
 
-        identicalReadings = listOfIdenticalReadings.get(0);
+        identicalReadings = listOfIdenticalReadings.getFirst();
         assertEquals(2, identicalReadings.size());
         assertEquals("april", identicalReadings.get(1).getText());
-        assertEquals(identicalReadings.get(0).getText(), identicalReadings.get(1).getText());
+        assertEquals(identicalReadings.getFirst().getText(), identicalReadings.get(1).getText());
 
         identicalReadings = listOfIdenticalReadings.get(1);
         assertEquals(2, identicalReadings.size());
         assertEquals("fruit", identicalReadings.get(1).getText());
-        assertEquals(identicalReadings.get(0).getText(),
+        assertEquals(identicalReadings.getFirst().getText(),
                 identicalReadings.get(1).getText());
     }
 
@@ -1017,7 +1019,7 @@ public class SectionTest extends TestCase {
         assertEquals(4, couldBeIdenticalReadings.size());
         HashSet<String> expectedIdentical = new HashSet<>(Arrays.asList("beatus", "pontifex", "venerabilis", "henricus"));
         for (List<ReadingModel> cbi : couldBeIdenticalReadings) {
-            assertTrue(expectedIdentical.contains(cbi.get(0).getText()));
+            assertTrue(expectedIdentical.contains(cbi.getFirst().getText()));
         }
 
         // Check that we can ask for them individually
@@ -1027,7 +1029,7 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<>() {});
         assertEquals(1, mergeableHenrys.size());
         for (List<ReadingModel> mh : mergeableHenrys) {
-            assertEquals("henricus", mh.get(0).getText());
+            assertEquals("henricus", mh.getFirst().getText());
             assertEquals("henricus", mh.get(1).getText());
         }
     }
@@ -1054,11 +1056,12 @@ public class SectionTest extends TestCase {
         }
 
         // Merge the venerabili
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + firstId + "/merge/" + secondId)
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                .post(Entity.text(null))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        }
 
         // Check that the ranks are correct
         try (Transaction tx = db.beginTx()) {
@@ -1072,14 +1075,14 @@ public class SectionTest extends TestCase {
         }
 
         // Check that the pontifices are mergeable
-        response = jerseyTest
+        Response response = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + firstSectId + "/mergeablereadings/start/end")
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         List<List<ReadingModel>> r = response.readEntity(new GenericType<>() {});
         assertEquals(1, r.size());
-        assertEquals("pontifex", r.get(0).get(0).getText());
+        assertEquals("pontifex", r.getFirst().getFirst().getText());
     }
 
     /**
@@ -1137,19 +1140,7 @@ public class SectionTest extends TestCase {
         lemmaParam.add("value", "true");
         for (String rdg : lemmatised) {
             // Set normal forms for a few selected readings
-            List<KeyPropertyModel> models = new ArrayList<>();
-            // models.add(keyModel);
-            if (rdg.contains("autem")) {
-                KeyPropertyModel km = new KeyPropertyModel();
-                km.setKey("normal_form");
-                km.setProperty("autem.");
-                models.add(km);
-            } else if (rdg.contains("quasi")) {
-                KeyPropertyModel km = new KeyPropertyModel();
-                km.setKey("normal_form");
-                km.setProperty("Quasi");
-                models.add(km);
-            }
+            List<KeyPropertyModel> models = createModels(rdg);
             if (!models.isEmpty()) {
                 ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
                 chgModel.setProperties(models);
@@ -1307,6 +1298,23 @@ public class SectionTest extends TestCase {
 
     }
 
+    private static @NonNull List<KeyPropertyModel> createModels(String rdg) {
+        List<KeyPropertyModel> models = new ArrayList<>();
+        // models.add(keyModel);
+        if (rdg.contains("autem")) {
+            KeyPropertyModel km = new KeyPropertyModel();
+            km.setKey("normal_form");
+            km.setProperty("autem.");
+            models.add(km);
+        } else if (rdg.contains("quasi")) {
+            KeyPropertyModel km = new KeyPropertyModel();
+            km.setKey("normal_form");
+            km.setProperty("Quasi");
+            models.add(km);
+        }
+        return models;
+    }
+
     public void testFetchSectionAnnotations() {
         // Set up some annotations across sections
         HashMap<String,String> stuffCreated = setupComplexAnnotation();
@@ -1349,41 +1357,42 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<>() {});
 
         // Now try to delete section 1
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + stuffCreated.get("section1"))
                 .request()
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        }
 
         // Section 2 should be unaffected
-        response = jerseyTest
+        Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + stuffCreated.get("section2") + "/readings")
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<ReadingModel> remaining = response.readEntity(new GenericType<>() {});
+        assertEquals(Response.Status.OK.getStatusCode(), response2.getStatus());
+        List<ReadingModel> remaining = response2.readEntity(new GenericType<>() {});
         assertEquals(s2Readings.size(), remaining.size());
         assertEquals(s2Readings.stream().map(ReadingModel::getId).sorted().collect(Collectors.toList()),
                 remaining.stream().map(ReadingModel::getId).sorted().collect(Collectors.toList()));
 
         // Section 1 annotation shouldn't exist anymore
-        response = jerseyTest
+        Response response3 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + stuffCreated.get("ref1"))
                 .request()
                 .get();
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response3.getStatus());
 
         // All readings and annotations for section 2 should still exist
-        response = jerseyTest
+        Response response4 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + stuffCreated.get("ref2"))
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        response = jerseyTest
+        assertEquals(Response.Status.OK.getStatusCode(), response4.getStatus());
+        Response response5 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + stuffCreated.get("place"))
                 .request()
                 .get(Response.class);
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.OK.getStatusCode(), response5.getStatus());
 
     }
 
@@ -1397,7 +1406,7 @@ public class SectionTest extends TestCase {
                 .target("/tradition/" + tradId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        data.put("section1", ourSections.get(0).getId());
+        data.put("section1", ourSections.getFirst().getId());
         data.put("section2", ourSections.get(1).getId());
         // Make some reading lookups
         HashMap<String, String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
@@ -1407,11 +1416,12 @@ public class SectionTest extends TestCase {
         AnnotationLabelModel pref = new AnnotationLabelModel();
         pref.setName("PLACEREF");
         pref.addLink("READING", "BEGIN,END");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/annotationlabel/" + pref.getName())
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(pref));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .put(Entity.json(pref))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
 
         // Make a PLACE annotation label
         AnnotationLabelModel place = new AnnotationLabelModel();
@@ -1420,11 +1430,12 @@ public class SectionTest extends TestCase {
         place.addProperty("href", "String");
         place.addProperty("locatable", "Boolean");
 
-        response = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/annotationlabel/" + place.getName())
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(place));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .put(Entity.json(place))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response2.getStatus());
+        }
 
         // Annotate some text
         AnnotationModel ref1 = new AnnotationModel();
@@ -1437,12 +1448,13 @@ public class SectionTest extends TestCase {
         pre.setTarget(readingLookup.get("suecia/2"));
         ref1.addLink(prb);
         ref1.addLink(pre);
-        response = jerseyTest
+        try (Response response3 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(ref1));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-        ref1 = response.readEntity(AnnotationModel.class);
+                .post(Entity.json(ref1))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response3.getStatus());
+            ref1 = response3.readEntity(AnnotationModel.class);
+        }
         data.put("ref1", ref1.getId());
 
         AnnotationModel suecia = new AnnotationModel();
@@ -1455,12 +1467,13 @@ public class SectionTest extends TestCase {
         slinks.setType("NAMED");
         slinks.setTarget(ref1.getId());
         suecia.addLink(slinks);
-        response = jerseyTest
+        try (Response response4 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(suecia));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-        suecia = response.readEntity(AnnotationModel.class);
+                .post(Entity.json(suecia))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response4.getStatus());
+            suecia = response4.readEntity(AnnotationModel.class);
+        }
         data.put("place", suecia.getId());
 
         // Make a reference in other section
@@ -1474,74 +1487,76 @@ public class SectionTest extends TestCase {
         pre.setTarget(readingLookup.get("magisque/15"));
         ref2.addLink(prb);
         ref2.addLink(pre);
-        response = jerseyTest
+        try (Response response5 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(ref2));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-        ref2 = response.readEntity(AnnotationModel.class);
+                .post(Entity.json(ref2))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response5.getStatus());
+            ref2 = response5.readEntity(AnnotationModel.class);
+        }
         data.put("ref2", ref2.getId());
 
         // Link the new reference to the existing place
         AnnotationLinkModel newLink = new AnnotationLinkModel();
         newLink.setTarget(ref2.getId());
         newLink.setType("NAMED");
-        response = jerseyTest
+        try (Response response6 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + suecia.getId() + "/link")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(newLink));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                .post(Entity.json(newLink))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response6.getStatus());
+        }
 
         // Make sure that the place in question has links to two different PLACEREFs
-        response = jerseyTest.target("/tradition/" + tradId + "/annotations" )
+        Response response7 = jerseyTest.target("/tradition/" + tradId + "/annotations" )
                 .queryParam("label", "PLACE")
                 .request().get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationModel> places = response.readEntity(new GenericType<>() {});
+        assertEquals(Response.Status.OK.getStatusCode(), response7.getStatus());
+        List<AnnotationModel> places = response7.readEntity(new GenericType<>() {});
         assertEquals(1, places.size());
-        assertEquals(2, places.get(0).getLinks().size());
+        assertEquals(2, places.getFirst().getLinks().size());
 
         return data;
     }
-    
+
     /**
      * This test checks if the generated TEI is correct. Since expecting a specific XML
      * easily breaks the test as soon as indentation is incorrect or something similar,
-     * and also dates are generated on the fly to be included in the xml,  
+     * and also dates are generated on the fly to be included in the xml,
      * we check for the following things:
      * <ul>
      *  <li>it uses double-end-point attachment method (we check for the variant encoding tag)</li>
      *  <li>we check that the generated body is the same as what we expect</li>
      *  <li>witness lists in header and body are correct (checked in separate tests)</li>
      * </ul>
-     * @throws ParserConfigurationException
-     * @throws SAXException
-     * @throws IOException
-     * @throws TransformerFactoryConfigurationError 
-     * @throws TransformerException 
+     * @throws ParserConfigurationException - if the parser configuration is incorrect
+     * @throws SAXException - if the SAX parser encounters an error
+     * @throws IOException - if an I/O error occurs
+     * @throws TransformerFactoryConfigurationError - if the transformer factory configuration is incorrect
+     * @throws TransformerException - if a transformation error occurs
      */
     public void testTeiIsCorrect() throws ParserConfigurationException, SAXException, IOException, TransformerFactoryConfigurationError, TransformerException {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
-        
+        String florId = florIds.removeFirst();
+
         // Test that we get the expected TEI output
         // we use the last section with partial witnesses
         String actualTei = jerseyTest
                 .target("/tradition/" + florId + "/section/" + florIds.get(3) + "/tei")
                 .request()
                 .get(new GenericType<>() {});
-        
+
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         ByteArrayInputStream input = new ByteArrayInputStream(actualTei.getBytes());
         Document doc = builder.parse(input);
         Element root = doc.getDocumentElement();
-        
+
         // check encoding
         org.w3c.dom.Node encodingNode = root.getElementsByTagName("variantEncoding").item(0);
         assertEquals("double​-end​-point", encodingNode.getAttributes().getNamedItem("method").getNodeValue());
         assertEquals("internal", encodingNode.getAttributes().getNamedItem("location").getNodeValue());
-        
+
         org.w3c.dom.Node textNode = root.getElementsByTagName("text").item(0);
         StringWriter writer = new StringWriter();
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
@@ -1560,14 +1575,14 @@ public class SectionTest extends TestCase {
 
     public void testTeiPartialWitnesses() throws ParserConfigurationException, SAXException, IOException {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
-        
+        String florId = florIds.removeFirst();
+
         // the last id should be the one of the section with partial witnesses
         String teiResponse = jerseyTest
                 .target("/tradition/" + florId + "/section/" + florIds.get(3) + "/tei")
                 .request()
                 .get(new GenericType<>() {});
-        
+
         // get witnesses of section
         List<WitnessModel> sectWits = jerseyTest.target("/tradition/" + florId + "/section/" + florIds.get(3) + "/witnesses")
                 .request().get(new GenericType<>() {
@@ -1578,7 +1593,7 @@ public class SectionTest extends TestCase {
         ByteArrayInputStream input = new ByteArrayInputStream(teiResponse.getBytes());
         Document doc = builder.parse(input);
         Element root = doc.getDocumentElement();
-        // we get all app elements and it's 
+        // we get all app elements and it's
         NodeList appNodes = root.getElementsByTagName("app");
         boolean testSuceeded = false;
         for(int i = 0; i<appNodes.getLength(); i++) {
@@ -1597,9 +1612,9 @@ public class SectionTest extends TestCase {
                         // it should have the same witnesses as what the witness endpoint returns
                         // same number
                         assertEquals(sectWits.size(), actualWitnesses.length);
-                        
+
                         // and each witness is in the list
-                        List<String> expectedWitnesses = sectWits.stream().map(WitnessModel::getSigil).collect(Collectors.toList());
+                        List<String> expectedWitnesses = sectWits.stream().map(WitnessModel::getSigil).toList();
                         for (String wit : actualWitnesses) {
                             // we have to cut off the leading #
                             assertTrue(expectedWitnesses.contains(wit.substring(1)));
@@ -1608,19 +1623,19 @@ public class SectionTest extends TestCase {
                         break;
                     }
                 }
-                break;                
+                break;
             }
         }
-        
+
         // let's make sure we had actually witnesses to test against
         assertTrue(testSuceeded);
     }
 
     public void testTeiTraditionWitnessesInHeader() throws ParserConfigurationException, SAXException, IOException {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
-        
-        
+        String florId = florIds.removeFirst();
+
+
         // get witnesses of tradition
         List<WitnessModel> traditionWitnesses = jerseyTest.target("/tradition/" + florId + "/witnesses").request()
                 .get(new GenericType<>() {
@@ -1630,7 +1645,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> sections = jerseyTest.target("/tradition/" + florId + "/sections").request()
                 .get(new GenericType<>() {
                 });
-        String teiResponse = jerseyTest.target("/tradition/" + florId + "/section/" + sections.get(0).getId() + "/tei").request()
+        String teiResponse = jerseyTest.target("/tradition/" + florId + "/section/" + sections.getFirst().getId() + "/tei").request()
                 .get(new GenericType<>() {
                 });
         
@@ -1646,8 +1661,7 @@ public class SectionTest extends TestCase {
         // returned from witnesses endpoint
         assertEquals(traditionWitnesses.size(), witnessNodes.getLength());
 
-        List<String> expectedWitnesses = traditionWitnesses.stream().map(WitnessModel::getSigil)
-                .collect(Collectors.toList());
+        List<String> expectedWitnesses = traditionWitnesses.stream().map(WitnessModel::getSigil).toList();
         // check that all witnesses in header are in witness list returned from endpoint
         for(int i = 0; i<witnessNodes.getLength(); i++) {
             org.w3c.dom.Node node = witnessNodes.item(i);

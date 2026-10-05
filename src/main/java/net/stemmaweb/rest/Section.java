@@ -970,11 +970,11 @@ public class Section {
             }
 
             // Parse the start and end rank into longs
-            Map<String,String> useRanks = getLongRanks(tx, startRank, endRank);
+            Map<String,Long> useRanks = getLongRanks(tx, startRank, endRank);
 
             List<List<ReadingModel>> couldBeIdenticalReadings;
             List<Node> questionedReadings = VariantGraphService.getReadingsBetweenRanks(
-            		Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")), startNode, limitText, tx);
+            		useRanks.get("start"), useRanks.get("end"), startNode, limitText, tx);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(tx, questionedReadings, threshold);
             return Response.ok(couldBeIdenticalReadings).build();
@@ -987,18 +987,22 @@ public class Section {
         }
     }
 
-    private Map<String,String> getLongRanks(Transaction tx, String startRank, String endRank)
+    private Map<String,Long> getLongRanks(Transaction tx, String startRank, String endRank)
         throws NumberFormatException {
-        Map<String,String> result = new HashMap<>();
+        // Either 1 or the rank actually passed in the URL
         String startRankL = startRank.equals("start")
                     ? "1"
                     : startRank;
-    	Node endNode = VariantGraphService.getEndNode(tx, sectId);
-        String endRankL = endRank.equals("end")
-                    ? endNode.getElementId()
-                    : endRank;
-        result.put("start", startRankL);
-        result.put("end", endRankL);
+        // Either the rank actually passed in the URL or the rank of the end node
+        String endRankL;
+        if (endRank.equals("end")) {
+            Node endNode = VariantGraphService.getEndNode(tx, sectId);
+            endRankL = endNode.getProperty("rank").toString();
+        } else endRankL = endRank;
+
+        Map<String,Long> result = new HashMap<>();
+        result.put("start", Long.valueOf(startRankL));
+        result.put("end", Long.valueOf(endRankL));
         return result;
     }
 
@@ -1066,9 +1070,9 @@ public class Section {
     public Response getIdenticalReadings(@PathParam("startRank") String startRank,
                                          @PathParam("endRank") String endRank) {
         try (Transaction tx = db.beginTx()) {
-            Map<String,String> useRanks = getLongRanks(tx, startRank, endRank);
+            Map<String,Long> useRanks = getLongRanks(tx, startRank, endRank);
         	ArrayList<List<ReadingModel>> identicalReadings = VariantGraphService.collectIdenticalReadings(
-        			tx, sectId, Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")));
+        			tx, sectId, useRanks.get("start"), useRanks.get("end"));
         	if (identicalReadings == null) {
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("no identical readings were found")).build();
         	}
@@ -1076,7 +1080,7 @@ public class Section {
         } catch (NumberFormatException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
