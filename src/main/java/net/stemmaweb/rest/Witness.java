@@ -110,6 +110,7 @@ public class Witness {
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Witness"},
             summary = "Get witness information",
             description = "Returns a WitnessModel corresponding to the requested witness.",
             responses = {
@@ -150,6 +151,7 @@ public class Witness {
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Witness"},
             summary = "Delete a witness",
             description = "Deletes the requested witness from the entire tradition.",
             responses = {
@@ -270,6 +272,7 @@ public class Witness {
     @Path("/text")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Witness"},
             summary = "Get witness text",
             description = "Finds a witness and returns it as text string. Optionally filters by rank range and text layers.",
             parameters = {
@@ -363,6 +366,7 @@ public class Witness {
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Witness"},
             summary = "Get readings",
             description = "Returns the sequence of readings for a given witness.",
             parameters = {

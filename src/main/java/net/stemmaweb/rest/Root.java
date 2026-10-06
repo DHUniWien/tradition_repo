@@ -150,6 +150,7 @@ public class Root {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Upload new tradition",
             description = "Imports a new tradition from file data of various forms, creating at least one section in the process. Returns the ID of the newly created tradition.",
             requestBody = @RequestBody(
@@ -262,6 +263,7 @@ public class Root {
     @Path("/traditions")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "List traditions",
             description = "Retrieves a list of all complete traditions in the database.",
             parameters = {
@@ -303,6 +305,7 @@ public class Root {
     @Path("/users")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"User"},
             summary = "List users",
             description = "Retrieves a list of all users in the database.",
             responses = {

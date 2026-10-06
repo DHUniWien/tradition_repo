@@ -194,6 +194,7 @@ public class Tradition {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Upload a new stemma",
             description = "Creates/saves a new stemma for this tradition.",
             requestBody = @RequestBody(
@@ -299,6 +300,7 @@ public class Tradition {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Upload section",
             description = "Creates a new section for this tradition. Returns the ID of the new section.",
             requestBody = @RequestBody(
@@ -456,6 +458,7 @@ public class Tradition {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Create a new annotation on this tradition",
             description = "Creates a new annotation on this tradition.",
             requestBody = @RequestBody(
@@ -531,6 +534,7 @@ public class Tradition {
     @Path("/sections")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get sections",
             description = "Gets a list of all sections of a tradition with the given id.",
             responses = {
@@ -567,6 +571,7 @@ public class Tradition {
     @Path("/witnesses")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get witnesses",
             description = "Gets a list of all the witnesses of a tradition with the given id.",
             responses = {
@@ -605,6 +610,7 @@ public class Tradition {
     @Path("/stemmata")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get stemmata",
             description = "Gets a list of all the stemmata associated with this tradition.",
             responses = {
@@ -645,6 +651,7 @@ public class Tradition {
     @Path("/relations")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get relationships",
             description = "Gets a list of all relationships defined within the given tradition.",
             parameters = {
@@ -691,6 +698,7 @@ public class Tradition {
     @Path("/relationtypes")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get relationship types",
             description = "Gets a list of all relation types defined within the given tradition.",
             responses = {
@@ -728,6 +736,7 @@ public class Tradition {
     @Path("/readings")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get readings",
             description = "Gets a list of all readings in the given tradition.",
             responses = {
@@ -779,6 +788,7 @@ public class Tradition {
     @Path("/annotations")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get annotations on tradition",
             description = "Returns a list of the annotations that have been made on this tradition.",
             parameters = {
@@ -831,6 +841,7 @@ public class Tradition {
     @Path("/annotationlabels")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get annotation labels for tradition",
             description = "Returns a list of the annotation labels that have been defined for this tradition.",
             responses = {
@@ -869,6 +880,7 @@ public class Tradition {
     @Path("/pruneAnnotations")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Clean up dangling annotations",
             description = "Deletes any annotations on this tradition that lack referents, unless the annotation is marked as 'primary'. Returns a list of the deleted annotations.",
             responses = {
@@ -915,6 +927,7 @@ public class Tradition {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Update tradition information",
             description = "Changes the metadata of the tradition.",
             requestBody = @RequestBody(
@@ -994,6 +1007,7 @@ public class Tradition {
      */
     @DELETE
     @Operation(
+            tags = {"Tradition"},
             summary = "Delete tradition",
             description = "Removes an entire tradition, including all witnesses, stemmata, sections, readings, and relationships.",
             responses = {
@@ -1053,6 +1067,7 @@ public class Tradition {
     @GET
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Get tradition information",
             description = "Returns the stored information (metadata) of a tradition.",
             responses = {
@@ -1096,6 +1111,7 @@ public class Tradition {
     @Produces("application/xml; charset=utf-8")
     @Path("/tei")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download TEI",
             description = "Returns a TEI double-endpoint-attachment file representing the tradition text.",
             parameters = {
@@ -1155,6 +1171,7 @@ public class Tradition {
     @Path("/graphml")
     @Produces("application/zip")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download GraphML",
             description = "Returns a GraphML file that describes the specified tradition and its data.",
             responses = {
@@ -1188,6 +1205,7 @@ public class Tradition {
     @Path("/stemmaweb")
     @Produces(MediaType.APPLICATION_XML)
     @Operation(
+            tags = {"Tradition"},
             summary = "Download legacy GraphML",
             description = "Returns a legacy Stemmaweb-compatible GraphML file that describes the specified tradition and its data.",
             responses = {
@@ -1228,6 +1246,7 @@ public class Tradition {
     @Path("/dot")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download GraphViz",
             description = "Returns a GraphViz dot file that describes the specified tradition and its data.",
             parameters = {
@@ -1287,6 +1306,7 @@ public class Tradition {
     @Path("/json")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download JSON alignment",
             description = "Returns a JSON file that contains the aligned reading data for the tradition.",
             parameters = {
@@ -1330,6 +1350,7 @@ public class Tradition {
     @Path("/csv")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download CSV alignment",
             description = "Returns a CSV file that contains the aligned reading data for the tradition.",
             parameters = {
@@ -1371,6 +1392,7 @@ public class Tradition {
     @Path("/tsv")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download TSV alignment",
             description = "Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.",
             parameters = {
@@ -1414,6 +1436,7 @@ public class Tradition {
     @Path("/matrix")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Tradition"},
             summary = "Download character matrix for parsimony analysis",
             description = "Returns a character matrix suitable for use with e.g. Phylip Pars.",
             parameters = {

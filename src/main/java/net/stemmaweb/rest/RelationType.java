@@ -63,6 +63,7 @@ public class RelationType {
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Relation Type"},
             summary = "Get relation type",
             description = "Gets the information for the given relation type name.",
             responses = {
@@ -105,6 +106,7 @@ public class RelationType {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Relation Type"},
             summary = "Create / update relation type specification",
             description = "Creates or updates a relation type according to the specification given.",
             requestBody = @RequestBody(
@@ -177,6 +179,7 @@ public class RelationType {
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Relation Type"},
             summary = "Delete a relation type",
             description = "Deletes the named relation type.",
             responses = {

@@ -107,6 +107,7 @@ public class Reading {
     @GET
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Get a reading",
             description = "Returns the metadata for a single reading.",
             responses = {
@@ -148,6 +149,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Update an existing reading",
             description = "Changes the properties of an existing reading. Properties whose change has potential knock-on effects on other readings, such as 'is_lemma', cannot be set using this method.",
             requestBody = @RequestBody(description = "An array of named key/value property pairs. For example, a request to change the reading's language to German will look like this: {\"properties\": [{\"key\":\"language\",\"newProperty\":\"German\"}]}.", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReadingChangePropertyModel.class))),
@@ -216,6 +218,7 @@ public class Reading {
     @DELETE
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Delete a user-addable reading",
             description = "Deletes a reading. This only makes sense if it is a user-addable reading, i.e., an emendation. If the lemma path goes through the emendation, the lemma path will also be removed.",
             responses = {
@@ -281,6 +284,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Set a reading as lemma",
             description = "Toggles whether this reading is a lemma. If so, ensures that no other reading at this rank in this section is a lemma. Returns all readings that were changed.",
             requestBody = @RequestBody(description = "A boolean value ('true' if the reading should be a lemma)", required = true, content = @Content(mediaType = "application/x-www-form-urlencoded")),
@@ -340,6 +344,7 @@ public class Reading {
     @Path("/lacunaAfter")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Insert a lacuna",
             description = "Inserts a lacuna in the specified witness(es) after a given reading and before the next reading(s) in the sequence for that witness/those witnesses. Intended to indicate that empty ranks are not a simple omission.",
             parameters = {
@@ -428,6 +433,7 @@ public class Reading {
     @Path("related")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Get related readings",
             description = "Gets all readings related to the given reading.",
             parameters = {
@@ -468,6 +474,7 @@ public class Reading {
     @Path("normaliseRelated/{reltype}")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Propagate normal form along relations",
             description = "Propagates this reading's normal form to all other readings related by the given type.",
             parameters = {
@@ -541,6 +548,7 @@ public class Reading {
     @Path("relations")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Delete all reading relations",
             description = "Deletes all relations associated with the given reading.",
             responses = {
@@ -582,6 +590,7 @@ public class Reading {
     @Path("witnesses")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Get reading witnesses",
             description = "Gets the list of witnesses that carry the given reading.",
             responses = {
@@ -624,6 +633,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Duplicate a reading",
             description = "Duplicates a reading in a specific tradition. This should be used when a reading has been mis-collated, or when the editor otherwise wishes to assert that seemingly identical readings in different witnesses are distinct.",
             requestBody = @RequestBody(description = "Specifies the reading(s) to be duplicated, as well as the witnesses to which the duplicated new reading(s) should now belong.", required = true, content = @Content(schema = @Schema(implementation = DuplicateModel.class))),
@@ -822,6 +832,7 @@ public class Reading {
     @Path("merge/{secondReadId}")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Merge readings",
             description = "Merges two co-located readings into one single reading. This will primarily be used when a collation has missed that a pair of readings is identical.",
             parameters = {
@@ -918,6 +929,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Split a reading",
             description = "Splits up a single reading into smaller consecutive reading units. Note that this operation should not change the text sequence for any witness.",
             parameters = {
@@ -1096,6 +1108,7 @@ public class Reading {
     @Path("next/{witnessId}")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Next reading",
             description = "Gets the reading that follows the requested reading in the given witness.",
             parameters = {
@@ -1141,6 +1154,7 @@ public class Reading {
     @Path("prior/{witnessId}")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Prior reading",
             description = "Gets the reading that precedes the requested reading in the given witness.",
             parameters = {
@@ -1208,6 +1222,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Reading"},
             summary = "Concatenate readings",
             description = "Collapse two consecutive readings into one. Texts will be concatenated together (with or without a space or extra text).",
             parameters = {

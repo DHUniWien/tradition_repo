@@ -66,7 +66,9 @@ public class Annotation {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Retrieve an annotation by ID",
+    @Operation(
+            tags = {"Annotation"},
+            summary = "Retrieve an annotation by ID",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Successful retrieval of the annotation",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
@@ -102,7 +104,9 @@ public class Annotation {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Update an existing annotation",
+    @Operation(
+            tags = {"Annotation"},
+            summary = "Update an existing annotation",
             requestBody = @RequestBody(description = "The updated AnnotationModel object", required = true,
                     content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
             responses = {
@@ -140,7 +144,9 @@ public class Annotation {
      */
     @DELETE
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Delete an annotation by ID",
+    @Operation(
+            tags = {"Annotation"},
+            summary = "Delete an annotation by ID",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Annotation and any orphaned annotations successfully deleted",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
@@ -207,7 +213,9 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Add an outbound link to this annotation",
+    @Operation(
+            tags = {"Annotation"},
+            summary = "Add an outbound link to this annotation",
             requestBody = @RequestBody(description = "The AnnotationLinkModel representing the link to be added", required = true,
                     content = @Content(schema = @Schema(implementation = AnnotationLinkModel.class))),
             responses = {
@@ -258,7 +266,9 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Delete an outbound link from this annotation",
+    @Operation(
+            tags = {"Annotation"},
+            summary = "Delete an outbound link from this annotation",
             requestBody = @RequestBody(description = "The AnnotationLinkModel representing the link to be deleted", required = true,
                     content = @Content(schema = @Schema(implementation = AnnotationLinkModel.class))),
             responses = {
@@ -302,7 +312,9 @@ public class Annotation {
     @GET
     @Path("/referents")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Retrieve annotations that reference this annotation",
+    @Operation(
+            tags = {"Annotation"},
+            summary = "Retrieve annotations that reference this annotation",
             parameters = @Parameter(name = "recursive", description = "Include all ancestors if set to true", schema = @Schema(type = "boolean"), example = "false"),
             responses = {
                     @ApiResponse(responseCode = "200", description = "Successfully retrieved the list of referencing annotations",

@@ -65,6 +65,7 @@ public class AnnotationLabel {
     @GET
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Annotation Label"},
             summary = "Get annotation label spec",
             description = "Retrieves the specification for the given annotation type name.",
             responses = {
@@ -106,6 +107,7 @@ public class AnnotationLabel {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Annotation Label"},
             summary = "Put annotation label spec",
             description = "Creates or updates an annotation type specification.",
             requestBody = @RequestBody(
@@ -225,6 +227,7 @@ public class AnnotationLabel {
      */
     @DELETE
     @Operation(
+            tags = {"Annotation Label"},
             summary = "Delete annotation label",
             description = "Deletes the specified annotation label specification from the tradition. Returns an error if the label is still in use.",
             responses = {

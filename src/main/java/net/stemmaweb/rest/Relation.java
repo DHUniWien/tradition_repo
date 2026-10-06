@@ -80,6 +80,7 @@ public class Relation {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Relation"},
             summary = "Create relation",
             description = "Creates a new relation between the specified reading nodes.",
             requestBody = @RequestBody(
@@ -223,6 +224,7 @@ public class Relation {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Relation"},
             summary = "Delete a relation specified by JSON data",
             description = "Remove the relation specified. There should be only one.",
             requestBody = @RequestBody(
@@ -302,6 +304,7 @@ public class Relation {
     @Path("{relationId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Relation"},
             summary = "Delete relation by ID",
             description = "Removes a relation by internal ID.",
             parameters = @Parameter(

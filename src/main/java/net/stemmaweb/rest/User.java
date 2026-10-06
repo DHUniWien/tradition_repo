@@ -61,6 +61,7 @@ public class User {
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"User"},
             summary = "Get user",
             description = "Gets the information for the given user ID",
             parameters = {
@@ -106,6 +107,7 @@ public class User {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"User"},
             summary = "Create / update user",
             description = "Creates or updates a user according to the specification given",
             parameters = {
@@ -181,6 +183,7 @@ public class User {
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"User"},
             summary = "Delete user",
             description = "Removes a user. Requires user's traditions to be deleted first",
             parameters = {
@@ -237,6 +240,7 @@ public class User {
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"User"},
             summary = "List user traditions",
             description = "Get a list of the traditions belonging to the user",
             parameters = {

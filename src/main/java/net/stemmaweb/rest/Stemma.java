@@ -76,6 +76,7 @@ public class Stemma {
     @GET
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Stemma"},
             summary = "Get stemma",
             description = "Fetches the information for the specified stemma, including its dot specification.",
             responses = {
@@ -135,6 +136,7 @@ public class Stemma {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Stemma"},
             summary = "Replace or add new stemma",
             description = "Stores a new or updated stemma under the given name.",
             requestBody = @RequestBody(
@@ -225,6 +227,7 @@ public class Stemma {
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
+            tags = {"Stemma"},
             summary = "Delete stemma",
             description = "Deletes the stemma that is identified by the given name.",
             responses = {
@@ -313,6 +316,7 @@ public class Stemma {
     @Path("reorient/{nodeId}")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Stemma"},
             summary = "Reorient stemma",
             description = "Reorients a stemma tree so that the given witness node is the root (archetype). This operation can only be performed on a stemma without contamination links.",
             parameters = {

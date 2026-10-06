@@ -2,12 +2,44 @@
   "openapi" : "3.0.1",
   "info" : {
     "title" : "Stemmarest REST API",
-    "description" : "Stemmarest is a Neo4j-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). For an introduction to its conceptual structure, read on; to dive into specific API calls, see the navigation menu. Within the documentation, click on any title to get an expanded description of the call.\n\n### Definition of terms\n\nWhat follows is a definition of the concepts that occur within Stemmarest; understanding these terms will be helpful for understanding the API documentation. Note that most of these entities are defined with respect to (therefore, under) the **/tradition/{tradId}** heading in the API; readings, although defined as root objects, always belong to one and only one tradition section.\n\n## Tradition\nThis is the central object in the database. A *tradition* represents the structure of our information about the text, from its witnesses to its sections to its readings and relations.\n\n## Witness\nA *witness* represents a document that carries some version of the text. Witnesses generally have *sigla* to identify them, and they can be assembled into one or more *stemma* hypotheses. The witness sigla are used to identify individual textual versions within the sections; there, witnesses may also have *layers* to represent changes made to the text in the document.\n\n## Stemma\nA *stemma* (in this context more properly a *stemma hypothesis*) is a graph that asserts a particular set of copying relationships between *witnesses*. The witnesses in a stemma can be extant (meaning that their text appears in the tradition) or hypothetical (meaning that their text does not appear, and their existence is only conjectured based on the evidence of the copying history). The stemma objects in the database can have a *root* (or archetype), or not. The identity of the archetype can be changed by the user.\n\n## Section\nThe text of a tradition is divided into one or more *sections*, largely for manageability of the textual data. A section includes the set of *readings* from each *witness*, usually knitted together into a collation graph. Every section has a start node and an end node, and every witness (or, more precisely, every layer of every witness) takes a single path from the start to the end through a subset of the section's *readings*.\n\n## Reading\nA *reading* is the base unit of the text. Most often this is equivalent to a word, but depending on context and on the needs of the editor, it may be a partial word, or it may be several words joined together. Readings are the nodes that are joined together by witness paths (a.k.a. sequences), and can be correlated by named *relations*. Two or more readings that are *colocated* in the collation (that is, they occupy the same place in the text, in different witnesses) are also known as *variants*.\n\n## Relation\nIt is often useful for an editor to be able to classify the types (or even the existence) of variation that occurs across witness texts. This is done via the *relation*, which (depending on its type; see below) usually also signals that the readings are *colocated*. They can also indicate correspondences such as *transposition* (when the same reading occurs in different places across different witnesses).\n\n## Relation type\nThe user can define a set of *relation types* per tradition; these can be given unique names and arranged in a loose hierarchy. See the documentation for RelationType for more details.\n\n## Annotation\nArbitrary structured information can be added to any node in the tradition via the *annotation* framework. An annotation is a node that has user-defined properties, and user-defined outbound links (i.e. relationships) to specific sorts of nodes. An annotation framework is defined by means of *annotation labels* on the tradition.\n\n## Annotation label\nThe *annotation label* defines a sort of annotation that may appear on the tradition, the properties it may contain, and the types of entities (i.e. nodes) that it may link to.\n",
+    "description" : "Stemmarest is a Neo4j-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). For an introduction to its conceptual structure, read on; to dive into specific API calls, see the navigation menu, which is organised by the sort of object each call concerns.\n\n### Definition of terms\n\nWhat follows is a definition of the concepts that occur within Stemmarest; understanding these terms will be helpful for understanding the API documentation (each is also described again, in the same words, at the top of its own section in the navigation menu). Note that most of these entities are defined with respect to (therefore, under) the **/tradition/{tradId}** heading in the API; readings, although defined as root objects, always belong to one and only one tradition section.\n",
     "version" : "1.1"
   },
+  "tags" : [ {
+    "name" : "Tradition",
+    "description" : "This is the central object in the database. A *tradition* represents the structure of our information about the text, from its witnesses to its sections to its readings and relations."
+  }, {
+    "name" : "User",
+    "description" : "A *user* is an account that can own, create, and manage traditions."
+  }, {
+    "name" : "Witness",
+    "description" : "A *witness* represents a document that carries some version of the text. Witnesses generally have *sigla* to identify them, and they can be assembled into one or more *stemma* hypotheses. The witness sigla are used to identify individual textual versions within the sections; there, witnesses may also have *layers* to represent changes made to the text in the document."
+  }, {
+    "name" : "Stemma",
+    "description" : "A *stemma* (in this context more properly a *stemma hypothesis*) is a graph that asserts a particular set of copying relationships between *witnesses*. The witnesses in a stemma can be extant (meaning that their text appears in the tradition) or hypothetical (meaning that their text does not appear, and their existence is only conjectured based on the evidence of the copying history). The stemma objects in the database can have a *root* (or archetype), or not. The identity of the archetype can be changed by the user."
+  }, {
+    "name" : "Section",
+    "description" : "The text of a tradition is divided into one or more *sections*, largely for manageability of the textual data. A section includes the set of *readings* from each *witness*, usually knitted together into a collation graph. Every section has a start node and an end node, and every witness (or, more precisely, every layer of every witness) takes a single path from the start to the end through a subset of the section's *readings*."
+  }, {
+    "name" : "Reading",
+    "description" : "A *reading* is the base unit of the text. Most often this is equivalent to a word, but depending on context and on the needs of the editor, it may be a partial word, or it may be several words joined together. Readings are the nodes that are joined together by witness paths (a.k.a. sequences), and can be correlated by named *relations*. Two or more readings that are *colocated* in the collation (that is, they occupy the same place in the text, in different witnesses) are also known as *variants*."
+  }, {
+    "name" : "Relation",
+    "description" : "It is often useful for an editor to be able to classify the types (or even the existence) of variation that occurs across witness texts. This is done via the *relation*, which (depending on its type; see below) usually also signals that the readings are *colocated*. They can also indicate correspondences such as *transposition* (when the same reading occurs in different places across different witnesses)."
+  }, {
+    "name" : "Relation Type",
+    "description" : "The user can define a set of *relation types* per tradition; these can be given unique names and arranged in a loose hierarchy."
+  }, {
+    "name" : "Annotation",
+    "description" : "Arbitrary structured information can be added to any node in the tradition via the *annotation* framework. An annotation is a node that has user-defined properties, and user-defined outbound links (i.e. relationships) to specific sorts of nodes. An annotation framework is defined by means of *annotation labels* on the tradition."
+  }, {
+    "name" : "Annotation Label",
+    "description" : "The *annotation label* defines a sort of annotation that may appear on the tradition, the properties it may contain, and the types of entities (i.e. nodes) that it may link to."
+  } ],
   "paths" : {
     "/traditions" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "List traditions",
         "description" : "Retrieves a list of all complete traditions in the database.",
         "operationId" : "getAllTraditions",
@@ -41,6 +73,7 @@
     },
     "/users" : {
       "get" : {
+        "tags" : [ "User" ],
         "summary" : "List users",
         "description" : "Retrieves a list of all users in the database.",
         "operationId" : "getAllUsers",
@@ -66,6 +99,7 @@
     },
     "/reading/{readingId}/lacunaAfter" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Insert a lacuna",
         "description" : "Inserts a lacuna in the specified witness(es) after a given reading and before the next reading(s) in the sequence for that witness/those witnesses. Intended to indicate that empty ranks are not a simple omission.",
         "operationId" : "addLacuna",
@@ -122,6 +156,7 @@
     },
     "/reading/{readingId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get a reading",
         "description" : "Returns the metadata for a single reading.",
         "operationId" : "getReading",
@@ -153,6 +188,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Reading" ],
         "summary" : "Update an existing reading",
         "description" : "Changes the properties of an existing reading. Properties whose change has potential knock-on effects on other readings, such as 'is_lemma', cannot be set using this method.",
         "operationId" : "changeReadingProperties",
@@ -198,6 +234,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Reading" ],
         "summary" : "Delete a user-addable reading",
         "description" : "Deletes a reading. This only makes sense if it is a user-addable reading, i.e., an emendation. If the lemma path goes through the emendation, the lemma path will also be removed.",
         "operationId" : "deleteUserReading",
@@ -234,6 +271,7 @@
     },
     "/reading/{readingId}/concatenate/{read2Id}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Concatenate readings",
         "description" : "Collapse two consecutive readings into one. Texts will be concatenated together (with or without a space or extra text).",
         "operationId" : "compressReadings",
@@ -317,6 +355,7 @@
     },
     "/reading/{readingId}/relations" : {
       "delete" : {
+        "tags" : [ "Reading" ],
         "summary" : "Delete all reading relations",
         "description" : "Deletes all relations associated with the given reading.",
         "operationId" : "deleteAllRelations",
@@ -367,6 +406,7 @@
     },
     "/reading/{readingId}/duplicate" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Duplicate a reading",
         "description" : "Duplicates a reading in a specific tradition. This should be used when a reading has been mis-collated, or when the editor otherwise wishes to assert that seemingly identical readings in different witnesses are distinct.",
         "operationId" : "duplicateReading",
@@ -435,6 +475,7 @@
     },
     "/reading/{readingId}/next/{witnessId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Next reading",
         "description" : "Gets the reading that follows the requested reading in the given witness.",
         "operationId" : "getNextReadingInWitness",
@@ -512,6 +553,7 @@
     },
     "/reading/{readingId}/prior/{witnessId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Prior reading",
         "description" : "Gets the reading that precedes the requested reading in the given witness.",
         "operationId" : "getPreviousReadingInWitness",
@@ -589,6 +631,7 @@
     },
     "/reading/{readingId}/witnesses" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get reading witnesses",
         "description" : "Gets the list of witnesses that carry the given reading.",
         "operationId" : "getReadingWitnesses",
@@ -639,6 +682,7 @@
     },
     "/reading/{readingId}/related" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get related readings",
         "description" : "Gets all readings related to the given reading.",
         "operationId" : "getRelatedReadings",
@@ -688,6 +732,7 @@
     },
     "/reading/{readingId}/merge/{secondReadId}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Merge readings",
         "description" : "Merges two co-located readings into one single reading. This will primarily be used when a collation has missed that a pair of readings is identical.",
         "operationId" : "mergeWithReading",
@@ -760,6 +805,7 @@
     },
     "/reading/{readingId}/normaliseRelated/{reltype}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Propagate normal form along relations",
         "description" : "Propagates this reading's normal form to all other readings related by the given type.",
         "operationId" : "normaliseRelated",
@@ -811,6 +857,7 @@
     },
     "/reading/{readingId}/setlemma" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Set a reading as lemma",
         "description" : "Toggles whether this reading is a lemma. If so, ensures that no other reading at this rank in this section is a lemma. Returns all readings that were changed.",
         "operationId" : "setReadingAsLemma",
@@ -851,6 +898,7 @@
     },
     "/reading/{readingId}/split/{splitIndex}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Split a reading",
         "description" : "Splits up a single reading into smaller consecutive reading units. Note that this operation should not change the text sequence for any witness.",
         "operationId" : "splitReading",
@@ -936,6 +984,7 @@
     },
     "/tradition/{tradId}/annotation" : {
       "post" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Create a new annotation on this tradition",
         "description" : "Creates a new annotation on this tradition.",
         "operationId" : "addAnnotation",
@@ -979,6 +1028,7 @@
     },
     "/tradition/{tradId}/section" : {
       "post" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Upload section",
         "description" : "Creates a new section for this tradition. Returns the ID of the new section.",
         "operationId" : "addSection",
@@ -1025,6 +1075,7 @@
     },
     "/tradition/{tradId}" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get tradition information",
         "description" : "Returns the stored information (metadata) of a tradition.",
         "operationId" : "getTraditionInfo",
@@ -1056,6 +1107,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Update tradition information",
         "description" : "Changes the metadata of the tradition.",
         "operationId" : "changeTraditionMetadata",
@@ -1097,6 +1149,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Delete tradition",
         "description" : "Removes an entire tradition, including all witnesses, stemmata, sections, readings, and relationships.",
         "operationId" : "deleteTraditionById",
@@ -1123,6 +1176,7 @@
     },
     "/tradition/{tradId}/annotations" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get annotations on tradition",
         "description" : "Returns a list of the annotations that have been made on this tradition.",
         "operationId" : "getAllAnnotations",
@@ -1178,6 +1232,7 @@
     },
     "/tradition/{tradId}/readings" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get readings",
         "description" : "Gets a list of all readings in the given tradition.",
         "operationId" : "getAllReadings",
@@ -1214,6 +1269,7 @@
     },
     "/tradition/{tradId}/relationtypes" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get relationship types",
         "description" : "Gets a list of all relation types defined within the given tradition.",
         "operationId" : "getAllRelationTypes",
@@ -1250,6 +1306,7 @@
     },
     "/tradition/{tradId}/relations" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get relationships",
         "description" : "Gets a list of all relationships defined within the given tradition.",
         "operationId" : "getAllRelationships",
@@ -1301,6 +1358,7 @@
     },
     "/tradition/{tradId}/sections" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get sections",
         "description" : "Gets a list of all sections of a tradition with the given id.",
         "operationId" : "getAllSections",
@@ -1337,6 +1395,7 @@
     },
     "/tradition/{tradId}/stemmata" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get stemmata",
         "description" : "Gets a list of all the stemmata associated with this tradition.",
         "operationId" : "getAllStemmata",
@@ -1373,6 +1432,7 @@
     },
     "/tradition/{tradId}/witnesses" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get witnesses",
         "description" : "Gets a list of all the witnesses of a tradition with the given id.",
         "operationId" : "getAllWitnesses",
@@ -1409,6 +1469,7 @@
     },
     "/tradition/{tradId}/annotation/{annoid}/link" : {
       "post" : {
+        "tags" : [ "Annotation" ],
         "summary" : "Add an outbound link to this annotation",
         "operationId" : "addAnnotationLink",
         "parameters" : [ {
@@ -1463,6 +1524,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Annotation" ],
         "summary" : "Delete an outbound link from this annotation",
         "operationId" : "deleteAnnotationLink",
         "parameters" : [ {
@@ -1513,6 +1575,7 @@
     },
     "/tradition/{tradId}/annotation/{annoid}" : {
       "get" : {
+        "tags" : [ "Annotation" ],
         "summary" : "Retrieve an annotation by ID",
         "operationId" : "getAnnotation",
         "parameters" : [ {
@@ -1550,6 +1613,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Annotation" ],
         "summary" : "Update an existing annotation",
         "operationId" : "updateAnnotation",
         "parameters" : [ {
@@ -1601,6 +1665,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Annotation" ],
         "summary" : "Delete an annotation by ID",
         "operationId" : "deleteAnnotation",
         "parameters" : [ {
@@ -1640,6 +1705,7 @@
     },
     "/tradition/{tradId}/annotation/{annoid}/referents" : {
       "get" : {
+        "tags" : [ "Annotation" ],
         "summary" : "Retrieve annotations that reference this annotation",
         "operationId" : "getReferents",
         "parameters" : [ {
@@ -1686,6 +1752,7 @@
     },
     "/tradition/{tradId}/annotationlabel/{name}" : {
       "get" : {
+        "tags" : [ "Annotation Label" ],
         "summary" : "Get annotation label spec",
         "description" : "Retrieves the specification for the given annotation type name.",
         "operationId" : "getAnnotationLabel",
@@ -1730,6 +1797,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Annotation Label" ],
         "summary" : "Put annotation label spec",
         "description" : "Creates or updates an annotation type specification.",
         "operationId" : "createOrUpdateAnnotationLabel",
@@ -1801,6 +1869,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Annotation Label" ],
         "summary" : "Delete annotation label",
         "description" : "Deletes the specified annotation label specification from the tradition. Returns an error if the label is still in use.",
         "operationId" : "deleteAnnotationLabel",
@@ -1853,6 +1922,7 @@
     },
     "/tradition/{tradId}/matrix" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download character matrix for parsimony analysis",
         "description" : "Returns a character matrix suitable for use with e.g. Phylip Pars.",
         "operationId" : "getCharMatrix",
@@ -1941,6 +2011,7 @@
     },
     "/tradition/{tradId}/csv" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download CSV alignment",
         "description" : "Returns a CSV file that contains the aligned reading data for the tradition.",
         "operationId" : "getCsv",
@@ -2012,6 +2083,7 @@
     },
     "/tradition/{tradId}/annotationlabels" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Get annotation labels for tradition",
         "description" : "Returns a list of the annotation labels that have been defined for this tradition.",
         "operationId" : "getDefinedAnnotationLabels",
@@ -2048,6 +2120,7 @@
     },
     "/tradition/{tradId}/dot" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download GraphViz",
         "description" : "Returns a GraphViz dot file that describes the specified tradition and its data.",
         "operationId" : "getDot",
@@ -2169,6 +2242,7 @@
     },
     "/tradition/{tradId}/graphml" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download GraphML",
         "description" : "Returns a GraphML file that describes the specified tradition and its data.",
         "operationId" : "getGraphML",
@@ -2198,6 +2272,7 @@
     },
     "/tradition/{tradId}/stemmaweb" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download legacy GraphML",
         "description" : "Returns a legacy Stemmaweb-compatible GraphML file that describes the specified tradition and its data.",
         "operationId" : "getGraphMLStemmaweb",
@@ -2227,6 +2302,7 @@
     },
     "/tradition/{tradId}/json" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download JSON alignment",
         "description" : "Returns a JSON file that contains the aligned reading data for the tradition.",
         "operationId" : "getJson",
@@ -2305,6 +2381,7 @@
     },
     "/tradition/{tradId}/reading/{id}/lacunaAfter" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Insert a lacuna",
         "description" : "Inserts a lacuna in the specified witness(es) after a given reading and before the next reading(s) in the sequence for that witness/those witnesses. Intended to indicate that empty ranks are not a simple omission.",
         "operationId" : "addLacuna_1",
@@ -2368,6 +2445,7 @@
     },
     "/tradition/{tradId}/reading/{id}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get a reading",
         "description" : "Returns the metadata for a single reading.",
         "operationId" : "getReading_1",
@@ -2406,6 +2484,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Reading" ],
         "summary" : "Update an existing reading",
         "description" : "Changes the properties of an existing reading. Properties whose change has potential knock-on effects on other readings, such as 'is_lemma', cannot be set using this method.",
         "operationId" : "changeReadingProperties_1",
@@ -2458,6 +2537,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Reading" ],
         "summary" : "Delete a user-addable reading",
         "description" : "Deletes a reading. This only makes sense if it is a user-addable reading, i.e., an emendation. If the lemma path goes through the emendation, the lemma path will also be removed.",
         "operationId" : "deleteUserReading_1",
@@ -2501,6 +2581,7 @@
     },
     "/tradition/{tradId}/reading/{id}/concatenate/{read2Id}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Concatenate readings",
         "description" : "Collapse two consecutive readings into one. Texts will be concatenated together (with or without a space or extra text).",
         "operationId" : "compressReadings_1",
@@ -2591,6 +2672,7 @@
     },
     "/tradition/{tradId}/reading/{id}/relations" : {
       "delete" : {
+        "tags" : [ "Reading" ],
         "summary" : "Delete all reading relations",
         "description" : "Deletes all relations associated with the given reading.",
         "operationId" : "deleteAllRelations_1",
@@ -2648,6 +2730,7 @@
     },
     "/tradition/{tradId}/reading/{id}/duplicate" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Duplicate a reading",
         "description" : "Duplicates a reading in a specific tradition. This should be used when a reading has been mis-collated, or when the editor otherwise wishes to assert that seemingly identical readings in different witnesses are distinct.",
         "operationId" : "duplicateReading_1",
@@ -2723,6 +2806,7 @@
     },
     "/tradition/{tradId}/reading/{id}/next/{witnessId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Next reading",
         "description" : "Gets the reading that follows the requested reading in the given witness.",
         "operationId" : "getNextReadingInWitness_1",
@@ -2807,6 +2891,7 @@
     },
     "/tradition/{tradId}/reading/{id}/prior/{witnessId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Prior reading",
         "description" : "Gets the reading that precedes the requested reading in the given witness.",
         "operationId" : "getPreviousReadingInWitness_1",
@@ -2891,6 +2976,7 @@
     },
     "/tradition/{tradId}/reading/{id}/witnesses" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get reading witnesses",
         "description" : "Gets the list of witnesses that carry the given reading.",
         "operationId" : "getReadingWitnesses_1",
@@ -2948,6 +3034,7 @@
     },
     "/tradition/{tradId}/reading/{id}/related" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get related readings",
         "description" : "Gets all readings related to the given reading.",
         "operationId" : "getRelatedReadings_1",
@@ -3004,6 +3091,7 @@
     },
     "/tradition/{tradId}/reading/{id}/merge/{secondReadId}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Merge readings",
         "description" : "Merges two co-located readings into one single reading. This will primarily be used when a collation has missed that a pair of readings is identical.",
         "operationId" : "mergeWithReading_1",
@@ -3083,6 +3171,7 @@
     },
     "/tradition/{tradId}/reading/{id}/normaliseRelated/{reltype}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Propagate normal form along relations",
         "description" : "Propagates this reading's normal form to all other readings related by the given type.",
         "operationId" : "normaliseRelated_1",
@@ -3141,6 +3230,7 @@
     },
     "/tradition/{tradId}/reading/{id}/setlemma" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Set a reading as lemma",
         "description" : "Toggles whether this reading is a lemma. If so, ensures that no other reading at this rank in this section is a lemma. Returns all readings that were changed.",
         "operationId" : "setReadingAsLemma_1",
@@ -3188,6 +3278,7 @@
     },
     "/tradition/{tradId}/reading/{id}/split/{splitIndex}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Split a reading",
         "description" : "Splits up a single reading into smaller consecutive reading units. Note that this operation should not change the text sequence for any witness.",
         "operationId" : "splitReading_1",
@@ -3280,6 +3371,7 @@
     },
     "/tradition/{tradId}/relation" : {
       "post" : {
+        "tags" : [ "Relation" ],
         "summary" : "Create relation",
         "description" : "Creates a new relation between the specified reading nodes.",
         "operationId" : "create",
@@ -3330,6 +3422,7 @@
     },
     "/tradition/{tradId}/relation/remove" : {
       "post" : {
+        "tags" : [ "Relation" ],
         "summary" : "Delete a relation specified by JSON data",
         "description" : "Remove the relation specified. There should be only one.",
         "operationId" : "deleteByData",
@@ -3383,6 +3476,7 @@
     },
     "/tradition/{tradId}/relation/{relationId}" : {
       "delete" : {
+        "tags" : [ "Relation" ],
         "summary" : "Delete relation by ID",
         "description" : "Removes a relation by internal ID.",
         "operationId" : "deleteById",
@@ -3429,6 +3523,7 @@
     },
     "/tradition/{tradId}/relationtype/{name}" : {
       "get" : {
+        "tags" : [ "Relation Type" ],
         "summary" : "Get relation type",
         "description" : "Gets the information for the given relation type name.",
         "operationId" : "getRelationType",
@@ -3473,6 +3568,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Relation Type" ],
         "summary" : "Create / update relation type specification",
         "description" : "Creates or updates a relation type according to the specification given.",
         "operationId" : "create_1",
@@ -3547,6 +3643,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Relation Type" ],
         "summary" : "Delete a relation type",
         "description" : "Deletes the named relation type.",
         "operationId" : "delete",
@@ -3599,6 +3696,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get section",
         "description" : "Get the metadata for a section.",
         "operationId" : "getSectionInfo",
@@ -3637,6 +3735,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Section" ],
         "summary" : "Update section",
         "description" : "Update the metadata for a section.",
         "operationId" : "updateSectionInfo",
@@ -3686,6 +3785,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Section" ],
         "summary" : "Delete section",
         "description" : "Delete the specified section, and update the tradition's sequence of sections to account for any resulting gap. Returns a JSON response on error with key 'error'.",
         "operationId" : "deleteSection",
@@ -3719,6 +3819,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/emend" : {
       "post" : {
+        "tags" : [ "Section" ],
         "summary" : "Record emendation",
         "description" : "Propose an emendation (that is, an edit not supported by any witness) to the text. An emendation is a special type of reading, which requires an authority (i.e. the identity of the proposer) to be named.",
         "operationId" : "emendText",
@@ -3787,6 +3888,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/readings" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get readings",
         "description" : "Gets a list of all readings in the given tradition section.",
         "operationId" : "getAllReadings_1",
@@ -3830,6 +3932,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/relations" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get relations",
         "description" : "Gets a list of all relations defined within the given section.",
         "operationId" : "getAllRelationships_1",
@@ -3885,6 +3988,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/witnesses" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get witnesses",
         "description" : "Gets a list of all the witnesses of the section with the given id.",
         "operationId" : "getAllWitnessInSection",
@@ -3928,6 +4032,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/annotations" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get annotations on section",
         "description" : "Return a list of annotations that refer to a node belonging to this section. The 'label' query parameter can be specified one or more times to restrict the output to the selected annotation types. If the 'recursive' query parameter has a value of 'true', then the results will include the ancestors of the (selected) section annotations.",
         "operationId" : "getAnnotationsOnSection",
@@ -4000,6 +4105,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/matrix" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download character matrix for parsimony analysis",
         "description" : "Returns a character matrix suitable for use with e.g. Phylip Pars.",
         "operationId" : "getCharMatrix_1",
@@ -4104,6 +4210,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/colocated" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get colocated clusters of readings",
         "description" : "Gets a list of all clusters of readings that are related via colocation links.",
         "operationId" : "getColocatedClusters",
@@ -4144,6 +4251,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/mergeablereadings/{startRank}/{endRank}" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "List mergeable readings",
         "description" : "Returns a list of pairs of readings that could potentially be identical - that is, they have the same text and same joining properties, and are co-located.",
         "operationId" : "getCouldBeIdenticalReadings",
@@ -4247,6 +4355,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/csv" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download CSV alignment",
         "description" : "Returns a CSV file that contains the aligned reading data for the tradition.",
         "operationId" : "getCsv_1",
@@ -4328,6 +4437,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/dot" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download GraphViz dot",
         "description" : "Returns a GraphViz dot file that describes the specified section and its data.",
         "operationId" : "getDot_1",
@@ -4475,6 +4585,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/emendations" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get emendations",
         "description" : "Return a list of emendations on this section.",
         "operationId" : "getEmendations",
@@ -4529,6 +4640,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/graphml" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download GraphML XML description of section",
         "description" : "Returns a GraphML file that describes the specified section and its data, including annotations.",
         "operationId" : "getGraphML_1",
@@ -4576,6 +4688,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/graph" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download JSON description of graph nodes & edges",
         "description" : "Returns a JSON GraphModel (readings, relations, sequences incl. lemma & emendation) for the section.",
         "operationId" : "getGraphModel",
@@ -4630,6 +4743,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/identicalreadings/{startRank}/{endRank}" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Find identical readings",
         "description" : "Get all readings which have the same text and the same rank, between the given ranks. This is a constrained version of mergeablereadings.",
         "operationId" : "getIdenticalReadings",
@@ -4704,6 +4818,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/json" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download JSON alignment",
         "description" : "Returns an alignment table for the section in JSON format.",
         "operationId" : "getJson_1",
@@ -4792,6 +4907,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/lemmareadings" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get sequence of lemma readings",
         "description" : "Gets the list of lemma readings for the section, if there are any. Requesting the 'final' lemma sequence will return what was set by .../setlemma; otherwise all readings marked as lemmata will be returned, in order of rank, whether or not they are yet on a lemma path.",
         "operationId" : "getLemmaReadings",
@@ -4901,6 +5017,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/lemmatext" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get lemma text for the section.",
         "description" : "Retrieve the lemma text for the section, if there is any, in a JSON object with key 'text'.",
         "operationId" : "getLemmaText",
@@ -5007,6 +5124,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/lacunaAfter" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Insert a lacuna",
         "description" : "Inserts a lacuna in the specified witness(es) after a given reading and before the next reading(s) in the sequence for that witness/those witnesses. Intended to indicate that empty ranks are not a simple omission.",
         "operationId" : "addLacuna_2",
@@ -5077,6 +5195,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get a reading",
         "description" : "Returns the metadata for a single reading.",
         "operationId" : "getReading_2",
@@ -5122,6 +5241,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Reading" ],
         "summary" : "Update an existing reading",
         "description" : "Changes the properties of an existing reading. Properties whose change has potential knock-on effects on other readings, such as 'is_lemma', cannot be set using this method.",
         "operationId" : "changeReadingProperties_2",
@@ -5181,6 +5301,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Reading" ],
         "summary" : "Delete a user-addable reading",
         "description" : "Deletes a reading. This only makes sense if it is a user-addable reading, i.e., an emendation. If the lemma path goes through the emendation, the lemma path will also be removed.",
         "operationId" : "deleteUserReading_2",
@@ -5231,6 +5352,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/concatenate/{read2Id}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Concatenate readings",
         "description" : "Collapse two consecutive readings into one. Texts will be concatenated together (with or without a space or extra text).",
         "operationId" : "compressReadings_2",
@@ -5328,6 +5450,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/relations" : {
       "delete" : {
+        "tags" : [ "Reading" ],
         "summary" : "Delete all reading relations",
         "description" : "Deletes all relations associated with the given reading.",
         "operationId" : "deleteAllRelations_2",
@@ -5392,6 +5515,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/duplicate" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Duplicate a reading",
         "description" : "Duplicates a reading in a specific tradition. This should be used when a reading has been mis-collated, or when the editor otherwise wishes to assert that seemingly identical readings in different witnesses are distinct.",
         "operationId" : "duplicateReading_2",
@@ -5474,6 +5598,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/next/{witnessId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Next reading",
         "description" : "Gets the reading that follows the requested reading in the given witness.",
         "operationId" : "getNextReadingInWitness_2",
@@ -5565,6 +5690,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/prior/{witnessId}" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Prior reading",
         "description" : "Gets the reading that precedes the requested reading in the given witness.",
         "operationId" : "getPreviousReadingInWitness_2",
@@ -5656,6 +5782,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/witnesses" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get reading witnesses",
         "description" : "Gets the list of witnesses that carry the given reading.",
         "operationId" : "getReadingWitnesses_2",
@@ -5720,6 +5847,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/related" : {
       "get" : {
+        "tags" : [ "Reading" ],
         "summary" : "Get related readings",
         "description" : "Gets all readings related to the given reading.",
         "operationId" : "getRelatedReadings_2",
@@ -5783,6 +5911,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/merge/{secondReadId}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Merge readings",
         "description" : "Merges two co-located readings into one single reading. This will primarily be used when a collation has missed that a pair of readings is identical.",
         "operationId" : "mergeWithReading_2",
@@ -5869,6 +5998,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/normaliseRelated/{reltype}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Propagate normal form along relations",
         "description" : "Propagates this reading's normal form to all other readings related by the given type.",
         "operationId" : "normaliseRelated_2",
@@ -5934,6 +6064,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/setlemma" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Set a reading as lemma",
         "description" : "Toggles whether this reading is a lemma. If so, ensures that no other reading at this rank in this section is a lemma. Returns all readings that were changed.",
         "operationId" : "setReadingAsLemma_2",
@@ -5988,6 +6119,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/reading/{readingId}/split/{splitIndex}" : {
       "post" : {
+        "tags" : [ "Reading" ],
         "summary" : "Split a reading",
         "description" : "Splits up a single reading into smaller consecutive reading units. Note that this operation should not change the text sequence for any witness.",
         "operationId" : "splitReading_2",
@@ -6087,6 +6219,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/tei" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download TEI XML encoding of section",
         "description" : "Returns a TEI XML file representing the section text, using the double-endpoint-attachment method to encode the variation.",
         "operationId" : "getTei",
@@ -6243,6 +6376,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/tsv" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Download TSV alignment",
         "description" : "Returns a TSV file that contains the aligned reading data for the tradition.",
         "operationId" : "getTsv",
@@ -6324,6 +6458,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/variants" : {
       "get" : {
+        "tags" : [ "Section" ],
         "summary" : "Get variant list",
         "description" : "Return a list of variant groupings suitable for a critical apparatus.",
         "operationId" : "getVariantGroups",
@@ -6473,6 +6608,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/witness/{sigil}" : {
       "get" : {
+        "tags" : [ "Witness" ],
         "summary" : "Get witness information",
         "description" : "Returns a WitnessModel corresponding to the requested witness.",
         "operationId" : "getWitnessInfo",
@@ -6525,6 +6661,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Witness" ],
         "summary" : "Delete a witness",
         "description" : "Deletes the requested witness from the entire tradition.",
         "operationId" : "deleteWitness",
@@ -6582,6 +6719,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/witness/{sigil}/readings" : {
       "get" : {
+        "tags" : [ "Witness" ],
         "summary" : "Get readings",
         "description" : "Returns the sequence of readings for a given witness.",
         "operationId" : "getWitnessAsReadings",
@@ -6666,6 +6804,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/witness/{sigil}/text" : {
       "get" : {
+        "tags" : [ "Witness" ],
         "summary" : "Get witness text",
         "description" : "Finds a witness and returns it as text string. Optionally filters by rank range and text layers.",
         "operationId" : "getWitnessAsTextWithLayer",
@@ -6771,6 +6910,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/merge/{otherId}" : {
       "post" : {
+        "tags" : [ "Section" ],
         "summary" : "Merge sections",
         "description" : "Merge two sections into one, and adjust the tradition's section order accordingly. The specified sections must be contiguous, and will be merged according to their existing order.",
         "operationId" : "mergeSections",
@@ -6821,6 +6961,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/orderAfter/{priorSectID}" : {
       "put" : {
+        "tags" : [ "Section" ],
         "summary" : "Reorder section",
         "description" : "Move this section to a new place in the section sequence. Upon error, returns a JSON response with key 'error'.",
         "operationId" : "reorderSectionAfter",
@@ -6871,6 +7012,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/setlemma" : {
       "post" : {
+        "tags" : [ "Section" ],
         "summary" : "Set the lemma text",
         "description" : "Chain through the readings marked as lemmata and construct the LEMMA_TEXT link. Returns a short JSON value with key 'result' (== 'success') or 'error'.",
         "operationId" : "setLemmaText",
@@ -6935,6 +7077,7 @@
     },
     "/tradition/{tradId}/section/{sectionId}/splitAtRank/{rank}" : {
       "post" : {
+        "tags" : [ "Section" ],
         "summary" : "Split section at rank",
         "description" : "Split a section into two at the given graph rank, and adjust the tradition's section order accordingly.",
         "operationId" : "splitAtRank",
@@ -6992,6 +7135,7 @@
     },
     "/tradition/{tradId}/stemma/{name}" : {
       "get" : {
+        "tags" : [ "Stemma" ],
         "summary" : "Get stemma",
         "description" : "Fetches the information for the specified stemma, including its dot specification.",
         "operationId" : "getStemma",
@@ -7064,6 +7208,7 @@
         }
       },
       "put" : {
+        "tags" : [ "Stemma" ],
         "summary" : "Replace or add new stemma",
         "description" : "Stores a new or updated stemma under the given name.",
         "operationId" : "replaceStemma",
@@ -7157,6 +7302,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Stemma" ],
         "summary" : "Delete stemma",
         "description" : "Deletes the stemma that is identified by the given name.",
         "operationId" : "deleteStemma",
@@ -7210,6 +7356,7 @@
     },
     "/tradition/{tradId}/stemma/{name}/reorient/{nodeId}" : {
       "post" : {
+        "tags" : [ "Stemma" ],
         "summary" : "Reorient stemma",
         "description" : "Reorients a stemma tree so that the given witness node is the root (archetype). This operation can only be performed on a stemma without contamination links.",
         "operationId" : "reorientStemma",
@@ -7299,6 +7446,7 @@
     },
     "/tradition/{tradId}/tei" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download TEI",
         "description" : "Returns a TEI double-endpoint-attachment file representing the tradition text.",
         "operationId" : "getTei_1",
@@ -7448,6 +7596,7 @@
     },
     "/tradition/{tradId}/tsv" : {
       "get" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Download TSV alignment",
         "description" : "Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.",
         "operationId" : "getTsv_1",
@@ -7519,6 +7668,7 @@
     },
     "/tradition/{tradId}/witness/{sigil}" : {
       "get" : {
+        "tags" : [ "Witness" ],
         "summary" : "Get witness information",
         "description" : "Returns a WitnessModel corresponding to the requested witness.",
         "operationId" : "getWitnessInfo_1",
@@ -7564,6 +7714,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "Witness" ],
         "summary" : "Delete a witness",
         "description" : "Deletes the requested witness from the entire tradition.",
         "operationId" : "deleteWitness_1",
@@ -7614,6 +7765,7 @@
     },
     "/tradition/{tradId}/witness/{sigil}/readings" : {
       "get" : {
+        "tags" : [ "Witness" ],
         "summary" : "Get readings",
         "description" : "Returns the sequence of readings for a given witness.",
         "operationId" : "getWitnessAsReadings_1",
@@ -7691,6 +7843,7 @@
     },
     "/tradition/{tradId}/witness/{sigil}/text" : {
       "get" : {
+        "tags" : [ "Witness" ],
         "summary" : "Get witness text",
         "description" : "Finds a witness and returns it as text string. Optionally filters by rank range and text layers.",
         "operationId" : "getWitnessAsTextWithLayer_1",
@@ -7789,6 +7942,7 @@
     },
     "/tradition/{tradId}/stemma" : {
       "post" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Upload a new stemma",
         "description" : "Creates/saves a new stemma for this tradition.",
         "operationId" : "newStemma",
@@ -7838,6 +7992,7 @@
     },
     "/tradition/{tradId}/pruneAnnotations" : {
       "post" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Clean up dangling annotations",
         "description" : "Deletes any annotations on this tradition that lack referents, unless the annotation is marked as 'primary'. Returns a list of the deleted annotations.",
         "operationId" : "pruneAnnotations",
@@ -7874,6 +8029,7 @@
     },
     "/user/{userId}" : {
       "get" : {
+        "tags" : [ "User" ],
         "summary" : "Get user",
         "description" : "Gets the information for the given user ID",
         "operationId" : "getUserById",
@@ -7919,6 +8075,7 @@
         }
       },
       "put" : {
+        "tags" : [ "User" ],
         "summary" : "Create / update user",
         "description" : "Creates or updates a user according to the specification given",
         "operationId" : "create_2",
@@ -7979,6 +8136,7 @@
         }
       },
       "delete" : {
+        "tags" : [ "User" ],
         "summary" : "Delete user",
         "description" : "Removes a user. Requires user's traditions to be deleted first",
         "operationId" : "deleteUser",
@@ -8032,6 +8190,7 @@
     },
     "/user/{userId}/traditions" : {
       "get" : {
+        "tags" : [ "User" ],
         "summary" : "List user traditions",
         "description" : "Get a list of the traditions belonging to the user",
         "operationId" : "getUserTraditions",
@@ -8079,6 +8238,7 @@
     },
     "/tradition" : {
       "post" : {
+        "tags" : [ "Tradition" ],
         "summary" : "Upload new tradition",
         "description" : "Imports a new tradition from file data of various forms, creating at least one section in the process. Returns the ID of the newly created tradition.",
         "operationId" : "importFromFile",

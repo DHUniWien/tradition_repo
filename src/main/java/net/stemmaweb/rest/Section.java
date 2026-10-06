@@ -130,7 +130,9 @@ public class Section {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get section", description = "Get the metadata for a section.",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get section", description = "Get the metadata for a section.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(schema = @Schema(implementation = SectionModel.class))),
@@ -164,7 +166,9 @@ public class Section {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Update section", description = "Update the metadata for a section.",
+    @Operation(
+            tags = {"Section"},
+            summary = "Update section", description = "Update the metadata for a section.",
             requestBody = @RequestBody(description = "A JSON specification of the section update", required = true,
                     content = @Content(schema = @Schema(implementation = SectionModel.class))),
             responses = {
@@ -202,7 +206,9 @@ public class Section {
      * @statuscode 500 - on failure, with an error message
      */
     @DELETE
-    @Operation(summary = "Delete section",
+    @Operation(
+            tags = {"Section"},
+            summary = "Delete section",
             description = "Delete the specified section, and update the tradition's sequence of sections to account for any resulting gap. Returns a JSON response on error with key 'error'.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success"),
@@ -259,7 +265,9 @@ public class Section {
     @GET
     @Path("/witnesses")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get witnesses", description = "Gets a list of all the witnesses of the section with the given id.",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get witnesses", description = "Gets a list of all the witnesses of the section with the given id.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = WitnessModel.class)))),
@@ -305,7 +313,9 @@ public class Section {
     @GET
     @Path("/readings")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get readings", description = "Gets a list of all readings in the given tradition section.",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get readings", description = "Gets a list of all readings in the given tradition section.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
@@ -341,7 +351,9 @@ public class Section {
     @GET
     @Path("/relations")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get relations", description = "Gets a list of all relations defined within the given section.",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get relations", description = "Gets a list of all relations defined within the given section.",
             parameters = {
                     @Parameter(name = "include_readings", description = "Include the ReadingModel information for the source and target",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "false"))
@@ -377,7 +389,9 @@ public class Section {
     @GET
     @Path("/colocated")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get colocated clusters of readings",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get colocated clusters of readings",
             description = "Gets a list of all clusters of readings that are related via colocation links.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
@@ -419,7 +433,9 @@ public class Section {
     @GET
     @Path("/lemmatext")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get lemma text for the section.",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get lemma text for the section.",
             description = "Retrieve the lemma text for the section, if there is any, in a JSON object with key 'text'.",
             parameters = {
                     @Parameter(name = "final", in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
@@ -485,7 +501,9 @@ public class Section {
     @GET
     @Path("/lemmareadings")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get sequence of lemma readings",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get sequence of lemma readings",
             description = "Gets the list of lemma readings for the section, if there are any. Requesting the 'final' lemma sequence will return what was set by .../setlemma; otherwise all readings marked as lemmata will be returned, in order of rank, whether or not they are yet on a lemma path.",
             parameters = {
                     @Parameter(name = "final", in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
@@ -586,7 +604,9 @@ public class Section {
     @GET
     @Path("/annotations")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get annotations on section",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get annotations on section",
             description = "Return a list of annotations that refer to a node belonging to this section. The 'label' query parameter can be specified one or more times to restrict the output to the selected annotation types. If the 'recursive' query parameter has a value of 'true', then the results will include the ancestors of the (selected) section annotations.",
             parameters = {
                     @Parameter(name = "label", in = ParameterIn.QUERY, schema = @Schema(type = "string")),
@@ -652,7 +672,9 @@ public class Section {
     @GET
     @Path("/variants")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Get variant list",
+    @Operation(
+            tags = {"Section"},
+            summary = "Get variant list",
             description = "Return a list of variant groupings suitable for a critical apparatus.",
             parameters = {
                     @Parameter(name = "significant", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
@@ -714,7 +736,9 @@ public class Section {
     @PUT
     @Path("/orderAfter/{priorSectID}")
     @Produces(MediaType.TEXT_PLAIN)
-    @Operation(summary = "Reorder section",
+    @Operation(
+            tags = {"Section"},
+            summary = "Reorder section",
             description = "Move this section to a new place in the section sequence. Upon error, returns a JSON response with key 'error'.",
             parameters = {
                     @Parameter(name = "priorSectID", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
@@ -759,7 +783,9 @@ public class Section {
     @POST
     @Path("/splitAtRank/{rank}")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Split section at rank",
+    @Operation(
+            tags = {"Section"},
+            summary = "Split section at rank",
             description = "Split a section into two at the given graph rank, and adjust the tradition's section order accordingly.",
             parameters = {
                     @Parameter(name = "rank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
@@ -928,7 +954,9 @@ public class Section {
     @POST
     @Path("/merge/{otherId}")
     @Produces(MediaType.TEXT_PLAIN)
-    @Operation(summary = "Merge sections",
+    @Operation(
+            tags = {"Section"},
+            summary = "Merge sections",
             description = "Merge two sections into one, and adjust the tradition's section order accordingly. The specified sections must be contiguous, and will be merged according to their existing order.",
             parameters = {
                     @Parameter(name = "otherId", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
@@ -1097,7 +1125,9 @@ public class Section {
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "List mergeable readings",
+    @Operation(
+            tags = {"Section"},
+            summary = "List mergeable readings",
             description = "Returns a list of pairs of readings that could potentially be identical - that is, they have the same text and same joining properties, and are co-located.",
             parameters = {
                     @Parameter(name = "startRank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string")),
@@ -1222,7 +1252,9 @@ public class Section {
     @GET
     @Path("/identicalreadings/{startRank}/{endRank}")
     @Produces("application/json; charset=utf-8")
-    @Operation(summary = "Find identical readings",
+    @Operation(
+            tags = {"Section"},
+            summary = "Find identical readings",
             description = "Get all readings which have the same text and the same rank, between the given ranks. This is a constrained version of mergeablereadings.",
             parameters = {
                     @Parameter(name = "startRank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string")),
@@ -1270,6 +1302,7 @@ public class Section {
     @Path("/setlemma")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Set the lemma text",
             description = "Chain through the readings marked as lemmata and construct the LEMMA_TEXT link. Returns a short JSON value with key 'result' (== 'success') or 'error'.",
             responses = {
@@ -1369,6 +1402,7 @@ public class Section {
     @Path("/emendations")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Get emendations",
             description = "Return a list of emendations on this section.",
             responses = {
@@ -1433,6 +1467,7 @@ public class Section {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Record emendation",
             description = "Propose an emendation (that is, an edit not supported by any witness) to the text. An emendation is a special type of reading, which requires an authority (i.e. the identity of the proposer) to be named.",
             requestBody = @RequestBody(
@@ -1526,6 +1561,7 @@ public class Section {
     @Path("/graph")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Download JSON description of graph nodes & edges",
             description = "Returns a JSON GraphModel (readings, relations, sequences incl. lemma & emendation) for the section.",
             responses = {
@@ -1593,6 +1629,7 @@ public class Section {
     @Path("/graphml")
     @Produces("application/zip")
     @Operation(
+            tags = {"Section"},
             summary = "Download GraphML XML description of section",
             description = "Returns a GraphML file that describes the specified section and its data, including annotations.",
             responses = {
@@ -1649,6 +1686,7 @@ public class Section {
     @Path("/dot")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Download GraphViz dot",
             description = "Returns a GraphViz dot file that describes the specified section and its data.",
             parameters = {
@@ -1744,6 +1782,7 @@ public class Section {
     @Path("/json")
     @Produces("application/json; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Download JSON alignment",
             description = "Returns an alignment table for the section in JSON format.",
             parameters = {
@@ -1808,6 +1847,7 @@ public class Section {
     @Path("/csv")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Download CSV alignment",
             description = "Returns a CSV file that contains the aligned reading data for the tradition.",
             parameters = {
@@ -1872,6 +1912,7 @@ public class Section {
     @Path("/tsv")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Download TSV alignment",
             description = "Returns a TSV file that contains the aligned reading data for the tradition.",
             parameters = {
@@ -1937,6 +1978,7 @@ public class Section {
     @Path("/matrix")
     @Produces("text/plain; charset=utf-8")
     @Operation(
+            tags = {"Section"},
             summary = "Download character matrix for parsimony analysis",
             description = "Returns a character matrix suitable for use with e.g. Phylip Pars.",
             parameters = {
@@ -2015,6 +2057,7 @@ public class Section {
     @Produces("application/xml; charset=utf-8")
     @Path("/tei")
     @Operation(
+            tags = {"Section"},
             summary = "Download TEI XML encoding of section",
             description = "Returns a TEI XML file representing the section text, using the double-endpoint-attachment method to encode the variation.",
             parameters = {
