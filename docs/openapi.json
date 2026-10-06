@@ -3506,14 +3506,8 @@
               }
             }
           },
-          "403" : {
-            "description" : "Forbidden, if the given ID does not belong to a relation",
-            "content" : {
-              "application/json" : { }
-            }
-          },
           "500" : {
-            "description" : "Failure, with JSON error message",
+            "description" : "Failure (e.g. the given ID does not belong to a RELATED relationship), with JSON error message",
             "content" : {
               "application/json" : { }
             }

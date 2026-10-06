@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.junit.After;
 import org.junit.Before;
@@ -157,6 +158,18 @@ public class DatabaseServiceTest {
             long expectedId = baseRelation + 1;
             assertEquals(expectedId, rel.getProperty("id"));
             assertEquals(rel, DatabaseService.findRelatedOrThrow(tx, String.valueOf(expectedId)));
+            tx.commit();
+        }
+    }
+
+    @Test
+    public void testRapidSequentialCreationNeverDuplicatesId() {
+        try (Transaction tx = db.beginTx()) {
+            HashSet<Long> seen = new HashSet<>();
+            for (int i = 0; i < 50; i++) {
+                Node r = DatabaseService.createNode(tx, Nodes.READING);
+                assertTrue(seen.add((Long) r.getProperty("id")));
+            }
             tx.commit();
         }
     }
