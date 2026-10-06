@@ -59,7 +59,7 @@ public class AnnotationLabel {
      * @title Get annotation label spec
      * @return A JSON AnnotationLabelModel or a JSON error message
      * @statuscode 200 on success
-     * @statuscode 400 if there is an error in the annotation type specification
+     * @statuscode 404 if the annotation label doesn't exist
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
@@ -69,7 +69,7 @@ public class AnnotationLabel {
             description = "Retrieves the specification for the given annotation type name.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
-                    @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Annotation label not found", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
     )
@@ -218,6 +218,7 @@ public class AnnotationLabel {
      * @title Delete annotation label
      *
      * @statuscode 200 on success
+     * @statuscode 404 if the annotation label doesn't exist
      * @statuscode 409 if the annotation label is still in use
      * @statuscode 500 on failure, with an error report in JSON format
      * @return the label model that was deleted
@@ -228,6 +229,7 @@ public class AnnotationLabel {
             description = "Deletes the specified annotation label specification from the tradition. Returns an error if the label is still in use.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Annotation label not found", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "409", description = "Annotation label is still in use", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }

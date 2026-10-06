@@ -85,7 +85,7 @@ public class Relation {
             requestBody = @RequestBody(
                     description = "JSON structure of the relation to create",
                     required = true,
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON)
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = RelationModel.class))
             ),
             responses = {
                     @ApiResponse(
@@ -234,7 +234,7 @@ public class Relation {
                     @ApiResponse(responseCode = "200", description = "A list of all relationships that were removed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class))),
                     @ApiResponse(responseCode = "400", description = "Bad request, if an invalid scope was specified", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "404", description = "Not found, if no matching relationship was found", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "500", description = "Failure, with JSON error message", content = @Content(mediaType = "application/json"))
+                    @ApiResponse(responseCode = "500", description = "Failure (uncaught exception; response body format not guaranteed)")
             }
     )
     public Response deleteByData(RelationModel relationModel) {

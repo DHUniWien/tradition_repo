@@ -207,6 +207,18 @@ public class Tradition {
                             content = @Content(schema = @Schema(implementation = StemmaModel.class))
                     ),
                     @ApiResponse(
+                            responseCode = "400",
+                            description = "Error parsing the stemma specification, or invalid stemma content"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Tradition not found, or the existing stemma being replaced was not found"
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "A stemma by this name already exists, or a witness/hypothesis conflict was found"
+                    ),
+                    @ApiResponse(
                             responseCode = "500",
                             description = "Internal server error, with an error message"
                     )
@@ -435,7 +447,6 @@ public class Tradition {
      * @param am - an AnnotationModel specifying the annotation to create
      * @return the created AnnotationModel
      * @statuscode 201 - on success
-     * @statuscode 403 - if the AnnotationModel is invalid
      * @statuscode 404 - if tradition doesn't exist
      * @statuscode 500 - on error
      */
@@ -454,7 +465,6 @@ public class Tradition {
             responses = {
                     @ApiResponse(responseCode = "201", description = "Annotation created successfully",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
-                    @ApiResponse(responseCode = "403", description = "Invalid AnnotationModel"),
                     @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             }
@@ -762,7 +772,7 @@ public class Tradition {
      * @param filterLabels Return only annotations with the given label. May be specified multiple times.
      * @return a list of AnnotationModels
      * @statuscode 200 - on success
-     * @statuscode 400 - if tradition doesn't exist
+     * @statuscode 404 - if tradition doesn't exist
      * @statuscode 500 - on error
      */
     @GET
@@ -774,12 +784,12 @@ public class Tradition {
             parameters = {
                     @Parameter(name = "label",
                             description = "Return only annotations with the given label. May be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class)))
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of AnnotationModels",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnotationModel.class)))),
-                    @ApiResponse(responseCode = "400", description = "Tradition doesn't exist"),
+                    @ApiResponse(responseCode = "404", description = "Tradition doesn't exist"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
@@ -814,7 +824,7 @@ public class Tradition {
      *
      * @return a list of AnnotationLabelModels
      * @statuscode 200 - on success
-     * @statuscode 400 - if tradition doesn't exist
+     * @statuscode 404 - if tradition doesn't exist
      * @statuscode 500 - on error
      */
     @GET
@@ -826,7 +836,7 @@ public class Tradition {
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of AnnotationLabelModels",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnotationLabelModel.class)))),
-                    @ApiResponse(responseCode = "400", description = "Tradition doesn't exist"),
+                    @ApiResponse(responseCode = "404", description = "Tradition doesn't exist"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
@@ -1104,12 +1114,12 @@ public class Tradition {
                     @Parameter(name = "normalize", description = "A relation type to normalize on",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "exclude_witness", description = "A witness to exclude from the apparatus. Can be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class)))
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "The TEI XML output"),
                     @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
     public Response getTei(@DefaultValue("no") @QueryParam("significant") String significant,
@@ -1149,7 +1159,8 @@ public class Tradition {
             description = "Returns a GraphML file that describes the specified tradition and its data.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "ZIP file with GraphML data"),
-                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = MediaType.TEXT_PLAIN))
+                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = MediaType.TEXT_PLAIN)),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
     public Response getGraphML() {
@@ -1181,7 +1192,8 @@ public class Tradition {
             description = "Returns a legacy Stemmaweb-compatible GraphML file that describes the specified tradition and its data.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "XML data"),
-                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = MediaType.TEXT_PLAIN))
+                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = MediaType.TEXT_PLAIN)),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
     public Response getGraphMLStemmaweb() {
@@ -1230,11 +1242,12 @@ public class Tradition {
                     @Parameter(name = "normalise", description = "A RelationType name to normalise on, if desired",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "include_witness", description = "Exclude the given witness from the dot output. Can be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class)))
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "Plaintext dot format", content = @Content(mediaType = "text/plain; charset=utf-8")),
-                    @ApiResponse(responseCode = "404", description = "No such tradition found")
+                    @ApiResponse(responseCode = "404", description = "No such tradition found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
@@ -1280,13 +1293,14 @@ public class Tradition {
                     @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class))),
                     @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string"))
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "The JSON alignment",
-                            content = @Content(schema = @Schema(implementation = AlignmentModel.class)))
+                            content = @Content(schema = @Schema(implementation = AlignmentModel.class))),
+                    @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
     public Response getJson(@QueryParam("conflate") String toConflate,
@@ -1322,12 +1336,13 @@ public class Tradition {
                     @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class))),
                     @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string"))
             },
             responses = {
-                    @ApiResponse(responseCode = "200", description = "The CSV alignment as plaintext")
+                    @ApiResponse(responseCode = "200", description = "The CSV alignment as plaintext"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
     public Response getCsv(@QueryParam("conflate") String toConflate,
@@ -1362,12 +1377,13 @@ public class Tradition {
                     @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class))),
                     @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string"))
             },
             responses = {
-                    @ApiResponse(responseCode = "200", description = "The TSV alignment as plaintext")
+                    @ApiResponse(responseCode = "200", description = "The TSV alignment as plaintext"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
     public Response getTsv(@QueryParam("conflate") String toConflate,
@@ -1404,14 +1420,15 @@ public class Tradition {
                     @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
-                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class))),
                     @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
                     @Parameter(name = "maxVars", description = "Maximum number of variants per location, above which that location will be discarded. Default is 8, for compatibility with Phylip Pars.",
                             in = ParameterIn.QUERY, schema = @Schema(type = "integer", defaultValue = "8"))
             },
             responses = {
-                    @ApiResponse(responseCode = "200", description = "The character matrix as plaintext")
+                    @ApiResponse(responseCode = "200", description = "The character matrix as plaintext"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,

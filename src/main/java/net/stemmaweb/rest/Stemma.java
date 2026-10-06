@@ -85,6 +85,11 @@ public class Stemma {
                             content = @Content(schema = @Schema(implementation = StemmaModel.class))
                     ),
                     @ApiResponse(
+                            responseCode = "201",
+                            description = "Stemma was created",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
                             responseCode = "400",
                             description = "if the stemma reference is a name shared by multiple stemmata",
                             content = @Content(schema = @Schema(implementation = Map.class))
@@ -131,7 +136,7 @@ public class Stemma {
     @Produces("application/json; charset=utf-8")
     @Operation(
             summary = "Replace or add new stemma",
-            description = "Stores a new or updated stemma under the given ID (either name or number).",
+            description = "Stores a new or updated stemma under the given name.",
             requestBody = @RequestBody(
                     description = "A StemmaModel containing the new or replacement stemma",
                     required = true,
@@ -154,8 +159,18 @@ public class Stemma {
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
+                            responseCode = "400",
+                            description = "if the submitted stemma specification fails validation (e.g. a witness not marked as hypothetical or extant, multiple archetype nodes found, or a DOT/Newick parse error)",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
                             responseCode = "404",
-                            description = "if no such tradition exists",
+                            description = "if the tradition, or the existing stemma being replaced, is not found",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "if a stemma by this name already exists, or the requested witness hypothetical/extant status conflicts with an existing witness",
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
@@ -211,7 +226,7 @@ public class Stemma {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
             summary = "Delete stemma",
-            description = "Deletes the stemma that is identified by the given identifier or name.",
+            description = "Deletes the stemma that is identified by the given name.",
             responses = {
                     @ApiResponse(
                             responseCode = "200",
@@ -230,7 +245,7 @@ public class Stemma {
                     @ApiResponse(
                             responseCode = "500",
                             description = "on failure, with an error message",
-                            content = @Content(schema = @Schema(implementation = Map.class))
+                            content = @Content(mediaType = "text/plain")
                     )
             }
     )

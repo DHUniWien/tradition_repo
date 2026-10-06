@@ -349,8 +349,7 @@ public class Section {
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationModel.class)))),
-                    @ApiResponse(responseCode = "404", description = "if no such tradition exists"),
-                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+                    @ApiResponse(responseCode = "500", description = "On error, such as a nonexistent section")
             })
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         try (Transaction tx = db.beginTx()) {
@@ -1109,6 +1108,7 @@ public class Section {
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "400", description = "Rank specification is neither 'start', 'end' or a number"),
                     @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
                     @ApiResponse(responseCode = "500", description = "on failure, with an error message")
             })
@@ -1231,7 +1231,9 @@ public class Section {
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
-                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists")
+                    @ApiResponse(responseCode = "400", description = "Rank specification is neither 'start', 'end' or a number"),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
             })
     public Response getIdenticalReadings(@PathParam("startRank") String startRank,
                                          @PathParam("endRank") String endRank) {
@@ -1688,6 +1690,12 @@ public class Section {
                             content = @Content(schema = @Schema(type = "string"))
                     ),
                     @ApiResponse(
+                            responseCode = "400",
+                            description = "The requested section is not part of this tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
                             responseCode = "404",
                             description = "if no such tradition or section exists",
                             content = @Content(schema = @Schema(implementation = Map.class),
@@ -1757,6 +1765,12 @@ public class Section {
                             content = @Content(schema = @Schema(implementation = AlignmentModel.class))
                     ),
                     @ApiResponse(
+                            responseCode = "400",
+                            description = "The requested section is not found in the tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
                             responseCode = "404",
                             description = "if no such tradition or section exists",
                             content = @Content(schema = @Schema(implementation = Map.class),
@@ -1812,6 +1826,12 @@ public class Section {
                     @ApiResponse(
                             responseCode = "200",
                             description = "on success"
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "The requested section is not found in the tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
                     ),
                     @ApiResponse(
                             responseCode = "404",
@@ -1870,6 +1890,12 @@ public class Section {
                     @ApiResponse(
                             responseCode = "200",
                             description = "on success"
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "The requested section is not found in the tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
                     ),
                     @ApiResponse(
                             responseCode = "404",
@@ -1937,6 +1963,12 @@ public class Section {
                             content = @Content(schema = @Schema(type = "string"))
                     ),
                     @ApiResponse(
+                            responseCode = "400",
+                            description = "The requested section is not found in the tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
                             responseCode = "404",
                             description = "if no such tradition or section exists",
                             content = @Content(schema = @Schema(implementation = Map.class),
@@ -1966,7 +1998,7 @@ public class Section {
     /**
      * Returns a TEI double-endpoint-attachment file representing the section text.
      *
-     * @title Download character matrix for parsimony analysis
+     * @title Download TEI XML encoding of section
      * @param significant   - Zero or more relationship types whose readings should be treated as identical
      * @param excludeType1  - If "true", exclude type-1 (singleton) variants
      * @param excludeNonsense - If "true", suppress any variants marked with the is_nonsense property
@@ -1977,7 +2009,7 @@ public class Section {
      *                    use as the base text in the apparatus.
      * @param conflate - A relation type to normalize on
      * @param excWitnesses - A witness to exclude from the apparatus. Can be specified multiple times.
-     * @return the character matrix as plaintext
+     * @return the TEI XML document
      */
     @GET
     @Produces("application/xml; charset=utf-8")

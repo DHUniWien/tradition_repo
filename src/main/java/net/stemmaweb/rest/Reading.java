@@ -45,7 +45,6 @@ import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.SequenceModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
@@ -155,6 +154,7 @@ public class Reading {
             responses = {
                     @ApiResponse(responseCode = "200", description = "The metadata of the updated reading", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReadingModel.class))),
                     @ApiResponse(responseCode = "400", description = "On an invalid property key, or an invalid property value type"),
+                    @ApiResponse(responseCode = "404", description = "Reading not found"),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message")
             }
     )
@@ -220,7 +220,7 @@ public class Reading {
             description = "Deletes a reading. This only makes sense if it is a user-addable reading, i.e., an emendation. If the lemma path goes through the emendation, the lemma path will also be removed.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "A GraphModel containing the deleted content (readings and sequences)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GraphModel.class))),
-                    @ApiResponse(responseCode = "403", description = "If deletion of a non-user reading is requested"),
+                    @ApiResponse(responseCode = "400", description = "If deletion of a non-user reading is requested"),
                     @ApiResponse(responseCode = "404", description = "If the reading doesn't exist"),
                     @ApiResponse(responseCode = "500", description = "On error")
             }
@@ -286,6 +286,7 @@ public class Reading {
             requestBody = @RequestBody(description = "A boolean value ('true' if the reading should be a lemma)", required = true, content = @Content(mediaType = "application/x-www-form-urlencoded")),
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of changed ReadingModels", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Reading not found"),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message")
             }
     )
@@ -355,6 +356,7 @@ public class Reading {
             responses = {
                     @ApiResponse(responseCode = "200", description = "A GraphModel containing the lacuna and its associated SEQUENCE links.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GraphModel.class))),
                     @ApiResponse(responseCode = "400", description = "If a specified witness does not pass through the given reading"),
+                    @ApiResponse(responseCode = "404", description = "Reading not found"),
                     @ApiResponse(responseCode = "500", description = "On error")
             })
     public Response addLacuna (@QueryParam("witness") List<String> forWitnesses) {
@@ -433,6 +435,7 @@ public class Reading {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of readings related via the given relation types.", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Reading not found"),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message")
             }
     )
@@ -473,6 +476,7 @@ public class Reading {
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of changed readings", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = ReadingModel.class))),
                     @ApiResponse(responseCode = "400", description = "If the reading has neither normal form nor text"),
+                    @ApiResponse(responseCode = "404", description = "Reading not found"),
                     @ApiResponse(responseCode = "500", description = "On failure")
             }
     )
@@ -541,6 +545,7 @@ public class Reading {
             description = "Deletes all relations associated with the given reading.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "Reading not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
     )
@@ -580,7 +585,8 @@ public class Reading {
             summary = "Get reading witnesses",
             description = "Gets the list of witnesses that carry the given reading.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(array = @ArraySchema(schema = @Schema(implementation = WitnessModel.class)))),
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class)))),
+                    @ApiResponse(responseCode = "404", description = "Reading not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
     )
@@ -623,6 +629,8 @@ public class Reading {
             requestBody = @RequestBody(description = "Specifies the reading(s) to be duplicated, as well as the witnesses to which the duplicated new reading(s) should now belong.", required = true, content = @Content(schema = @Schema(implementation = DuplicateModel.class))),
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "400", description = "If the reading cannot be duplicated for the requested witnesses (e.g. no witnesses specified, a witness doesn't carry this reading, or fewer than two witnesses remain)", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "404", description = "Reading not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
     )
@@ -821,6 +829,7 @@ public class Reading {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "404", description = "One or both readings not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "409", description = "If merging the readings would invalidate the graph. This usually means that they are not in the same variant location.", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
@@ -917,6 +926,8 @@ public class Reading {
             requestBody = @RequestBody(description = "A set of criteria indicating how the reading is to be split.", required = true, content = @Content(schema = @Schema(implementation = ReadingBoundaryModel.class))),
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Please specify a model for how the reading should be split!", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "404", description = "Reading not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with a descriptive error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
     )
@@ -1205,6 +1216,7 @@ public class Reading {
             requestBody = @RequestBody(description = "The specification of whether the reading text will be separated with a string, and if so, what string it will be.", required = true, content = @Content(schema = @Schema(implementation = ReadingBoundaryModel.class))),
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "404", description = "One or both readings not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "409", description = "If the readings cannot legally be concatenated", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }

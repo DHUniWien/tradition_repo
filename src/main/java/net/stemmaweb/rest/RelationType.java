@@ -97,6 +97,8 @@ public class RelationType {
      * @return A JSON RelationTypeModel or a JSON error message
      * @statuscode 200 on success, if an existing type was updated
      * @statuscode 201 on success, if a new type was created
+     * @statuscode 304 if a default type was requested but could not be generated
+     * @statuscode 409 if a default type was requested but a type of that name already exists
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
@@ -113,7 +115,9 @@ public class RelationType {
             responses = {
                     @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel (existing type was updated)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
                     @ApiResponse(responseCode = "201", description = "A JSON RelationTypeModel (new type was created)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "304", description = "A default type was requested, but could not be generated"),
                     @ApiResponse(responseCode = "400", description = "Bad request, if the specification is invalid, with an error report in JSON format", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "A default type was requested, but a type of that name already exists", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
     )

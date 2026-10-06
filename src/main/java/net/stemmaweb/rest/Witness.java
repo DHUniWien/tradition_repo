@@ -120,7 +120,7 @@ public class Witness {
                     ),
                     @ApiResponse(
                             responseCode = "404",
-                            description = "Tradition, section, or witness not found"
+                            description = "Witness not found"
                     ),
                     @ApiResponse(
                             responseCode = "500",
@@ -165,7 +165,7 @@ public class Witness {
                     ),
                     @ApiResponse(
                             responseCode = "404",
-                            description = "Tradition or witness not found"
+                            description = "Witness not found"
                     ),
                     @ApiResponse(
                             responseCode = "500",

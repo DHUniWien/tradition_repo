@@ -95,7 +95,7 @@ public class Annotation {
      * @param spec - an {@link net.stemmaweb.model.AnnotationModel AnnotationModel} representing how the annotation should look
      * @return the updated AnnotationModel
      * @statuscode 200 - on success
-     * @statuscode 403 - if the AnnotationModel is invalid
+     * @statuscode 400 - if the AnnotationModel is invalid
      * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
      * @statuscode 500 - on error
      */
@@ -108,7 +108,7 @@ public class Annotation {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Annotation successfully updated",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
-                    @ApiResponse(responseCode = "403", description = "Invalid AnnotationModel"),
+                    @ApiResponse(responseCode = "400", description = "Invalid AnnotationModel"),
                     @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             })
@@ -197,7 +197,7 @@ public class Annotation {
      * @param linkModel - the AnnotationLinkModel representing the link that should be added
      * @statuscode 200 - on success
      * @statuscode 304 - if the specified link already exists
-     * @statuscode 403 - if the AnnotationLinkModel is invalid
+     * @statuscode 400 - if the AnnotationLinkModel is invalid
      * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
      * @statuscode 500 - on error
      * @return an AnnotationModel for the annotation with its new link
@@ -214,7 +214,7 @@ public class Annotation {
                     @ApiResponse(responseCode = "200", description = "Link successfully added",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
                     @ApiResponse(responseCode = "304", description = "Link already exists"),
-                    @ApiResponse(responseCode = "403", description = "Invalid AnnotationLinkModel"),
+                    @ApiResponse(responseCode = "400", description = "Invalid AnnotationLinkModel"),
                     @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             })

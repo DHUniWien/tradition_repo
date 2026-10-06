@@ -18,7 +18,7 @@ public class TraditionUploadModel {
     @Schema(description = "the ID of the user to whom this tradition belongs. Required.", required = true)
     private String userId;
 
-    @Schema(description = "If true, the tradition will be marked as publicly viewable.")
+    @Schema(name = "public", description = "If true, the tradition will be marked as publicly viewable.")
     private boolean is_public;
 
     @Schema(description = "The format of the section data file. Required if 'file' is present.")
