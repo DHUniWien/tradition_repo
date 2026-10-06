@@ -136,8 +136,9 @@ public class CollateXParser {
                         Collections.addAll(seenWitnesses, witnessList);
                     }
                 }
-                Relationship relation = source.createRelationshipTo(target, rtype);
+                Relationship relation;
                 if (rtype != null && rtype.equals(ERelations.RELATED)) {
+                    relation = DatabaseService.createRelatedRelationship(tx, source, target);
                     transpositionSeen = true;
                     relation.setProperty("source", source.getProperty("id").toString());
                     relation.setProperty("target", target.getProperty("id").toString());
@@ -145,6 +146,7 @@ public class CollateXParser {
                     relation.setProperty("reading_a", source.getProperty("text"));
                     relation.setProperty("reading_b", target.getProperty("text"));
                 } else {
+                    relation = source.createRelationshipTo(target, rtype);
                     relation.setProperty("witnesses", witnessList);
                 }
 

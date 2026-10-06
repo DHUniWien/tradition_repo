@@ -23,6 +23,7 @@ import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -146,7 +147,7 @@ public class TranspositionTest {
         try (Transaction tx = db.beginTx()) {
             GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
-            Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
+            Relationship loadedRelationship = DatabaseService.findRelatedOrThrow(tx, relationshipId);
 
             assertEquals(theId, loadedRelationship.getStartNode().getProperty("id").toString());
             assertEquals(roodId, loadedRelationship.getEndNode().getProperty("id").toString());
@@ -176,7 +177,7 @@ public class TranspositionTest {
         try (Transaction tx = db.beginTx()) {
             GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
-            Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
+            Relationship loadedRelationship = DatabaseService.findRelatedOrThrow(tx, relationshipId);
 
             assertEquals(tehId, loadedRelationship.getStartNode().getProperty("id").toString());
             assertEquals(rootId, loadedRelationship.getEndNode().getProperty("id").toString());

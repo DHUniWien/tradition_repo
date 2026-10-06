@@ -126,7 +126,9 @@ public class StemmawebParser {
 									}
 									// If not, create it.
 									if (relship == null)
-										relship = from.createRelationshipTo(to, relKind);
+										relship = relKind.equals(ERelations.RELATED)
+												? DatabaseService.createRelatedRelationship(tx, from, to)
+												: from.createRelationshipTo(to, relKind);
 
 									if (relKind.equals(ERelations.RELATED)) {
 										// Set the n4j relationship properties

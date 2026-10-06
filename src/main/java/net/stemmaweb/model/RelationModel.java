@@ -104,7 +104,7 @@ public class RelationModel {
         }
 
         Iterable<String> properties = rel.getPropertyKeys();
-        id = rel.getElementId();
+        id = rel.getProperty("id").toString();
         for (String property : properties) {
             switch (property) {
                 case "a_derivable_from_b":

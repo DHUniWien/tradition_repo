@@ -109,7 +109,7 @@ public class RelationTypeTest {
     private void checkExpectedRelations(HashSet<String> createdRels, HashSet<String> expectedLinks) {
         try (Transaction tx = db.beginTx()) {
             for (String rid : createdRels) {
-                Relationship link = tx.getRelationshipByElementId(rid);
+                Relationship link = DatabaseService.findRelatedOrThrow(tx, rid);
                 String lookfor = String.format("%s -> %s: %s",
                         link.getStartNode().getProperty("id").toString(), link.getEndNode().getProperty("id").toString(), link.getProperty("type"));
                 String lookrev = String.format("%s -> %s: %s",

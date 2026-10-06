@@ -350,7 +350,9 @@ public class GraphMLParser {
             }
             if (newRel == null && !relationshipExists(source, neolabel)) { // If it exists already we don't touch it.
                 try {
-                	newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
+                	newRel = neolabel.equals("RELATED")
+                	        ? DatabaseService.createRelatedRelationship(tx, source, target)
+                	        : source.createRelationshipTo(target, ERelations.valueOf(neolabel));
                     edgeProperties.forEach(newRel::setProperty);
                     // Catch any relation types and witnesses that were used, so that we can ensure
                     // their existence when we are done

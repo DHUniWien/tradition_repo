@@ -119,7 +119,7 @@ public class RelationTest {
         try (Transaction tx = db.beginTx()) {
 
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
-            Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
+            Relationship loadedRelationship = DatabaseService.findRelatedOrThrow(tx, relationshipId);
 
             assertEquals(source, loadedRelationship.getStartNode().getProperty("id").toString());
             assertEquals(target, loadedRelationship.getEndNode().getProperty("id").toString());
@@ -212,7 +212,7 @@ public class RelationTest {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Relationship rel = tx.getRelationshipByElementId(relationshipId);
+            Relationship rel = DatabaseService.findRelatedOrThrow(tx, relationshipId);
             assertNotNull(rel);
         }
     }
@@ -230,7 +230,7 @@ public class RelationTest {
             //checks that the correct relationship has been found
             assertNotNull(rel);
             assertEquals(march2, rel.getOtherNode(march1));
-            relId = rel.getElementId();
+            relId = rel.getProperty("id").toString();
         }
 
         try (Response removalResponse = jerseyTest
@@ -386,8 +386,8 @@ public class RelationTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            tx.getRelationshipByElementId(relationshipId1);
-            tx.getRelationshipByElementId(relationshipId2);
+            DatabaseService.findRelatedOrThrow(tx, relationshipId1);
+            DatabaseService.findRelatedOrThrow(tx, relationshipId2);
             tx.close();
             fail("These relationships should no longer exist");
         }
@@ -475,7 +475,7 @@ public class RelationTest {
         String relationshipId = ((RelationModel) tmpGraphModel.getRelations().toArray()[0]).getId();
 
         try (Transaction tx = db.beginTx()) {
-            Relationship rel = tx.getRelationshipByElementId(relationshipId);
+            Relationship rel = DatabaseService.findRelatedOrThrow(tx, relationshipId);
             assertEquals("root", rel.getStartNode().getProperty("text"));
             assertEquals("teh", rel.getEndNode().getProperty("text"));
         }
@@ -802,6 +802,174 @@ public class RelationTest {
                 .get();
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         assertEquals("[]", response.readEntity(String.class));
+    }
+
+    /**
+     * The RELATED relationship's own "id" (as returned in RelationModel.getId()) should now be
+     * an application-assigned numeric id, not an elementId -- and the source/target should match
+     * the related readings' own numeric ids.
+     */
+    @Test
+    public void testRelationIdIsNumeric() {
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("showers/5", "25");
+        RelationModel relationship = new RelationModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
+        relationship.setType("repetition");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
+
+        GraphModel readingsAndRelationships;
+        try (Response actualResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
+            readingsAndRelationships = actualResponse.readEntity(new GenericType<>() {
+            });
+        }
+        RelationModel created = (RelationModel) readingsAndRelationships.getRelations().toArray()[0];
+        // Should parse cleanly as a Long (throws NumberFormatException, failing the test, if not)
+        Long.parseLong(created.getId());
+        assertEquals(source, created.getSource());
+        assertEquals(target, created.getTarget());
+    }
+
+    /**
+     * DELETE /relation/{relationId} should work when relationId is the new numeric id, and the
+     * relationship should actually be gone afterwards (looked up via the new scheme).
+     */
+    @Test
+    public void testDeleteRelationByIdWorksWithNewScheme() {
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("showers/5", "25");
+        RelationModel relationship = new RelationModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
+        relationship.setType("repetition");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
+
+        GraphModel readingsAndRelationships;
+        try (Response actualResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            readingsAndRelationships = actualResponse.readEntity(new GenericType<>() {
+            });
+        }
+        String relationId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
+
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation/" + relationId)
+                .request()
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), removalResponse.getStatus());
+        }
+
+        try (Transaction tx = db.beginTx()) {
+            try {
+                DatabaseService.findRelatedOrThrow(tx, relationId);
+                fail("Relation should no longer exist");
+            } catch (NotFoundException e) {
+                // expected
+            }
+        }
+    }
+
+    /**
+     * A transposition relationship created via the CollateX importer (CollateXParser's RELATED
+     * creation branch) should be deletable by its new numeric id, same as any other RELATED link.
+     */
+    @Test
+    public void testCollateXImportedTranspositionRelationIsDeletable() {
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
+        assertEquals(Status.CREATED.getStatusCode(), cResult.getStatus());
+        String cxTradId = Util.getValueFromJson(cResult, "tradId");
+
+        List<RelationModel> allRels = jerseyTest.target("/tradition/" + cxTradId + "/relations")
+                .request().get(new GenericType<>() {});
+        assertFalse(allRels.isEmpty());
+        String transpositionId = allRels.stream()
+                .filter(r -> r.getType().equals("transposition"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No transposition relation found"))
+                .getId();
+
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + cxTradId + "/relation/" + transpositionId)
+                .request()
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), removalResponse.getStatus());
+        }
+    }
+
+    /**
+     * A RELATED relationship round-tripped out through GraphML export and back in through the
+     * GraphML importer (GraphMLParser's RELATED creation branch) should be deletable by its new
+     * numeric id.
+     */
+    @Test
+    public void testGraphMLImportedRelatedRelationIsDeletable() {
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml")
+                .request("application/zip").get();
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+        String gmlZip = Util.saveGraphMLTempfile(r);
+        assertNotNull(gmlZip);
+
+        Response delResponse = jerseyTest.target("/tradition/" + tradId).request().delete();
+        assertEquals(Status.OK.getStatusCode(), delResponse.getStatus());
+
+        Response reimport = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
+                "1", gmlZip, "graphml");
+        assertEquals(Status.CREATED.getStatusCode(), reimport.getStatus());
+        String newTradId = Util.getValueFromJson(reimport, "tradId");
+
+        List<RelationModel> allRels = jerseyTest.target("/tradition/" + newTradId + "/relations")
+                .request().get(new GenericType<>() {});
+        assertFalse(allRels.isEmpty());
+        String relId = allRels.getFirst().getId();
+        // Confirm it really is the new numeric scheme
+        Long.parseLong(relId);
+
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + newTradId + "/relation/" + relId)
+                .request()
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), removalResponse.getStatus());
+        }
+    }
+
+    /**
+     * A RELATED relationship created via the Stemmaweb XML importer (StemmawebParser's RELATED
+     * creation branch -- exercised by the testTradition.xml fixture loaded in setUp) should be
+     * deletable by its new numeric id.
+     */
+    @Test
+    public void testStemmawebImportedRelatedRelationIsDeletable() {
+        List<RelationModel> allRels = jerseyTest.target("/tradition/" + tradId + "/relations")
+                .request().get(new GenericType<>() {});
+        assertFalse(allRels.isEmpty());
+        String relId = allRels.getFirst().getId();
+        Long.parseLong(relId);
+
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation/" + relId)
+                .request()
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), removalResponse.getStatus());
+        }
+
+        try (Transaction tx = db.beginTx()) {
+            try {
+                DatabaseService.findRelatedOrThrow(tx, relId);
+                fail("Relation should no longer exist");
+            } catch (NotFoundException e) {
+                // expected
+            }
+        }
     }
 
     private Node getReading(String text, Comparator<Node> c) {

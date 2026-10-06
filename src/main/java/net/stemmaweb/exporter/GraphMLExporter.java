@@ -109,18 +109,24 @@ public class GraphMLExporter {
 
     /**
      * The application-assigned "id" property on Reading/Section/Annotation nodes (see
-     * DatabaseService.assignIdIfCovered) is a per-tradition counter value: meaningless outside
-     * the tradition that minted it, and reassigned fresh on every reimport regardless of what a
-     * GraphML file says. It must not be round-tripped through GraphML -- besides being pointless
-     * to preserve, the property name collides with Tradition's own (string, UUID) "id" property
-     * whenever a tradition's metadata and its sections are serialized into the same XML file
-     * (tradition.xml's tradition-meta crawl includes each section node as a boundary leaf). Since
-     * collectProperties/returnProperties record only one declared type per property name for the
-     * whole file, whichever type is seen last wins, silently corrupting parsing of the other.
+     * DatabaseService.assignIdIfCovered), and likewise on RELATED relationships (see
+     * DatabaseService.createRelatedRelationship), is a per-tradition counter value: meaningless
+     * outside the tradition that minted it, and reassigned fresh on every reimport regardless of
+     * what a GraphML file says. It must not be round-tripped through GraphML -- besides being
+     * pointless to preserve, the property name collides with Tradition's own (string, UUID) "id"
+     * property whenever a tradition's metadata and its sections are serialized into the same XML
+     * file (tradition.xml's tradition-meta crawl includes each section node as a boundary leaf).
+     * Since collectProperties/returnProperties record only one declared type per property name
+     * for the whole file, whichever type is seen last wins, silently corrupting parsing of the
+     * other. For RELATED relationships specifically, round-tripping the old id would also clobber
+     * the fresh id assigned at reimport time and risk violating the id uniqueness constraint.
      */
     private static boolean isSkippableCoveredId(Entity ent, String propName) {
-        return propName.equals("id") && ent instanceof Node node
-                && (node.hasLabel(Nodes.READING) || node.hasLabel(Nodes.SECTION) || node.hasLabel(Nodes.ANNOTATION));
+        if (!propName.equals("id")) return false;
+        if (ent instanceof Node node) {
+            return node.hasLabel(Nodes.READING) || node.hasLabel(Nodes.SECTION) || node.hasLabel(Nodes.ANNOTATION);
+        }
+        return ent instanceof Relationship rel && rel.isType(ERelations.RELATED);
     }
 
     // TODO check for cases where the same property name has different types in different containers

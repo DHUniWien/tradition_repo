@@ -149,7 +149,7 @@ public class Relation {
                 Node startingPoint = VariantGraphService.getTraditionNode(tx, tradId);
                 if (scope.equals(SCOPE_SECTION))
                     startingPoint = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, String.valueOf(readingA.getProperty("section_id")));
-                Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
+                Relationship thisRelation = DatabaseService.findRelatedOrThrow(tx, thisRelId);
 
                 // Get all the readings that belong to our tradition or section
                 ArrayList<Node> tradReadings = new ArrayList<>();
@@ -297,8 +297,7 @@ public class Relation {
      * @param relationId - the ID of the relation to delete
      * @return The deleted relation
      * @statuscode 200 - on success
-     * @statuscode 403 - if the given ID does not belong to a relation
-     * @statuscode 500 - on failure, with JSON error message
+     * @statuscode 500 - on failure (e.g. the given ID does not belong to a RELATED relationship), with JSON error message
      */
     @DELETE
     @Path("{relationId}")
@@ -315,21 +314,16 @@ public class Relation {
             ),
             responses = {
                     @ApiResponse(responseCode = "200", description = "The deleted relation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationModel.class))),
-                    @ApiResponse(responseCode = "403", description = "Forbidden, if the given ID does not belong to a relation", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "500", description = "Failure, with JSON error message", content = @Content(mediaType = "application/json"))
+                    @ApiResponse(responseCode = "500", description = "Failure (e.g. the given ID does not belong to a RELATED relationship), with JSON error message", content = @Content(mediaType = "application/json"))
             }
     )
     public Response deleteById(@PathParam("relationId") String relationId) {
         RelationModel relationModel;
 
         try (Transaction tx = db.beginTx()) {
-            Relationship relationship = tx.getRelationshipByElementId(relationId);
-            if(relationship.getType().name().equals("RELATED")) {
-                relationModel = new RelationModel(relationship);
-                relationship.delete();
-            } else {
-                return Response.status(Status.FORBIDDEN).entity(jsonerror("This is not a relation link")).build();
-            }
+            Relationship relationship = DatabaseService.findRelatedOrThrow(tx, relationId);
+            relationModel = new RelationModel(relationship);
+            relationship.delete();
             tx.commit();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

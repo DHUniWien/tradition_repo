@@ -795,14 +795,14 @@ public class Reading {
         String sectId = originalReading.getProperty("section_id").toString();
         Long ourRank = (Long) originalReading.getProperty("rank");
         for (RelationModel rm : VariantGraphService.sectionRelations(tx, sectId)) {
-            Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
+            Relationship originalRel = DatabaseService.findRelatedOrThrow(tx, rm.getId());
             if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                     (rm.getSource().equals(originalReadingId) ||
                             rm.getTarget().equals(originalReadingId))) {
-                Relationship newRel = addedReading.createRelationshipTo(
-                        originalRel.getOtherNode(originalReading),
-                        ERelations.RELATED);
+                Relationship newRel = DatabaseService.createRelatedRelationship(tx, addedReading,
+                        originalRel.getOtherNode(originalReading));
                 for (String key : originalRel.getPropertyKeys()) {
+                    if (key.equals("id")) continue;
                     newRel.setProperty(key, originalRel.getProperty(key));
                 }
             } else if (!(originalRel.hasProperty("colocation") &&

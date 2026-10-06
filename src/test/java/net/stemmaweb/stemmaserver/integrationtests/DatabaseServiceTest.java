@@ -142,11 +142,21 @@ public class DatabaseServiceTest {
     @Test
     public void testCreateRelatedRelationshipAssignsId() {
         try (Transaction tx = db.beginTx()) {
+            // setUp()'s own tradition import (via the stemmaweb parser, now routed through
+            // DatabaseService.createRelatedRelationship for its RELATED links) already minted
+            // some number of relation ids, so the counter can't be assumed to start at 0 here --
+            // capture the baseline first, then assert relative to it (same approach as
+            // testAssignIdIfCoveredGivesUniqueSequentialIds above).
+            Node baseA = DatabaseService.createNode(tx, Nodes.READING);
+            Node baseB = DatabaseService.createNode(tx, Nodes.READING);
+            long baseRelation = (long) DatabaseService.createRelatedRelationship(tx, baseA, baseB).getProperty("id");
+
             Node a = DatabaseService.createNode(tx, Nodes.READING);
             Node b = DatabaseService.createNode(tx, Nodes.READING);
             Relationship rel = DatabaseService.createRelatedRelationship(tx, a, b);
-            assertEquals(1L, rel.getProperty("id"));
-            assertEquals(rel, DatabaseService.findRelatedOrThrow(tx, "1"));
+            long expectedId = baseRelation + 1;
+            assertEquals(expectedId, rel.getProperty("id"));
+            assertEquals(rel, DatabaseService.findRelatedOrThrow(tx, String.valueOf(expectedId)));
             tx.commit();
         }
     }

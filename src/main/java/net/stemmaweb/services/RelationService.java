@@ -416,7 +416,7 @@ public class RelationService {
         ArrayList<RelationModel> createdRelations = new ArrayList<>();
 
         Boolean colocation = rtm.getIs_colocation();
-        Relationship relationAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
+        Relationship relationAtoB = DatabaseService.createRelatedRelationship(tx, readingA, readingB);
 
         relationAtoB.setProperty("type", nullToEmptyString(relModel.getType()));
         relationAtoB.setProperty("scope", nullToEmptyString(relModel.getScope()));
