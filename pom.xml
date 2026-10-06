@@ -28,6 +28,28 @@
 				<artifactId>maven-war-plugin</artifactId>
 				<version>3.3.1</version>
 			</plugin>
+			<!-- Generates docs/openapi.json from the Swagger/OpenAPI annotations on the REST
+			     resource classes, for the static Redoc-based documentation site in docs/. -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>generate-openapi-spec</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>net.stemmaweb.OpenApiGenerator</mainClass>
+							<arguments>
+								<argument>docs/openapi.json</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 	<dependencyManagement>
@@ -196,15 +218,18 @@
 		</dependency>
 -->
 
-		<!-- OpenAPI 3 / Swagger documentation -->
+		<!-- OpenAPI 3 / Swagger documentation. Use the "-jakarta" artifacts, since this
+		     project is on the jakarta.ws.rs.* namespace, not javax.ws.rs.*; the plain
+		     (non-jakarta) swagger-jaxrs2 artifact's Reader class reflects over javax.ws.rs
+		     annotations and fails with NoClassDefFoundError against jakarta-based resources. -->
 		<dependency>
 			<groupId>io.swagger.core.v3</groupId>
-			<artifactId>swagger-jaxrs2</artifactId>
+			<artifactId>swagger-jaxrs2-jakarta</artifactId>
 			<version>2.2.25</version>
 		</dependency>
 		<dependency>
 			<groupId>io.swagger.core.v3</groupId>
-			<artifactId>swagger-annotations</artifactId>
+			<artifactId>swagger-annotations-jakarta</artifactId>
 			<version>2.2.25</version>
 		</dependency>
 		<!-- Test dependencies -->
