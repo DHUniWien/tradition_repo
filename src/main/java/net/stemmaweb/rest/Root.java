@@ -23,8 +23,13 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 
-import com.qmino.miredot.annotations.MireDotIgnore;
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -39,6 +44,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.TraditionUploadModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -64,14 +70,14 @@ public class Root {
 
     @GET
     @Produces("text/plain")
-    @MireDotIgnore
+    @Operation(hidden = true)
     public String getHello() {
         return CLICHED_MESSAGE;
     }
 
     @GET
     @Path("{path: docs.*}")
-    @MireDotIgnore
+    @Operation(hidden = true)
     public Response getDocs(@PathParam("path") String path) {
         if (path.equals("docs") || path.equals("docs/")) path = "docs/index.html";
         final String target = String.format("/WEB-INF/%s", path);
@@ -143,13 +149,45 @@ public class Root {
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.Map<String,String>")
-    public Response importFromFile(@DefaultValue("") @FormDataParam("name") String name,
+    @Operation(
+            summary = "Upload new tradition",
+            description = "Imports a new tradition from file data of various forms, creating at least one section in the process. Returns the ID of the newly created tradition.",
+            requestBody = @RequestBody(
+                    description = "Multipart form data for the tradition upload.",
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = TraditionUploadModel.class)
+                    )
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "The tradition was created successfully.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TraditionModel.class))),
+                    @ApiResponse(responseCode = "400", description = "No file was specified, and the 'empty' flag was not set.", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "The requested owner does not exist in the database.", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Something went wrong. An error message will be returned.", content = @Content(mediaType = "application/json"))
+            }
+    )
+    public Response importFromFile(@Parameter(name = "name", in = ParameterIn.QUERY,
+                                            description = "the name of the tradition. Default is the empty string.")
+                                   @DefaultValue("") @FormDataParam("name") String name,
+                                   @Parameter(name = "userId", in = ParameterIn.QUERY,
+                                            description = "the ID of the user to whom this tradition belongs. Required.",
+                                            required = true)
                                    @FormDataParam("userId") String userId,
+                                   @Parameter(name = "public", in = ParameterIn.QUERY,
+                                            description = "If true, the tradition will be marked as publicly viewable.")
                                    @FormDataParam("public") String is_public,
+                                   @Parameter(name = "language", in = ParameterIn.QUERY,
+                                            description = "the language of the tradition text (e.g. Latin, Syriac).")
                                    @FormDataParam("language") String language,
+                                   @Parameter(name = "direction", in = ParameterIn.QUERY,
+                                            description = "the direction in which the text should be read. Possible values are LR (left to right), RL (right to left), or BI (bidirectional). Default is LR.",
+                                            schema = @Schema(defaultValue = "LR"))
                                    @DefaultValue("LR") @FormDataParam("direction") String direction,
+                                   @Parameter(name = "empty", in = ParameterIn.QUERY,
+                                            description = "Should be set to some non-null value if the tradition is being created without any data file. Required if 'file' is not present.")
                                    @FormDataParam("empty") String empty,
+                                   @Parameter(name = "filetype", in = ParameterIn.QUERY,
+                                            description = "the type of file being uploaded. Possible values are collatex, cxjson, csv, tsv, xls, xlsx, graphml, stemmaweb, or teips. Required if 'file' is present.")
                                    @FormDataParam("filetype") String filetype,
                                    @FormDataParam("file") InputStream uploadedInputStream,
                                    @FormDataParam("file") FormDataContentDisposition fileDetail) {
@@ -223,7 +261,18 @@ public class Root {
     @GET
     @Path("/traditions")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
+    @Operation(
+            summary = "List traditions",
+            description = "Retrieves a list of all complete traditions in the database.",
+            parameters = {
+                    @Parameter(name = "public", description = "Returns only the traditions marked as being public. Default is false.",
+                            schema = @Schema(type = "boolean", defaultValue = "false"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of tradition metadata.", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = TraditionModel.class))),
+                    @ApiResponse(responseCode = "500", description = "An error occurred. An error report will be returned in JSON format.", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
 
@@ -253,7 +302,14 @@ public class Root {
     @GET
     @Path("/users")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.UserModel>")
+    @Operation(
+            summary = "List users",
+            description = "Retrieves a list of all users in the database.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of user metadata.", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = UserModel.class))),
+                    @ApiResponse(responseCode = "500", description = "An error occurred. An error report will be returned in JSON format.", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
 

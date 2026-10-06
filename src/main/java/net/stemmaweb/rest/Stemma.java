@@ -15,7 +15,13 @@ import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -69,7 +75,32 @@ public class Stemma {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Get stemma",
+            description = "Fetches the information for the specified stemma, including its dot specification.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such stemma exists for this tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getStemma() {
         try (Transaction tx = db.beginTx()) {
             Node stemmaNode = getStemmaNode(tx);
@@ -98,7 +129,42 @@ public class Stemma {
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Replace or add new stemma",
+            description = "Stores a new or updated stemma under the given ID (either name or number).",
+            requestBody = @RequestBody(
+                    description = "A StemmaModel containing the new or replacement stemma",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = StemmaModel.class))
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success, if stemma is updated",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "on success, if stemma is new",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition exists",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response replaceStemma(StemmaModel stemmaSpec) {
         // In case the stemma spec doesn't have a name, assume it wants the name in the URL just called
         if (stemmaSpec.getIdentifier() == null)
@@ -143,7 +209,31 @@ public class Stemma {
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Delete stemma",
+            description = "Deletes the stemma that is identified by the given identifier or name.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such stemma exists for this tradition"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response deleteStemma() {
         try (Transaction tx = db.beginTx()) {
             StemmaModel removed = doStemmaDeletion(tx);
@@ -207,7 +297,40 @@ public class Stemma {
     @POST
     @Path("reorient/{nodeId}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Reorient stemma",
+            description = "Reorients a stemma tree so that the given witness node is the root (archetype). This operation can only be performed on a stemma without contamination links.",
+            parameters = {
+                    @Parameter(name = "nodeId", description = "The ID of the witness node to use as the new root/archetype.", required = true, in = ParameterIn.PATH, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if the witness does not occur in this stemma",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "412",
+                            description = "if the stemma is contaminated",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx()) {

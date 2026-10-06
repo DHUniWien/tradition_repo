@@ -6,7 +6,7 @@ import org.neo4j.graphdb.Transaction;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.qmino.miredot.annotations.MireDotIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.exporter.DotExporter;
@@ -22,24 +22,29 @@ public class StemmaModel {
     /**
      * The name (identifier) of the stemma. Must be unique within a tradition.
      */
+    @Schema(description = "The name (identifier) of the stemma. Must be unique within a tradition.")
     private String identifier;
     /**
      * True if this is an undirected tree, rather than a directed stemma.
      */
+    @Schema(description = "True if this is an undirected tree, rather than a directed stemma.")
     private Boolean is_undirected;
     /**
      * True if the stemma indicates witness contamination / conflation.
      */
+    @Schema(description = "True if the stemma indicates witness contamination / conflation.")
     private Boolean is_contaminated;
-    @MireDotIgnore
+    @Schema(hidden = true)
     private Integer from_jobid;
     /**
      * A string that holds the dot specification of the stemma or tree topology.
      */
+    @Schema(description = "A string that holds the dot specification of the stemma or tree topology.")
     private String dot;
     /**
      * A string that holds the Newick specification of the tree topology.
      */
+    @Schema(description = "A string that holds the Newick specification of the tree topology.")
     private String newick;
 
     public StemmaModel () {}

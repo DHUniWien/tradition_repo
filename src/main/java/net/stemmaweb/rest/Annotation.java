@@ -13,7 +13,12 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -61,7 +66,13 @@ public class Annotation {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @Operation(summary = "Retrieve an annotation by ID",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successful retrieval of the annotation",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getAnnotation() {
         AnnotationModel result;
         Response response;
@@ -91,7 +102,16 @@ public class Annotation {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @Operation(summary = "Update an existing annotation",
+            requestBody = @RequestBody(description = "The updated AnnotationModel object", required = true,
+                    content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Annotation successfully updated",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "403", description = "Invalid AnnotationModel"),
+                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response updateAnnotation(AnnotationModel spec) {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))
@@ -120,7 +140,13 @@ public class Annotation {
      */
     @DELETE
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    @Operation(summary = "Delete an annotation by ID",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Annotation and any orphaned annotations successfully deleted",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response deleteAnnotation() {
         List<AnnotationModel> deleted;
         Response response;
@@ -181,7 +207,17 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @Operation(summary = "Add an outbound link to this annotation",
+            requestBody = @RequestBody(description = "The AnnotationLinkModel representing the link to be added", required = true,
+                    content = @Content(schema = @Schema(implementation = AnnotationLinkModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Link successfully added",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "304", description = "Link already exists"),
+                    @ApiResponse(responseCode = "403", description = "Invalid AnnotationLinkModel"),
+                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response addAnnotationLink(AnnotationLinkModel linkModel) {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))
@@ -222,7 +258,15 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @Operation(summary = "Delete an outbound link from this annotation",
+            requestBody = @RequestBody(description = "The AnnotationLinkModel representing the link to be deleted", required = true,
+                    content = @Content(schema = @Schema(implementation = AnnotationLinkModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Link successfully deleted",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Annotation or specified link not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response deleteAnnotationLink(AnnotationLinkModel linkModel) {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))
@@ -258,7 +302,14 @@ public class Annotation {
     @GET
     @Path("/referents")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel")
+    @Operation(summary = "Retrieve annotations that reference this annotation",
+            parameters = @Parameter(name = "recursive", description = "Include all ancestors if set to true", schema = @Schema(type = "boolean"), example = "false"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully retrieved the list of referencing annotations",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            })
     public Response getReferents(@QueryParam("recursive") @DefaultValue("false") String recurse) {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))

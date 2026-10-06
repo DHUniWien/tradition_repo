@@ -14,7 +14,11 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -58,7 +62,15 @@ public class RelationType {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("net.stemmaweb.model.RelationTypeModel")
+    @Operation(
+            summary = "Get relation type",
+            description = "Gets the information for the given relation type name.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Not found, if the relation type does not exist", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Response response;
@@ -90,7 +102,21 @@ public class RelationType {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = RelationTypeModel.class)
+    @Operation(
+            summary = "Create / update relation type specification",
+            description = "Creates or updates a relation type according to the specification given.",
+            requestBody = @RequestBody(
+                    description = "A user specification",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel (existing type was updated)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "201", description = "A JSON RelationTypeModel (new type was created)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Bad request, if the specification is invalid, with an error report in JSON format", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
         try (Transaction tx = db.beginTx()){
@@ -146,7 +172,16 @@ public class RelationType {
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = RelationTypeModel.class)
+    @Operation(
+            summary = "Delete a relation type",
+            description = "Deletes the named relation type.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel of the deleted type", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Not found, if the specified type doesn't exist", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "Conflict, if relations of the type still exist in the tradition", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Node foundRelType;

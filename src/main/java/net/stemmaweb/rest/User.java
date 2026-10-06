@@ -9,7 +9,13 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -54,7 +60,23 @@ public class User {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = UserModel.class)
+    @Operation(
+            summary = "Get user",
+            description = "Gets the information for the given user ID",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserModel.class))),
+                    @ApiResponse(responseCode = "404", description = "User not found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getUserById() {
         try (Transaction tx = db.beginTx()) {
             Node foundUser = tx.findNode(Nodes.USER, "id", userId);
@@ -83,7 +105,28 @@ public class User {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = UserModel.class)
+    @Operation(
+            summary = "Create / update user",
+            description = "Creates or updates a user according to the specification given",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            requestBody = @RequestBody(
+                    description = "User specification",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Existing user updated", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserModel.class))),
+                    @ApiResponse(responseCode = "201", description = "New user created", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserModel.class))),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response create(UserModel userModel) {
         // Find any existing user
         Node extantUser;
@@ -137,7 +180,24 @@ public class User {
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = UserModel.class)
+    @Operation(
+            summary = "Delete user",
+            description = "Removes a user. Requires user's traditions to be deleted first",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserModel.class))),
+                    @ApiResponse(responseCode = "404", description = "User not found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "412", description = "User still owns traditions", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteUser() {
         Node foundUser;
         UserModel removed;
@@ -176,7 +236,23 @@ public class User {
     @GET
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
+    @Operation(
+            summary = "List user traditions",
+            description = "Get a list of the traditions belonging to the user",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = TraditionModel.class))),
+                    @ApiResponse(responseCode = "404", description = "User not found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getUserTraditions() {
     	try (Transaction tx = db.beginTx()) {
             Node thisUser = tx.findNode(Nodes.USER, "id", userId);

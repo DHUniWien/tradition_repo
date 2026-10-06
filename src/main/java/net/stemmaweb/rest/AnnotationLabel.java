@@ -15,7 +15,11 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -60,7 +64,15 @@ public class AnnotationLabel {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationLabelModel.class)
+    @Operation(
+            summary = "Get annotation label spec",
+            description = "Retrieves the specification for the given annotation type name.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getAnnotationLabel() {
     	Response response;
         try (Transaction tx = db.beginTx()) {
@@ -93,7 +105,22 @@ public class AnnotationLabel {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationLabelModel.class)
+    @Operation(
+            summary = "Put annotation label spec",
+            description = "Creates or updates an annotation type specification.",
+            requestBody = @RequestBody(
+                    description = "The AnnotationLabelModel specification to use",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Updated existing label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "201", description = "Created new label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "Requested name is already in use", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response createOrUpdateAnnotationLabel(AnnotationLabelModel alm) {
         boolean isNew = false;
         try (Transaction tx = db.beginTx()) {
@@ -196,7 +223,15 @@ public class AnnotationLabel {
      * @return the label model that was deleted
      */
     @DELETE
-    @ReturnType(clazz = AnnotationLabelModel.class)
+    @Operation(
+            summary = "Delete annotation label",
+            description = "Deletes the specified annotation label specification from the tradition. Returns an error if the label is still in use.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "409", description = "Annotation label is still in use", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteAnnotationLabel() {
     	try (Transaction tx = db.beginTx()) {
     		Node ourNode = lookupAnnotationLabel(tx);
