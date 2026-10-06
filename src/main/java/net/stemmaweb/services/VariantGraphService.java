@@ -51,7 +51,7 @@ public class VariantGraphService {
     	
     	boolean found = false;
 		for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
-			if (s.getElementId().equals(aSectionId)) {
+			if (String.valueOf(s.getProperty("id")).equals(aSectionId)) {
 				found = true;
 				break;
 			}
@@ -94,13 +94,13 @@ public class VariantGraphService {
                 Node relevantSection = direction.equals(ERelations.HAS_END)
                         ? sections.getLast()
                         : sections.getFirst();
-                return getBoundaryNode(tx, relevantSection.getElementId(), direction);
+                return getBoundaryNode(tx, relevantSection.getProperty("id").toString(), direction);
             } else return null;
         }
 
         // If we didn't find a tradition node with the ID, assume we wanted a section node.
         try {
-            currentNode = tx.getNodeByElementId(nodeId);
+            currentNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, nodeId);
         } catch (NotFoundException | IllegalArgumentException e) {
             return null;
         }
@@ -182,7 +182,7 @@ public class VariantGraphService {
         // Get an AlignmentModel for the given section, and go rank by rank to find
         // the common nodes.
         AlignmentModel am = new AlignmentModel(sectionNode, tx);
-    	Node startNode = VariantGraphService.getStartNode(tx, sectionNode.getElementId());
+    	Node startNode = VariantGraphService.getStartNode(tx, sectionNode.getProperty("id").toString());
         // See which kind of flag we are setting
         String propName = startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE) ? "ncommon" : "is_common";
         // Go through the table rank by rank - if a given rank has only a single reading
@@ -235,7 +235,7 @@ public class VariantGraphService {
 
         // Find the normalisation clusters and nominate a representative for each
         String tradId = tradition.getProperty("id").toString();
-        String sectionId = sectionNode.getElementId();
+        String sectionId = sectionNode.getProperty("id").toString();
         for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
                 tx, tradId, sectionId, normalizeType)) {
             if (cluster.isEmpty()) continue;
@@ -312,7 +312,7 @@ public class VariantGraphService {
         // Now make the relations between them
         ArrayList<Node> result = new ArrayList<>();
         // Go through the alignment model rank by rank, finding the majority reading for each rank
-        String sectionId = sectionNode.getElementId();
+        String sectionId = sectionNode.getProperty("id").toString();
         result.add(getStartNode(tx, sectionId));
         majorityReadings.forEach(x -> result.add(tx.getNodeByElementId(x)));
         result.add(getEndNode(tx, sectionId));
@@ -495,7 +495,7 @@ public class VariantGraphService {
      * @return an org.neo4j.graphdb.traversal.Traverser object for the section
      */
     public static Traverser returnTraditionSection(Transaction tx, String sectionId) {
-        Node sectionNode = tx.getNodeByElementId(sectionId);
+        Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectionId);
         return returnTraditionSection(tx, sectionNode);
     }
 
@@ -720,7 +720,7 @@ public class VariantGraphService {
             if (!sectionInTradition(tx, tradId, sectId))
                 throw new NotFoundException("Requested section not found in this tradition");
             iterationList = new ArrayList<>();
-            Node sectionNode = tx.getNodeByElementId(sectId);
+            Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
             iterationList.add(sectionNode);
         }
         return iterationList;
@@ -800,7 +800,7 @@ public class VariantGraphService {
                 er = temp;
             }
 
-            Node startNode = getStartNode(tx, currentSection.getElementId());
+            Node startNode = getStartNode(tx, currentSection.getProperty("id").toString());
             final long finalSr = sr;
             final long finalEr = er;
             witnessReadings.addAll(traverseReadingsOfWitness(tx, startNode, sigil, layers).stream()
@@ -818,7 +818,7 @@ public class VariantGraphService {
     }
 
     public static void reorderSectionAfter(Transaction tx, String tradId, String sectToMove, String priorSectID) {
-        Node thisSection = tx.getNodeByElementId(sectToMove);
+        Node thisSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectToMove);
 
         // Check that the requested prior section also exists and is part of the tradition
         Node priorSection = null;   // the requested prior section
@@ -841,9 +841,7 @@ public class VariantGraphService {
             else if (latterSection.equals(thisSection))
                 return;
         } else {
-            priorSection = tx.getNodeByElementId(priorSectID);
-            if (priorSection == null)
-                throw new IllegalArgumentException("Section " + priorSectID + "not found");
+            priorSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, priorSectID);
             Node pnTradition = getTraditionNode(tx, priorSection);
             if (!pnTradition.getProperty("id").equals(tradId))
                 throw new IllegalArgumentException("Section " + priorSectID + " doesn't belong to this tradition");

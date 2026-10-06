@@ -86,7 +86,7 @@ public class DotExporter
 
             Node requestedSection = null;
             if (sectionId != null)
-                requestedSection = tx.getNodeByElementId(sectionId);
+                requestedSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectionId);
             if (requestedSection != null) {
                 if (!sections.contains(requestedSection))
                     return Response.status(Status.BAD_REQUEST)
@@ -121,13 +121,13 @@ public class DotExporter
             ArrayList<Relationship> relsToWrite = new ArrayList<>();
 
             for (Node sectionNode: sections) {
-                ArrayList<Node> sectionWits = VariantGraphService.collectSectionWitnesses(tx, tradId, sectionNode.getElementId());
+                ArrayList<Node> sectionWits = VariantGraphService.collectSectionWitnesses(tx, tradId, sectionNode.getProperty("id").toString());
                 int numWits = sectionWits.size();
                 if (!dm.getExcludeWitnesses().isEmpty()) {
                     numWits -= dm.getExcludeWitnesses().size();
                 }
-                Node sectionStartNode = VariantGraphService.getStartNode(tx, sectionNode.getElementId());
-                Node sectionEndNode = VariantGraphService.getEndNode(tx, sectionNode.getElementId());
+                Node sectionStartNode = VariantGraphService.getStartNode(tx, sectionNode.getProperty("id").toString());
+                Node sectionEndNode = VariantGraphService.getEndNode(tx, sectionNode.getProperty("id").toString());
                 // If we have requested a section, then that section's start and end are "the" start and end
                 // for the whole graph.
                 if (sectionId != null) {

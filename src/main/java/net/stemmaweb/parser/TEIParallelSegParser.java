@@ -68,7 +68,7 @@ public class TEIParallelSegParser {
         try {
             reader = factory.createXMLStreamReader(xmldata);
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
-            parentId = parentNode.getElementId();
+            parentId = parentNode.getProperty("id").toString();
             // Set up the start node
             startNode = Util.createStartNode(tx, parentNode);
 

@@ -55,7 +55,7 @@ public class SectionModel {
      * @param node - the section node to initialize from
      */
     public SectionModel(Transaction tx, Node node) {
-        setId(node.getElementId());
+        setId(node.getProperty("id").toString());
         if (node.hasProperty("name"))
             setName(node.getProperty("name").toString());
         // If this node has a language set, use it; otherwise fall back to the tradition language.
@@ -70,7 +70,7 @@ public class SectionModel {
         setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
         // Get the traverser for the tradition readings
-        Node startNode = VariantGraphService.getStartNode(tx, node.getElementId());
+        Node startNode = VariantGraphService.getStartNode(tx, node.getProperty("id").toString());
         ArrayList<Node> traversedNodes = new ArrayList<>();
         tx.traversalDescription().depthFirst()
                 .relationships(ERelations.SEQUENCE, Direction.OUTGOING)

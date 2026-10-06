@@ -37,6 +37,7 @@ import net.stemmaweb.model.VariantLocationModel;
 import net.stemmaweb.model.VariantModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -237,7 +238,7 @@ public class TEIExporter {
 		writer.writeStartElement("text");
 		ArrayList<Node> sectionList = new ArrayList<>();
 		if (sectionId != null) {
-			Node sectionNode = tx.getNodeByElementId(sectionId);
+			Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectionId);
 			sectionList.add(sectionNode);				
 		} else {
 			// get sections of traditions

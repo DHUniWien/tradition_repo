@@ -38,7 +38,7 @@ public class Util {
     static Node createStartNode(Transaction tx, Node parentNode) {
         Node startNode = tx.createNode(Nodes.READING);
         startNode.setProperty("is_start", true);
-        startNode.setProperty("section_id", parentNode.getElementId());
+        startNode.setProperty("section_id", parentNode.getProperty("id").toString());
         startNode.setProperty("rank", 0L);
         startNode.setProperty("text", "#START#");
         parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
@@ -49,7 +49,7 @@ public class Util {
     static Node createEndNode(Transaction tx, Node parentNode) {
         Node endNode = tx.createNode(Nodes.READING);
         endNode.setProperty("is_end", true);
-        endNode.setProperty("section_id", parentNode.getElementId());
+        endNode.setProperty("section_id", parentNode.getProperty("id").toString());
         endNode.setProperty("text", "#END#");
         parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
         return endNode;

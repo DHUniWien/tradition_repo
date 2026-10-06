@@ -107,11 +107,28 @@ public class GraphMLExporter {
         }
     }
 
+    /**
+     * The application-assigned "id" property on Reading/Section/Annotation nodes (see
+     * DatabaseService.assignIdIfCovered) is a per-tradition counter value: meaningless outside
+     * the tradition that minted it, and reassigned fresh on every reimport regardless of what a
+     * GraphML file says. It must not be round-tripped through GraphML -- besides being pointless
+     * to preserve, the property name collides with Tradition's own (string, UUID) "id" property
+     * whenever a tradition's metadata and its sections are serialized into the same XML file
+     * (tradition.xml's tradition-meta crawl includes each section node as a boundary leaf). Since
+     * collectProperties/returnProperties record only one declared type per property name for the
+     * whole file, whichever type is seen last wins, silently corrupting parsing of the other.
+     */
+    private static boolean isSkippableCoveredId(Entity ent, String propName) {
+        return propName.equals("id") && ent instanceof Node node
+                && (node.hasLabel(Nodes.READING) || node.hasLabel(Nodes.SECTION) || node.hasLabel(Nodes.ANNOTATION));
+    }
+
     // TODO check for cases where the same property name has different types in different containers
     private void writeProperties(XMLStreamWriter writer, Entity ent, HashMap<String, String[]> collection)
             throws XMLStreamException {
         String prefix = collection.equals(nodeMap) ? "dn" : "de";
         for (String prop : ent.getPropertyKeys()) {
+            if (isSkippableCoveredId(ent, prop)) continue;
             if (collection.containsKey(prop)) {
                 writer.writeStartElement("data");
                 writer.writeAttribute("key", prefix + collection.get(prop)[0]);
@@ -132,6 +149,7 @@ public class GraphMLExporter {
     private void collectProperties (Entity ent, HashMap<String, String[]> collection) {
         int ctr = collection.size();
         for (String p : ent.getPropertyKeys()) {
+            if (isSkippableCoveredId(ent, p)) continue;
             String type = "string";
             Object prop = ent.getProperty(p);
             if (prop instanceof Long) type = "long";
@@ -248,10 +266,10 @@ public class GraphMLExporter {
                 collectionEdges = StreamSupport.stream(ce.spliterator(), false).collect(Collectors.toList());
             } else {
         		collectionNodes = StreamSupport.stream(cn.spliterator(), false)
-                        .filter(n -> !n.hasLabel(Nodes.SECTION) || n.getElementId().equals(sectionId))
+                        .filter(n -> !n.hasLabel(Nodes.SECTION) || n.getProperty("id").toString().equals(sectionId))
                         .collect(Collectors.toList());
         		collectionEdges = StreamSupport.stream(ce.spliterator(), false).filter(e -> !e.isType(ERelations.NEXT)
-                                && !(e.isType(ERelations.PART) && !e.getEndNode().getElementId().equals(sectionId)))
+                                && !(e.isType(ERelations.PART) && !e.getEndNode().getProperty("id").toString().equals(sectionId)))
                         .collect(Collectors.toList());
             }
             // Get any annotations pertaining to the tradition node itself and its metadata
@@ -273,12 +291,12 @@ public class GraphMLExporter {
             // Now do it all over again for each section we want to output.
             List<Node> allSections = new ArrayList<>();
             if (sectionId != null) {
-            	allSections.add(tx.getNodeByElementId(sectionId));
+            	allSections.add(DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectionId));
             } else {
                 allSections = VariantGraphService.getSectionNodes(tx, tradId);
             }
             for (Node s : allSections) {
-                String sectId = s.getElementId();
+                String sectId = s.getProperty("id").toString();
                 // Gather the section-relevant nodes
                 Iterable<Node> sectionNodes = VariantGraphService.returnTraditionSection(tx, s).nodes();
                 Iterable<Relationship> sectionEdges = VariantGraphService.returnTraditionSection(tx, s).relationships();

@@ -128,7 +128,7 @@ public class VariantListModel {
         }
 
         // See which list of readings will serve as our base text
-        Node startNode = VariantGraphService.getStartNode(tx, sectionNode.getElementId());
+        Node startNode = VariantGraphService.getStartNode(tx, sectionNode.getProperty("id").toString());
         TraversalDescription baseWalker = tx.traversalDescription().depthFirst();
         List<Relationship> baseText;
         if (baseWitness != null) {

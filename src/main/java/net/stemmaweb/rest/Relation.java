@@ -148,7 +148,7 @@ public class Relation {
                 Node readingB = tx.getNodeByElementId(relationModel.getTarget());
                 Node startingPoint = VariantGraphService.getTraditionNode(tx, tradId);
                 if (scope.equals(SCOPE_SECTION))
-                    startingPoint = tx.getNodeByElementId(String.valueOf(readingA.getProperty("section_id")));
+                    startingPoint = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, String.valueOf(readingA.getProperty("section_id")));
                 Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
 
                 // Get all the readings that belong to our tradition or section

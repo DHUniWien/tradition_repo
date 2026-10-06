@@ -156,7 +156,7 @@ public class RelationService {
         else if (referenceNode.hasLabel(Nodes.SECTION))
             traditionNode = VariantGraphService.getTraditionNode(tx, referenceNode);
         else if (referenceNode.hasLabel(Nodes.READING)) {
-            Node sectionNode = tx.getNodeByElementId(referenceNode.getProperty("section_id").toString());
+            Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, referenceNode.getProperty("section_id").toString());
             traditionNode = VariantGraphService.getTraditionNode(tx, sectionNode);
         }
         assert(traditionNode != null);
@@ -331,7 +331,7 @@ public class RelationService {
         Node readingA = tx.getNodeByElementId(relationModel.getSource());
         Node readingB = tx.getNodeByElementId(relationModel.getTarget());
 
-        Node ourSection = tx.getNodeByElementId(readingA.getProperty("section_id").toString());
+        Node ourSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, readingA.getProperty("section_id").toString());
         Node ourTradition = ourSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
         if (!ourTradition.getProperty("id").equals(tradId))
             throw new IllegalStateException("The specified readings do not belong to the specified tradition");

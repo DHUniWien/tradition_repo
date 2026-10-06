@@ -25,6 +25,8 @@ import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.AlignmentModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessTokensModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -206,7 +208,7 @@ public class TabularExporter {
         ArrayList<Node> collectedSections = new ArrayList<>();
         for (String sectionId : sectionList) {
             try {
-                collectedSections.add(tx.getNodeByElementId(sectionId));
+                collectedSections.add(DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectionId));
             } catch (NotFoundException | IllegalArgumentException e) {
                 throw new TabularExporterException("Section " + sectionId + " not found in tradition");
             }

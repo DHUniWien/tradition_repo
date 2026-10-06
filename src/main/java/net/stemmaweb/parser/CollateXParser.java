@@ -77,7 +77,7 @@ public class CollateXParser {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
                 Node reading = tx.createNode(Nodes.READING);
-                reading.setProperty("section_id", parentNode.getElementId());
+                reading.setProperty("section_id", parentNode.getProperty("id").toString());
 
                 NodeList dataNodes = ((Element) readingNodes.item(i)).getElementsByTagName("data");
                 for (int j = 0; j < dataNodes.getLength(); j++) {
@@ -169,7 +169,7 @@ public class CollateXParser {
             return Response.serverError().build();
         }
 
-        return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getElementId())).build();
+        return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getProperty("id").toString())).build();
     }
 
 }

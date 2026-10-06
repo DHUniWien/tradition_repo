@@ -292,7 +292,7 @@ public class StemmawebParser {
 									if (!currentGraph.equals("relationships")) {
 										// only store nodes for the sequence graph
 										currentNode = tx.createNode(Nodes.READING);
-										currentNode.setProperty("section_id", parentNode.getElementId());
+										currentNode.setProperty("section_id", parentNode.getProperty("id").toString());
 										String nodeId = reader.getAttributeValue("", "id");
 										idToNeo4jId.put(nodeId, currentNode.getElementId());
 									}
@@ -321,7 +321,7 @@ public class StemmawebParser {
         	}
 
         // Re-rank the entire tradition
-        Node sectionStart = VariantGraphService.getStartNode(tx, parentNode.getElementId());
+        Node sectionStart = VariantGraphService.getStartNode(tx, parentNode.getProperty("id").toString());
 		try {
 			ReadingService.recalculateRank(tx, sectionStart, true);
 		} catch (Exception e) {
@@ -352,7 +352,7 @@ public class StemmawebParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(jsonresp("parentId", parentNode.getElementId()))
+                .entity(jsonresp("parentId", parentNode.getProperty("id").toString()))
                 .build();
     }
 

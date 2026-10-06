@@ -49,7 +49,7 @@ public class AlignmentModel {
 
     // Get an alignment table
     public AlignmentModel(Node sectionNode, boolean excludeLayers, Transaction tx) {
-        String sectId = sectionNode.getElementId();
+        String sectId = sectionNode.getProperty("id").toString();
         Node traditionNode = VariantGraphService.getTraditionNode(tx, sectionNode);
         Node startNode = VariantGraphService.getStartNode(tx, sectId);
         Node endNode = VariantGraphService.getEndNode(tx, sectId);

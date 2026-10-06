@@ -409,7 +409,7 @@ public class Witness {
             ArrayList<Node> iterationList = VariantGraphService.sectionsRequested(tx, tradId, sectId);
 
             for (Node currentSection : iterationList) {
-                Node startNode = VariantGraphService.getStartNode(tx, currentSection.getElementId());
+                Node startNode = VariantGraphService.getStartNode(tx, currentSection.getProperty("id").toString());
                 readingModels.addAll(VariantGraphService.traverseReadingsOfWitness(tx, startNode, sigil, witnessClass)
                         .stream().map(ReadingModel::new).toList());
                 // Remove the meta node from the list

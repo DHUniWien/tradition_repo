@@ -342,8 +342,8 @@ public class Tradition {
         		String newSectionId = internResponse.getString("parentId");
         		if (!existingSections.isEmpty()) {
         			SectionModel ls = existingSections.getLast();
-        			Node lastSection = tx.getNodeByElementId(ls.getId());
-        			Node thisSection = tx.getNodeByElementId(newSectionId);
+        			Node lastSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, ls.getId());
+        			Node thisSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, newSectionId);
         			lastSection.createRelationshipTo(thisSection, ERelations.NEXT);
         		}
         		tx.commit();
@@ -364,7 +364,7 @@ public class Tradition {
 
     // utility method for creating a new section on a tradition
     private static Node createNewSection(String traditionNodeId, String sectionName, Transaction tx) {
-    	Node sectionNode = tx.createNode(Nodes.SECTION);
+    	Node sectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
         Node traditionNode = tx.getNodeByElementId(traditionNodeId);
         sectionNode.setProperty("name", sectionName);
         traditionNode.createRelationshipTo(sectionNode, ERelations.PART);

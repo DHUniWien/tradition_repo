@@ -180,7 +180,7 @@ public class TabularParser {
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
                         readingNode = tx.createNode(Nodes.READING);
-                        readingNode.setProperty("section_id", parentNode.getElementId());
+                        readingNode.setProperty("section_id", parentNode.getProperty("id").toString());
                         readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))
@@ -274,7 +274,7 @@ public class TabularParser {
 
             // We are done!
             result = Response.Status.CREATED;
-            response = jsonresp("parentId", parentNode.getElementId());
+            response = jsonresp("parentId", parentNode.getProperty("id").toString());
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

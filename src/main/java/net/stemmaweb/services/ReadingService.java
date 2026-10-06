@@ -36,7 +36,7 @@ public class ReadingService {
     public static String getTraditionId (Transaction tx, String readId) {
         try {
             Node rdg = tx.getNodeByElementId(readId);
-            return tx.getNodeByElementId(rdg.getProperty("section_id").toString())
+            return DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, rdg.getProperty("section_id").toString())
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING)
                     .getStartNode().getProperty("id").toString();
         } catch (NullPointerException | NotFoundException | IllegalArgumentException e) {
@@ -412,7 +412,7 @@ public class ReadingService {
         RankCalcEvaluate(Transaction tx, Node startNode, Boolean recalculateAll) throws Exception {
         	// Get the list of colocated nodes in this section.
         	String sectionId = String.valueOf(startNode.getProperty("section_id"));
-        	String tradId = tx.getNodeByElementId(sectionId)
+        	String tradId = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectionId)
         			.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
         			.getProperty("id").toString();
         	this.colocatedNodes = buildColocationLookup(tx, tradId, sectionId);
@@ -512,9 +512,9 @@ public class ReadingService {
     	}
     	
     	// TEMPORARY: Test that our colocated groups are actually colocated
-    	Node ourSection = tx.getNodeByElementId(startNode.getProperty("section_id").toString());
+    	Node ourSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, startNode.getProperty("section_id").toString());
     	String tradId = VariantGraphService.getTraditionNode(tx, ourSection).getProperty("id").toString();
-    	List<Set<Node>> clusters = RelationService.getClusters(tx, tradId, ourSection.getElementId(), true);
+    	List<Set<Node>> clusters = RelationService.getClusters(tx, tradId, ourSection.getProperty("id").toString(), true);
     	for (Set<Node> cluster : clusters) {
     		Long clusterRank = null;
     		for (Node n : cluster) {
@@ -622,10 +622,10 @@ public class ReadingService {
      */
     public static boolean wouldGetCyclic(Transaction tx, Node firstReading, Node secondReading) throws Exception {
         // Get our list of colocations
-        Node sectionNode = tx.getNodeByElementId(firstReading.getProperty("section_id").toString());
+        Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, firstReading.getProperty("section_id").toString());
         Node traditionNode = VariantGraphService.getTraditionNode(tx, sectionNode);
         Map<String, Set<Node>> colocatedLookup = buildColocationLookup(
-                tx, traditionNode.getProperty("id").toString(), sectionNode.getElementId());
+                tx, traditionNode.getProperty("id").toString(), sectionNode.getProperty("id").toString());
 
         // Get the relevant cluster sets
         Set<Node> firstCluster = colocatedLookup.containsKey(firstReading.getElementId()) ?

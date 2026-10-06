@@ -65,6 +65,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -110,6 +111,35 @@ public class SectionTest extends TestCase {
         assertEquals(1, tSections.size());
         assertEquals("Legend", tSections.getFirst().getName());
         firstSectId = tSections.getFirst().getId();
+    }
+
+    // The section id returned by the REST API should now be the application-assigned numeric
+    // id, not an elementId (which embeds a database name and transaction-scoped sequence number
+    // separated by colons, e.g. "4:abcdef-....:5").
+    public void testSectionIdIsNumeric() {
+        SectionModel sm = jerseyTest.target("/tradition/" + tradId + "/section/" + firstSectId)
+                .request().get(SectionModel.class);
+        assertNotNull(Long.valueOf(sm.getId()));
+        assertFalse(sm.getId().contains(":"));
+    }
+
+    // GET on a section id that isn't even well-formed should behave exactly as it did before
+    // this id migration. VariantGraphService.sectionInTradition() guards getSectionInfo() before
+    // any id parsing is attempted, so a malformed id is (and was) indistinguishable from an id
+    // that simply matches no section: both yield 404, never reaching a parse error or the
+    // endpoint's catch-all 500.
+    public void testGetSectionWithMalformedIdReturnsSameStatusAsBeforeForBadElementId() {
+        Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/not-a-number")
+                .request().get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), jerseyResponse.getStatus());
+    }
+
+    // GET on a well-formed section id that doesn't match any section should 404, matching
+    // VariantGraphService.sectionInTradition's existing not-found branch.
+    public void testGetSectionWithWellFormedMissingIdReturns404() {
+        Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/999999")
+                .request().get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), jerseyResponse.getStatus());
     }
 
     // test creation of a tradition, that it has a single section
@@ -661,7 +691,7 @@ public class SectionTest extends TestCase {
 
         // Lemmatize section 3 based on majority reading
         try (Transaction tx = db.beginTx()) {
-            Node sect3 = tx.getNodeByElementId(flor3);
+            Node sect3 = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, flor3);
             for (Node r : VariantGraphService.calculateMajorityText(tx, sect3)) {
                 if (r.hasProperty("is_start") || r.hasProperty("is_end"))
                     continue;

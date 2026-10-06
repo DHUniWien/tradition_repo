@@ -187,7 +187,7 @@ public class CollateXJsonParser {
                             thisReading.setProperty("extra", thisExtra.toString());
                         }
                         thisReading.setProperty("rank", rank);
-                        thisReading.setProperty("section_id", parentNode.getElementId());
+                        thisReading.setProperty("section_id", parentNode.getProperty("id").toString());
                         createdReadings.put(lookupKey, thisReading);
                         distinct++;
                     }
@@ -211,7 +211,7 @@ public class CollateXJsonParser {
                 Node lastReading = lastWitnessReading.get(witString);
                 ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
-            return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getElementId())).build();
+            return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getProperty("id").toString())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

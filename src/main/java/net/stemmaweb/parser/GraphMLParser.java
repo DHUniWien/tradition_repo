@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.stream.StreamSupport;
 
 import net.stemmaweb.services.AnnotationService;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
@@ -169,7 +170,7 @@ public class GraphMLParser {
         // The parentId we return should be the ID of the parent node for whatever we just processed –
         // either the tradition ID if we are parsing a new tradition, or the section ID if we are
         // parsing a new section into a tradition. LATER does this make sense??
-        parentId = fileName.equals("tradition.xml") ? tradId : parentNode.getElementId();
+        parentId = fileName.equals("tradition.xml") ? tradId : parentNode.getProperty("id").toString();
         // If we are parsing a new section into an existing tradition, get the tradition metadata nodes
         // to make sure we don't duplicate them. This should only happen if we have isSingleSection set,
         // since otherwise the relevant nodes should already be in idMap.
@@ -253,11 +254,16 @@ public class GraphMLParser {
                         }
                     }
                     // If we haven't found a Neo4J node to match this XML node, we need to create one.
-                    if (entity == null) entity = tx.createNode();
+                    boolean isNewNode = false;
+                    if (entity == null) {
+                        entity = tx.createNode();
+                        isNewNode = true;
+                    }
                     // Record the XML -> n4j correlation
                     idMap.put(xmlId, entity.getElementId());
                     // and, if the node didn't already exist, update its labels and properties.
-                    if (!exists)
+                    if (!exists) {
+                        boolean deletedAsAnnotation = false;
                         for (String l : entityLabel) {
                             try {
                                 entity.addLabel(Nodes.valueOf(l));
@@ -268,8 +274,24 @@ public class GraphMLParser {
                                 userLabeledNodes.put(xmlId, entityXML);
                                 idMap.remove(xmlId);
                                 entity.delete();
+                                deletedAsAnnotation = true;
                             }
                         }
+                        // Assign an application-level id to a brand new Section node, now that its
+                        // final label(s) are in place. Don't do this for the parentNode-reuse case
+                        // (isSingleSection section node) -- that node already has its id from
+                        // Tradition.createNewSection -- nor for a node that turned out to be an
+                        // annotation and was just deleted above. Restricted to SECTION only: Reading
+                        // nodes aren't yet consistently id-assigned anywhere else in the codebase (the
+                        // bare-createNode-then-addLabel sites in Reading.java, and the property-copy in
+                        // ReadingService.copyReadingProperties, are out of this task's scope), so
+                        // assigning Reading nodes an id only here would create a node with an id that
+                        // promptly gets blindly copied onto a second node by reading duplication,
+                        // violating the READING.id uniqueness constraint. Left for Task 3 to add
+                        // alongside those other call sites.
+                        if (isNewNode && !deletedAsAnnotation && entity.hasLabel(Nodes.SECTION))
+                            DatabaseService.assignIdIfCovered(tx, entity);
+                    }
                 }
                 // Notice if it is a section node
                 if (neolabel.contains("SECTION")) thisSection = entity;
@@ -362,7 +384,7 @@ public class GraphMLParser {
                 return Response.status(Response.Status.BAD_REQUEST).entity(
                         jsonerror("Reading nodes found in a file without a section")).build();
             }
-            r.setProperty("section_id", thisSection.getElementId());
+            r.setProperty("section_id", thisSection.getProperty("id").toString());
         }
 
         // Ensure that the tradition and section are linked

@@ -101,7 +101,10 @@ public class DatabaseServiceTest {
             Node s1 = DatabaseService.createNode(tx, Nodes.SECTION);
             assertEquals(1L, r1.getProperty("id"));
             assertEquals(2L, r2.getProperty("id"));
-            assertEquals(1L, s1.getProperty("id")); // independent per-type counter
+            // independent per-type counter -- starts at 2 here because setUp()'s own tradition
+            // import (via Tradition.createNewSection, now routed through DatabaseService.createNode
+            // as of the Section entity-id task) already minted section id 1
+            assertEquals(2L, s1.getProperty("id"));
             tx.commit();
         }
     }

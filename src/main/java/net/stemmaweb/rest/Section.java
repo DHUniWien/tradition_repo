@@ -144,7 +144,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
-            result = new SectionModel(tx, tx.getNodeByElementId(sectId));
+            result = new SectionModel(tx, DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId));
             return Response.ok().entity(result).build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -182,7 +182,7 @@ public class Section {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	}
-            Node thisSection = tx.getNodeByElementId(sectId);
+            Node thisSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
             if (newInfo.getName() != null)
                 thisSection.setProperty("name", newInfo.getName());
             if (newInfo.getLanguage() != null)
@@ -220,7 +220,7 @@ public class Section {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
         				.entity(jsonerror("Tradition and/or section not found")).build();
-            Node foundSection = tx.getNodeByElementId(sectId);
+            Node foundSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
             if (foundSection != null) {
                 // Find the section either side of this one and connect them if necessary.
                 removeSectionFromSequence(foundSection);
@@ -705,7 +705,7 @@ public class Section {
                 return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
             }
 
-            Node sectionNode = tx.getNodeByElementId(sectId);
+            Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
             VariantListModel vlocs = new VariantListModel(
                     tx, sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
                     !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
@@ -808,7 +808,7 @@ public class Section {
         	
     		Node startNode = VariantGraphService.getStartNode(tx, sectId);
     		Node sectionEnd = VariantGraphService.getEndNode(tx, sectId);
-    		Node thisSection = tx.getNodeByElementId(sectId);
+    		Node thisSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
     		
     		// Make sure we aren't just trying to split off the end node
     		if (rank.equals(sectionEnd.getProperty("rank")))
@@ -833,10 +833,10 @@ public class Section {
     					.entity(jsonerror("Rank not found within section")).build();
     		
     		// Make a new section node and insert it into the sequence
-    		Node newSection = tx.createNode(Nodes.SECTION);
+    		Node newSection = DatabaseService.createNode(tx, Nodes.SECTION);
     		VariantGraphService.getTraditionNode(tx, thisSection).createRelationshipTo(newSection, ERelations.PART);
     		newSection.setProperty("name", thisSection.getProperty("name") + " split");
-    		newSectionId = newSection.getElementId();
+    		newSectionId = newSection.getProperty("id").toString();
             VariantGraphService.reorderSectionAfter(tx, tradId, newSectionId, sectId);
     		
     		// Attach the old END node to the new section
@@ -856,7 +856,7 @@ public class Section {
     		newStart.setProperty("is_start", true);
     		newStart.setProperty("text", "#START#");
     		newStart.setProperty("rank", 0L);
-    		newStart.setProperty("section_id", newSection.getElementId());
+    		newStart.setProperty("section_id", newSection.getProperty("id").toString());
     		newSection.createRelationshipTo(newStart, ERelations.COLLATION);
     		
     		Node newLacuna = null;
@@ -885,7 +885,7 @@ public class Section {
     		linksToSplit.forEach(Relationship::delete);
     		
     		// Collect all readings from the second section and alter their section metadata
-    		final String newId = newSection.getElementId();
+    		final String newId = newSection.getProperty("id").toString();
 //            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
 //                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
 //                    .stream().forEach(x -> {
@@ -975,13 +975,13 @@ public class Section {
         		return Response.status(Response.Status.NOT_FOUND).entity("Requested other section not found").build();
         	
     		// Get this node, and see which direction we're merging
-    		Node thisSection = tx.getNodeByElementId(sectId);
+    		Node thisSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
     		Node firstSection = null;
     		Node secondSection = null;
     		for (Relationship r : DatabaseService.getRelationships(thisSection, ERelations.NEXT)) {
-    			if (otherId.equals(r.getEndNode().getElementId()))
+    			if (otherId.equals(r.getEndNode().getProperty("id").toString()))
     				secondSection = r.getEndNode();
-    			else if (otherId.equals(r.getStartNode().getElementId()))
+    			else if (otherId.equals(r.getStartNode().getProperty("id").toString()))
     				firstSection = r.getStartNode();
     		}
     		if (firstSection == null) {
@@ -994,13 +994,13 @@ public class Section {
     			secondSection = thisSection;
     		
     		// Move relationships from the old start & end nodes
-    		Node oldEnd = VariantGraphService.getEndNode(tx, firstSection.getElementId());
-    		Node oldStart = VariantGraphService.getStartNode(tx, secondSection.getElementId());
-    		Node trueStart = VariantGraphService.getStartNode(tx, firstSection.getElementId());
-    		Node trueEnd = VariantGraphService.getEndNode(tx, secondSection.getElementId());
-    		
+    		Node oldEnd = VariantGraphService.getEndNode(tx, firstSection.getProperty("id").toString());
+    		Node oldStart = VariantGraphService.getStartNode(tx, secondSection.getProperty("id").toString());
+    		Node trueStart = VariantGraphService.getStartNode(tx, firstSection.getProperty("id").toString());
+    		Node trueEnd = VariantGraphService.getEndNode(tx, secondSection.getProperty("id").toString());
+
     		// Collect all readings from the second section and alter their section metadata
-    		final String keptId = firstSection.getElementId();
+    		final String keptId = firstSection.getProperty("id").toString();
 //            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
 //            		.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().stream()
     		ArrayList<Node> oldSectionNodes = new ArrayList<>();
@@ -1430,7 +1430,7 @@ public class Section {
                         .entity(jsonerror("Tradition and/or section not found")).build();
             GraphModel result = new GraphModel();
             // Crawl the section looking for all emendations
-            Node sectionNode = tx.getNodeByElementId(sectId);
+            Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
             List<Node> emended = new ArrayList<>();
             for (Relationship r : DatabaseService.getRelationships(sectionNode, Direction.OUTGOING, ERelations.HAS_EMENDATION))
                 emended.add(r.getEndNode());
@@ -1527,7 +1527,7 @@ public class Section {
     		ReadingModel emrm = new ReadingModel(emendation);
     		result.setReadings(Collections.singletonList(emrm));
     		// Connect it in the graph
-    		Node sectionNode = tx.getNodeByElementId(sectId);
+    		Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
     		sectionNode.createRelationshipTo(emendation, ERelations.HAS_EMENDATION);
     		List<SequenceModel> newLinks = new ArrayList<>();
     		for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
