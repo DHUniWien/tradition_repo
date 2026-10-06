@@ -2,9 +2,9 @@ package net.stemmaweb.parser;
 
 import jakarta.ws.rs.core.Response;
 
-public class StemmaImportException extends RuntimeException {
+public class StemmarestImportException extends RuntimeException {
     private final Response.Status status;
-    public StemmaImportException(Response.Status status, String message) {
+    public StemmarestImportException(Response.Status status, String message) {
         super(message);
         this.status = status;
     }

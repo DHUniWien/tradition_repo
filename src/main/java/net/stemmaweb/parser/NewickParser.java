@@ -1,6 +1,5 @@
 package net.stemmaweb.parser;
 
-import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
 import static net.stemmaweb.parser.Util.findOrCreateExtant;
 
@@ -34,18 +33,18 @@ public class NewickParser {
      * @param tradId     - The ID of the tradition to which this stemma should be added
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
      * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
-     * @throws StemmaImportException if something goes wrong
+     * @throws StemmarestImportException if something goes wrong
      */
-    public String importStemmaFromNewick(String tradId, StemmaModel stemmaSpec) throws StemmaImportException {
+    public String importStemmaFromNewick(String tradId, StemmaModel stemmaSpec) throws StemmarestImportException {
         // Get our tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
-            throw new StemmaImportException(Response.Status.NOT_FOUND, "Tradition not found");
+            throw new StemmarestImportException(Response.Status.NOT_FOUND, "Tradition not found");
 
         // Do we already have a stemma by this name? If so, abort.
         for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
         	if (priorStemma.getProperty("name").equals(stemmaSpec.getIdentifier()))
-                throw new StemmaImportException(Response.Status.CONFLICT, "A stemma by this name already exists for this tradition.");
+                throw new StemmarestImportException(Response.Status.CONFLICT, "A stemma by this name already exists for this tradition.");
 
         // Parse the tree
         BufferedReader stringReader = new BufferedReader(new StringReader(stemmaSpec.getNewick()));

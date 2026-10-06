@@ -344,7 +344,7 @@ public class StemmawebParser {
                 sm.setDot(graph);
 				try {
 					parser.importStemmaFromDot(tradId, sm);
-				} catch (StemmaImportException e) {
+				} catch (StemmarestImportException e) {
                     return Response.status(e.getStatus())
                             .entity(jsonerror(e.getMessage()))
                             .build();

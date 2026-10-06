@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import net.stemmaweb.parser.StemmaImportException;
+import net.stemmaweb.parser.StemmarestImportException;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -121,7 +121,7 @@ public class Stemma {
             tx.commit();
         }  catch (IllegalStateException e) {
             return Response.status(Status.NOT_FOUND).build();
-        } catch (StemmaImportException e) {
+        } catch (StemmarestImportException e) {
             e.printStackTrace();
             return Response.status(e.getStatus()).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
@@ -175,8 +175,8 @@ public class Stemma {
                     removableRelations.add(x);
                     removableNodes.add(x.getEndNode());
                 });
-        DatabaseService.getRelationships(stemmaNode, Direction.OUTGOING, ERelations.HAS_ARCHETYPE)
-                .forEach(removableRelations::add);
+        removableRelations.addAll(DatabaseService.getRelationships(
+                stemmaNode, Direction.OUTGOING, ERelations.HAS_ARCHETYPE));
 
         // Its associated TRANSMISSION relations are removable
         removableNodes

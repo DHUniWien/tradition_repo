@@ -40,39 +40,39 @@ public class DotParser {
      * @param tradId     - The ID of the tradition to which this stemma should be added
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
      * @return a String containing the name of the new stemma
-     * @throws StemmaImportException - if something goes wrong with the parsing or saving
+     * @throws StemmarestImportException - if something goes wrong with the parsing or saving
      */
-    public String importStemmaFromDot(String tradId, StemmaModel stemmaSpec) throws StemmaImportException {
+    public String importStemmaFromDot(String tradId, StemmaModel stemmaSpec) throws StemmarestImportException {
         Graph stemma;
         try {
             List<Graph> parsedgraphs = parseDot(stemmaSpec.getDot());
             if (parsedgraphs.isEmpty())
-                throw new StemmaImportException(Status.BAD_REQUEST, "No graphs were found in this DOT specification.");
+                throw new StemmarestImportException(Status.BAD_REQUEST, "No graphs were found in this DOT specification.");
             else if (parsedgraphs.size() > 1)
-                throw new StemmaImportException(Status.BAD_REQUEST, "More than one graph was found in this DOT specification.");
+                throw new StemmarestImportException(Status.BAD_REQUEST, "More than one graph was found in this DOT specification.");
             stemma = parsedgraphs.getFirst();
             // Get its name, in case we still don't have one
             if (stemmaSpec.getIdentifier() == null)
                 stemmaSpec.setIdentifier(getDotGraphName(stemma));
         } catch (ParseException e) {
-            throw new StemmaImportException(Status.BAD_REQUEST, "DOT parsing error: " + e.getMessage());
+            throw new StemmarestImportException(Status.BAD_REQUEST, "DOT parsing error: " + e.getMessage());
         }
 
         // Save the graph into Neo4J.
         return saveToNeo(stemma, tradId, stemmaSpec.getIdentifier());
     }
 
-    private String saveToNeo(Graph stemma, String tradId, String stemmaName) throws StemmaImportException {
+    private String saveToNeo(Graph stemma, String tradId, String stemmaName) throws StemmarestImportException {
         // Check for the existence of the tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
-            throw new StemmaImportException(Status.NOT_FOUND, "Tradition not found");
+            throw new StemmarestImportException(Status.NOT_FOUND, "Tradition not found");
 
         // First check that no stemma with this name already exists for this tradition,
         // unless we intend to replace it.
         for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
             if (priorStemma.getProperty("name").equals(stemmaName))
-                throw new StemmaImportException(Status.CONFLICT,
+                throw new StemmarestImportException(Status.CONFLICT,
                         "A stemma by this name already exists for this tradition.");
 
         // Get a list of the existing (extant) tradition witnesses
@@ -95,7 +95,7 @@ public class DotParser {
         for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
         	String sigil = getNodeSigil(witness);
         	if (witness.getAttribute("class") == null)
-                throw new StemmaImportException(Status.BAD_REQUEST,
+                throw new StemmarestImportException(Status.BAD_REQUEST,
                         String.format("Witness %s not marked as either hypothetical or extant", sigil));
 
         	boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
@@ -105,7 +105,7 @@ public class DotParser {
         		// Check that the requested witness isn't hypothetical unless the
         		// existing one is!
         		if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical")))
-                    throw new StemmaImportException(Status.CONFLICT,
+                    throw new StemmarestImportException(Status.CONFLICT,
                             "The extant tradition witness " + sigil
                                     + " cannot be a hypothetical stemma node.");
         	} else {
@@ -186,7 +186,7 @@ public class DotParser {
         				rootNode = pathEnd;
         			} else if (!rootNode.equals(pathEnd)) {
         				assert pathEnd != null;
-                        throw new StemmaImportException(Status.BAD_REQUEST,
+                        throw new StemmarestImportException(Status.BAD_REQUEST,
                                 "Multiple archetype nodes found in this stemma: "
                                         + rootNode.getProperty("sigil") + " and "
                                         + pathEnd.getProperty("sigil"));

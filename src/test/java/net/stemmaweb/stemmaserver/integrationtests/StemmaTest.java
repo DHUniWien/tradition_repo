@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import net.stemmaweb.parser.StemmaImportException;
+import net.stemmaweb.parser.StemmarestImportException;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -508,13 +508,13 @@ public class StemmaTest {
                 String stemmaId = parser.importStemmaFromDot(tradId, stemmaCM);
                 assertEquals(stemmaCM.getIdentifier(), stemmaId);
         		assertEquals(originalNodeCount + 9, countGraphNodes(tx));
-        	} catch (StemmaImportException e) {
+        	} catch (StemmarestImportException e) {
                 fail();
         	}
         	try  {
                 String stemmaId = parser.importStemmaFromDot(tradId, stemmaTF);
         		assertEquals(stemmaTF.getIdentifier(), stemmaId);
-        	} catch (StemmaImportException e) {
+        	} catch (StemmarestImportException e) {
                 fail();
         	}
         	tx.close();
