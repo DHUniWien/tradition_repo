@@ -131,7 +131,7 @@ public class ReadingTest {
         List<SectionModel> testSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        sectId = testSections.get(0).getId();
+        sectId = testSections.getFirst().getId();
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
 
     }
@@ -205,7 +205,7 @@ public class ReadingTest {
 
         // Now try to get the same reading via the new tradition
         r = jerseyTest.target("/tradition/" + newTradId + "/reading/" + rid).request().get();
-        assertEquals(Status.NO_CONTENT.getStatusCode(), r.getStatus());
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
 
         // Add a second section to the first text
         r = Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml", "stemmaweb", "1");
@@ -214,7 +214,7 @@ public class ReadingTest {
 
         // Try to get the reading as above, but from the wrong section
         r = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId +  "/reading/" + rid).request().get();
-        assertEquals(Status.NO_CONTENT.getStatusCode(), r.getStatus());
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
 
         // But we can get a reading from the new section that actually belongs to it...?
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
@@ -234,13 +234,14 @@ public class ReadingTest {
         ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
         chgModel.addProperty(keyModel);
 
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + nodeId)
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(chgModel));
+                .put(Entity.json(chgModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        assertEquals("snow", response.readEntity(ReadingModel.class).getText());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals("snow", response.readEntity(ReadingModel.class).getText());
+        }
 
         String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
         TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
@@ -258,11 +259,12 @@ public class ReadingTest {
         models.add(keyModel2);
         ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
         chgModel.setProperties(models);
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + nodeid)
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(chgModel));
-        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+                .put(Entity.json(chgModel))) {
+            assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        }
 
         // Check that the node text didn't change
         try (Transaction tx = db.beginTx()) {
@@ -286,13 +288,15 @@ public class ReadingTest {
         models.add(keyModel3);
         chgModel.setProperties(models);
 
-        Response response = jerseyTest
+        ReadingModel result;
+        try (Response response = jerseyTest
                 .target("/reading/" + nodeId)
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(chgModel));
+                .put(Entity.json(chgModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        ReadingModel result = response.readEntity(ReadingModel.class);
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            result = response.readEntity(ReadingModel.class);
+        }
         assertEquals("snow", result.getText());
         assertEquals("hebrew", result.getLanguage());
         assertTrue(result.getIs_nonsense());
@@ -331,7 +335,7 @@ public class ReadingTest {
                 .request(MediaType.APPLICATION_JSON).get();
 
         ObjectMapper mapper = new ObjectMapper();
-        mapper.setSerializationInclusion(Include.NON_NULL);
+        mapper.setDefaultPropertyInclusion(Include.NON_NULL);
         String json = mapper.writeValueAsString(resp
                 .readEntity(ReadingModel.class));
 
@@ -391,7 +395,7 @@ public class ReadingTest {
                 .target("/reading/200")
                 .request(MediaType.APPLICATION_JSON).get();
 
-        assertEquals(Status.NO_CONTENT.getStatusCode(),
+        assertEquals(Status.NOT_FOUND.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
     }
 
@@ -419,11 +423,11 @@ public class ReadingTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         List<RelationModel> deleted = response.readEntity(new GenericType<>() {});
         assertEquals(2, deleted.size());
-        assertEquals("orthographic", deleted.get(0).getType());
+        assertEquals("orthographic", deleted.getFirst().getType());
         assertEquals("orthographic", deleted.get(1).getType());
 
         // None of the readings at rank 25 should now have any related readings
-        for (ReadingModel rm : allreadings.stream().filter(x -> x.getRank().equals(25L)).collect(Collectors.toList())) {
+        for (ReadingModel rm : allreadings.stream().filter(x -> x.getRank().equals(25L)).toList()) {
             response = jerseyTest.target("/reading/" + rm.getId() + "/related").request().get();
             assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
             assertEquals(0, response.readEntity(new GenericType<List<ReadingModel>>() {}).size());
@@ -439,7 +443,7 @@ public class ReadingTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         deleted = response.readEntity(new GenericType<>() {});
         assertEquals(2, deleted.size());
-        assertEquals("orthographic", deleted.get(0).getType());
+        assertEquals("orthographic", deleted.getFirst().getType());
         assertEquals("orthographic", deleted.get(1).getType());
 
         // We should still have two relations at rank 28, both attached to εϲτιν
@@ -491,9 +495,11 @@ public class ReadingTest {
         ReadingModel emended = emendation.getReadings().iterator().next();
 
         // Now try deleting it
-        Response resp = jerseyTest.target("/reading/" + emended.getId()).request().delete();
-        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
-        GraphModel deleted = resp.readEntity(GraphModel.class);
+        GraphModel deleted;
+        try (Response resp = jerseyTest.target("/reading/" + emended.getId()).request().delete()) {
+            assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+            deleted = resp.readEntity(GraphModel.class);
+        }
 
         // What was emended should now equal what was deleted.
         for (ReadingModel rm : emendation.getReadings()) {
@@ -529,26 +535,29 @@ public class ReadingTest {
 
         MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
         lemmaParam.add("value", "true");
-        resp = jerseyTest
+        try (Response resp2 = jerseyTest
                 .target("/reading/" + emended.getId() + "/setlemma")
                 .request()
-                .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
-        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+                .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED))) {
+            assertEquals(Status.OK.getStatusCode(), resp2.getStatus());
+        }
 
         String[] lemmatised = new String[]{"when/1", "april/2", "showers/5", "sweet/6", "the/9", "drought/10",
                 "of/11", "march/12", "has/13", "pierced/14", "the root/16"};
         for (String l : lemmatised) {
-            resp = jerseyTest
+            try (Response respl = jerseyTest
                     .target("/reading/" + readingLookup.get(l) + "/setlemma")
                     .request()
-                    .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED_TYPE));
-            assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+                    .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED_TYPE))) {
+                assertEquals(Status.OK.getStatusCode(), respl.getStatus());
+            }
         }
-        resp = jerseyTest
+        try (Response resp3 = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/setlemma")
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), resp3.getStatus());
+        }
         assertEquals("when april showers sweet fructumque the drought of march has pierced the root",
                 Util.getValueFromJson(jerseyTest
                         .target("/tradition/" + tradId + "/section/" + sectId + "/lemmatext")
@@ -557,9 +566,11 @@ public class ReadingTest {
                         .get(), "text"));
 
         // Now delete the emendation again; the lemma links should also be deleted.
-        resp = jerseyTest.target("/reading/" + emended.getId()).request().delete();
-        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
-        GraphModel lemmadeleted = resp.readEntity(GraphModel.class);
+        GraphModel lemmadeleted;
+        try (Response resp4 = jerseyTest.target("/reading/" + emended.getId()).request().delete()) {
+            assertEquals(Status.OK.getStatusCode(), resp4.getStatus());
+            lemmadeleted = resp4.readEntity(GraphModel.class);
+        }
 
         // What was emended should now be deleted.
         for (ReadingModel rm : emendation.getReadings()) {
@@ -655,9 +666,10 @@ public class ReadingTest {
 
     @Test
     public void insertLacunaTest() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "John", "LR", "1",
-                "src/TestFiles/john.xml", "stemmaweb");
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        try (Response response = Util.createTraditionFromFileOrString(jerseyTest, "John", "LR", "1",
+                "src/TestFiles/john.xml", "stemmaweb")) {
+            assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+        }
         // String newTradId = Util.getValueFromJson(response, "tradId");
 
         // Find our target readings
@@ -666,7 +678,7 @@ public class ReadingTest {
         ReadingModel umin;
         try (Transaction tx = db.beginTx()) {
             List<ReadingModel> rank1 = tx.findNodes(Nodes.READING, "rank", 1L).stream()
-                    .map(ReadingModel::new).collect(Collectors.toList());
+                    .map(ReadingModel::new).toList();
             for (ReadingModel r : rank1) {
                 if (r.getText().equals("ν̣ηθια")) nithia = r.getId();
                 if (r.getText().equals("Λεγει")) Legei = r.getId();
@@ -683,28 +695,32 @@ public class ReadingTest {
 
         // -- Simple tests ("ν̣ηθια")
         // First try setting the lacuna on the wrong witness
-        response = jerseyTest.target("/reading/" + nithia + "/lacunaAfter")
+        try (Response response2 = jerseyTest.target("/reading/" + nithia + "/lacunaAfter")
                 .queryParam("witness", "w290")
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+                .post(Entity.text(null))) {
+            assertEquals(Status.BAD_REQUEST.getStatusCode(), response2.getStatus());
+        }
 
         // Now try setting it on several witnesses including the right one
-        response = jerseyTest.target("/reading/" + nithia + "/lacunaAfter")
+        try (Response response3 = jerseyTest.target("/reading/" + nithia + "/lacunaAfter")
                 .queryParam("witness", "w290")
                 .queryParam("witness", "P60")
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+                .post(Entity.text(null))) {
+            assertEquals(Status.BAD_REQUEST.getStatusCode(), response3.getStatus());
+        }
 
         // Now try making the right request.
-        response = jerseyTest.target("/reading/" + nithia + "/lacunaAfter")
+        GraphModel result;
+        try (Response response4 = jerseyTest.target("/reading/" + nithia + "/lacunaAfter")
                 .queryParam("witness", "P60")
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        // Check the answer
-        GraphModel result = response.readEntity(GraphModel.class);
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), response4.getStatus());
+            // Check the answer
+            result = response4.readEntity(GraphModel.class);
+        }
         assertEquals(1, result.getReadings().size());
         assertEquals(0, result.getRelations().size());
         assertEquals(2, result.getSequences().size());
@@ -731,14 +747,15 @@ public class ReadingTest {
 
         // -- Multiple-path tests (Λεγει)
         // Make the request
-        response = jerseyTest.target("/reading/" + Legei + "/lacunaAfter")
+        try (Response response5 = jerseyTest.target("/reading/" + Legei + "/lacunaAfter")
                 .queryParam("witness", "w37")
                 .queryParam("witness", "w38")
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        // Check the answer
-        result = response.readEntity(GraphModel.class);
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), response5.getStatus());
+            // Check the answer
+            result = response5.readEntity(GraphModel.class);
+        }
         assertEquals(1, result.getReadings().size());
         assertEquals(0, result.getRelations().size());
         assertEquals(2, result.getSequences().size());
@@ -771,14 +788,15 @@ public class ReadingTest {
 
         // -- No rank gap tests (ὑμῖν)
         // Make the request
-        response = jerseyTest
+        try (Response response6 = jerseyTest
                 .target("/reading/" + umin.getId() + "/lacunaAfter")
                 .queryParam("witness", "w44")
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        // Check the answer - lots of readings should have changed rank
-        result = response.readEntity(GraphModel.class);
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), response6.getStatus());
+            // Check the answer - lots of readings should have changed rank
+            result = response6.readEntity(GraphModel.class);
+        }
         assertEquals(124, result.getReadings().size());
         assertEquals(0, result.getRelations().size());
         assertEquals(2, result.getSequences().size());
@@ -808,11 +826,12 @@ public class ReadingTest {
                 .get(new GenericType<>() {});
 
         // set a lemma
-        Response response = jerseyTest.target("/reading/" + firstNodeId + "/setlemma")
+        try (Response response = jerseyTest.target("/reading/" + firstNodeId + "/setlemma")
                 .queryParam("value", "true")
                 .request()
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED))) {
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        }
 
         // duplicate reading
         List<String> rdgs = new ArrayList<>();
@@ -822,14 +841,16 @@ public class ReadingTest {
         jsonPayload.setReadings(rdgs);
         jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
 
-        response = jerseyTest
+        GraphModel readingsAndRelationshipsModel;
+        try (Response response2 = jerseyTest
                 .target("/reading/" + firstNodeId + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(jsonPayload));
+                .post(Entity.json(jsonPayload))) {
 
-        // Check that no relationships were harmed by this duplication
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        GraphModel readingsAndRelationshipsModel = response.readEntity(GraphModel.class);
+            // Check that no relationships were harmed by this duplication
+            assertEquals(Status.OK.getStatusCode(), response2.getStatusInfo().getStatusCode());
+            readingsAndRelationshipsModel = response2.readEntity(GraphModel.class);
+        }
         assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
         assertEquals(4, readingsAndRelationshipsModel.getSequences().size());
 
@@ -850,12 +871,12 @@ public class ReadingTest {
         List<ReadingModel> readingModels = new ArrayList<>(readingsAndRelationshipsModel.getReadings());
         ReadingModel showersModel;
         ReadingModel sweetModel;
-        if (readingModels.get(0).getText().equals("showers")) {
-            showersModel = readingModels.get(0);
+        if (readingModels.getFirst().getText().equals("showers")) {
+            showersModel = readingModels.getFirst();
             sweetModel = readingModels.get(1);
         } else {
             showersModel = readingModels.get(1);
-            sweetModel = readingModels.get(0);
+            sweetModel = readingModels.getFirst();
         }
         assertEquals(firstNodeId, showersModel.getOrig_reading());
         assertEquals(secondNodeId, sweetModel.getOrig_reading());
@@ -920,25 +941,28 @@ public class ReadingTest {
         drel.setTarget(readingLookup.get("drought/12"));
         drel.setType("transposition");
         drel.setScope("local");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(drel));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(drel))) {
+            assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+        }
 
         // duplicate reading
         try (Transaction tx = db.beginTx()) {
             Node node = tx.findNode(Nodes.READING, "text", "of");
             String jsonPayload = "{\"readings\":[\"" + node.getElementId() + "\"], \"witnesses\":[\"A\",\"C\" ]}";
-            response = jerseyTest
+            GraphModel readingsAndRelationshipsModel;
+            try (Response response2 = jerseyTest
                     .target("/reading/" + node.getElementId() + "/duplicate")
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(jsonPayload));
+                    .post(Entity.json(jsonPayload))) {
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+                assertEquals(Status.OK.getStatusCode(), response2.getStatusInfo().getStatusCode());
 
-            // check that now-invalid relationships are gone
-            GraphModel readingsAndRelationshipsModel = response.readEntity(GraphModel.class);
+                // check that now-invalid relationships are gone
+                readingsAndRelationshipsModel = response2.readEntity(GraphModel.class);
+            }
             ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
             assertEquals("of", firstWord.getText());
             assertEquals(2, readingsAndRelationshipsModel.getRelations().size());
@@ -958,7 +982,7 @@ public class ReadingTest {
 
             // check that the new reading is really in the database
             List<Node> ofNodes = tx.findNodes(Nodes.READING, "text", "of")
-                    .stream().collect(Collectors.toList());
+                    .stream().toList();
             assertEquals(2, ofNodes.size());
             Node duplicatedOf = null;
             for (Node n : ofNodes)
@@ -1027,14 +1051,16 @@ public class ReadingTest {
 
             // duplicate reading
             String jsonPayload = "{\"readings\":[\"" + originalOf.getElementId() + "\"], \"witnesses\":[\"B\"]}";
-            Response response = jerseyTest
+            GraphModel readingsAndRelationshipsModel;
+            try (Response response = jerseyTest
                     .target("/reading/" + originalOf.getElementId() + "/duplicate")
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(jsonPayload));
+                    .post(Entity.json(jsonPayload))) {
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+                assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            GraphModel readingsAndRelationshipsModel = response.readEntity(GraphModel.class);
+                readingsAndRelationshipsModel = response.readEntity(GraphModel.class);
+            }
             ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
             assertEquals("of", firstWord.getText());
             assertEquals(1, readingsAndRelationshipsModel.getRelations().size());
@@ -1111,12 +1137,14 @@ public class ReadingTest {
         // duplicate reading
         String jsonPayload = "{\"readings\":[\"" + ofId
                 + "\"], \"witnesses\":[\"B\" ]}";
-        Response response = jerseyTest
+        GraphModel result;
+        try (Response response = jerseyTest
                 .target("/reading/" + ofId + "/duplicate")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(jsonPayload));
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        GraphModel result = response.readEntity(GraphModel.class);
+                .post(Entity.json(jsonPayload))) {
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            result = response.readEntity(GraphModel.class);
+        }
 
         testNumberOfReadingsAndWitnesses(30);
 
@@ -1201,7 +1229,7 @@ public class ReadingTest {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, sects.size());
-        String florSectId = sects.get(0).getId();
+        String florSectId = sects.getFirst().getId();
 
         // Test one: duplicate a reading that has an a.c. link pointing at it
         // "νόσοις", rank 69
@@ -1281,7 +1309,7 @@ public class ReadingTest {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, sects.size());
-        String msSectId = sects.get(0).getId();
+        String msSectId = sects.getFirst().getId();
 
         // Test three: duplicate a reading that has only a witness and the beginning of its a.c. layer
         String brnjin = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "դաւ", 50L);
@@ -1347,14 +1375,16 @@ public class ReadingTest {
             ReadingModel drm = new ReadingModel(secondNode);
 
             // merge readings
-            Response response = jerseyTest
+            GraphModel ourResult;
+            try (Response response = jerseyTest
                     .target("/reading/" + firstNode.getElementId()
                             + "/merge/" + secondNode.getElementId())
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.text(null));
+                    .post(Entity.text(null))) {
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-            GraphModel ourResult = response.readEntity(GraphModel.class);
+                assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+                ourResult = response.readEntity(GraphModel.class);
+            }
             assertEquals(1, ourResult.getReadings().size());
             ourResult.getReadings().forEach(x -> assertEquals(firstNode.getElementId(), x.getId()));
             assertEquals(0, ourResult.getRelations().size());
@@ -1375,7 +1405,7 @@ public class ReadingTest {
             }
 
             for (String sigil : drm.getWitnesses()) {
-                response = jerseyTest
+                Response response = jerseyTest
                         .target("/tradition/" + tradId + "/witness/" + sigil + "/text")
                         .request()
                         .get();
@@ -1446,11 +1476,12 @@ public class ReadingTest {
                 .filter(x -> x.getText().equals("april") && x.getWitnesses().contains("B")).findFirst();
         assertTrue(aprilA.isPresent());
         assertTrue(aprilB.isPresent());
-        Response result = jerseyTest
+        try (Response result = jerseyTest
                 .target("/reading/" + aprilA.get().getId() + "/merge/" + aprilB.get().getId())
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        }
 
         // Make a relation between 'his' nodes and make sure they can be merged the other way
         Optional<ReadingModel> hisA = ourRdgs.stream()
@@ -1464,17 +1495,19 @@ public class ReadingTest {
         link.setTarget(hisA.get().getId());
         link.setType("spelling");
         link.setScope("local");
-        result = jerseyTest
+        try (Response result2 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(link));
-        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+                .post(Entity.json(link))) {
+            assertEquals(Status.CREATED.getStatusCode(), result2.getStatus());
+        }
 
-        result = jerseyTest
+        try (Response result3 = jerseyTest
                 .target("/reading/" + link.getTarget() + "/merge/" + link.getSource())
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), result3.getStatus());
+        }
 
         // Change 'teh' to 'the', make relation from each to 'to', make sure they can be merged
         ReadingModel rmThe, rmTeh, rmTo;
@@ -1494,26 +1527,30 @@ public class ReadingTest {
         link.setSource(rmTeh.getId());
         link.setTarget(rmTo.getId());
         link.setType("lexical");
-        result = jerseyTest
+        try (Response result4 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(link));
-        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+                .post(Entity.json(link))) {
+            assertEquals(Status.CREATED.getStatusCode(), result4.getStatus());
+        }
 
         link.setSource(rmThe.getId());
-        result = jerseyTest
+        try (Response result5 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(link));
-        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+                .post(Entity.json(link))) {
+            assertEquals(Status.CREATED.getStatusCode(), result5.getStatus());
+        }
 
-        result = jerseyTest
-                .target("/reading/" + rmThe.getId()+ "/merge/" + rmTeh.getId())
+        GraphModel ourResult;
+        try (Response result6 = jerseyTest
+                .target("/reading/" + rmThe.getId() + "/merge/" + rmTeh.getId())
                 .request()
-                .post(Entity.text(null));
-        assertEquals(Status.OK.getStatusCode(), result.getStatus());
-        // test result - no new relation should have been created
-        GraphModel ourResult = result.readEntity(GraphModel.class);
+                .post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), result6.getStatus());
+            // test result - no new relation should have been created
+            ourResult = result6.readEntity(GraphModel.class);
+        }
         assertEquals(0, ourResult.getRelations().size());
     }
 
@@ -1525,9 +1562,10 @@ public class ReadingTest {
         rcpm.addProperty(new KeyPropertyModel("text", "the"));
         String toDelete = readingLookup.get("teh/15");
         String toKeep = readingLookup.get("the/16");
-        Response result = jerseyTest.target("/reading/" + toDelete)
-                .request().put(Entity.json(rcpm));
-        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        try (Response result = jerseyTest.target("/reading/" + toDelete)
+                .request().put(Entity.json(rcpm))) {
+            assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        }
 
         // Set a same-rank lexical relation
         RelationModel rel = new RelationModel();
@@ -1535,16 +1573,19 @@ public class ReadingTest {
         rel.setTarget(readingLookup.get("to/15"));
         rel.setType("lexical");
         rel.setScope("local");
-        result = jerseyTest.target("/tradition/" + tradId + "/relation")
-                .request().post(Entity.json(rel));
-        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+        try (Response result2 = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request().post(Entity.json(rel))) {
+            assertEquals(Status.CREATED.getStatusCode(), result2.getStatus());
+        }
 
         // Do the merge
-        result = jerseyTest
+        GraphModel ourResult;
+        try (Response result3 = jerseyTest
                 .target("/reading/" + toKeep + "/merge/" + toDelete)
-                .request().post(Entity.text(null));
-        assertEquals(Status.OK.getStatusCode(), result.getStatus());
-        GraphModel ourResult = result.readEntity(GraphModel.class);
+                .request().post(Entity.text(null))) {
+            assertEquals(Status.OK.getStatusCode(), result3.getStatus());
+            ourResult = result3.readEntity(GraphModel.class);
+        }
         assertEquals(1, ourResult.getRelations().size());
         RelationModel newRel = ourResult.getRelations().iterator().next();
         assertEquals(rel.getTarget(), newRel.getTarget());
@@ -1571,24 +1612,28 @@ public class ReadingTest {
         rel.setTarget(readingLookup.get("to/15"));
         rel.setType("lexical");
         rel.setScope("local");
-        result = jerseyTest.target("/tradition/" + tradId + "/relation")
-                .request().post(Entity.json(rel));
-        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+        try (Response result2 = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request().post(Entity.json(rel))) {
+            assertEquals(Status.CREATED.getStatusCode(), result2.getStatus());
+        }
 
         // Set a grammatical relation to our merge target
         rel.setSource(toKeep);
         rel.setType("grammatical");
-        result = jerseyTest.target("/tradition/" + tradId + "/relation")
-                .request().post(Entity.json(rel));
-        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+        try (Response result3 = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request().post(Entity.json(rel))) {
+            assertEquals(Status.CREATED.getStatusCode(), result3.getStatus());
+        }
 
         // Try the merge
-        result = jerseyTest
+        try (Response result4 = jerseyTest
                 .target("/reading/" + toKeep + "/merge/" + toDelete)
-                .request().post(Entity.text(null));
-        assertEquals(Status.CONFLICT.getStatusCode(), result.getStatus());
-        assertEquals(String.format("Conflicting lexical relation to node %s prevents merge", rel.getTarget()),
-                Util.getValueFromJson(result, "error"));
+                .request().post(Entity.text(null))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), result4.getStatus());
+            assertEquals(String.format("Conflicting lexical relation to node %s prevents merge", rel.getTarget()),
+                    Util.getValueFromJson(result4, "error"));
+        }
+
     }
 
     @Test
@@ -1689,17 +1734,19 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter(" ");
-        Response response = jerseyTest
+        GraphModel readingsAndRelationsModel;
+        try (Response response = jerseyTest
                 .target("/reading/" + node.getElementId()
                         + "/split/0")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-        // Check the return value; there should be two changed readings and two rewritten relationships.
-        GraphModel readingsAndRelationsModel = response
-                .readEntity(GraphModel.class);
+            // Check the return value; there should be two changed readings and two rewritten relationships.
+            readingsAndRelationsModel = response
+                    .readEntity(GraphModel.class);
+        }
         // Check the readings
         assertEquals(2, readingsAndRelationsModel.getReadings().size());
         HashMap<String, String> rdgWords = new HashMap<>();
@@ -1729,13 +1776,14 @@ public class ReadingTest {
             // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("-");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + rotw
                         + "/split/0")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        }
 
         expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
@@ -1757,12 +1805,13 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("/");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + rotw + "/split/0")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        }
 
         expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
@@ -1775,12 +1824,13 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("-");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + rotw + "/split/4")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        }
 
         expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of-the-world";
 
@@ -1793,12 +1843,13 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("-of-");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + rotw + "/split/4")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        }
 
         expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood the-world";
 
@@ -1850,14 +1901,15 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("oo");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + root + "/split/1")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
 
-        assertEquals(Status.OK.getStatusCode(),
-                response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
+        }
         expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r t";
 
         testNumberOfReadingsAndWitnesses(30);
@@ -1870,14 +1922,15 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("o");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + root + "/split/1")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
 
-        assertEquals(Status.OK.getStatusCode(),
-                response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
+        }
         expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r ot";
 
         testNumberOfReadingsAndWitnesses(30);
@@ -1898,12 +1951,13 @@ public class ReadingTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("\"");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/reading/" + rotw + "/split/0")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        }
 
         // check that the text is right
         expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
@@ -1979,12 +2033,13 @@ public class ReadingTest {
             // split reading
             ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
             readingBoundaryModel.setCharacter("");
-            Response response = jerseyTest
+            try (Response response = jerseyTest
                     .target("/reading/" + untoMe.getElementId() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(readingBoundaryModel));
+                    .post(Entity.json(readingBoundaryModel))) {
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+                assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            }
 
             // check the re-ranking
             assertEquals(thisRank, untoMe.getProperty("rank"));
@@ -2012,11 +2067,12 @@ public class ReadingTest {
             ReadingBoundaryModel rbm = new ReadingBoundaryModel();
             rbm.setSeparate(false);
             rbm.setCharacter("");
-            Response response = jerseyTest
+            try (Response response = jerseyTest
                     .target("/reading/" + untome.getElementId() + "/split/2")
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(rbm));
-            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+                    .post(Entity.json(rbm))) {
+                assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            }
 
             // Find the new nodes
             assertEquals("un", untome.getProperty("text"));
@@ -2086,7 +2142,7 @@ public class ReadingTest {
         assertEquals(29, listOfReadings.size());
 
         String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-        List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
+        List<String> words = listOfReadings.stream().map(ReadingModel::getText).toList();
         String text = String.join(" ", words);
         assertEquals(expectedTest, text);
 
@@ -2119,12 +2175,13 @@ public class ReadingTest {
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("");
-        Response res = jerseyTest
+        try (Response res = jerseyTest
                 .target("/reading/" + showers + "/concatenate/" + sweet)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+        }
         // Get the reading and check its properties
         ReadingModel showerssweet = jerseyTest
                 .target("/reading/" + showers)
@@ -2140,7 +2197,7 @@ public class ReadingTest {
 
         // tradition still has all the texts
         String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-        List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
+        List<String> words = listOfReadings.stream().map(ReadingModel::getText).toList();
         String text = String.join(" ", words);
         assertEquals(expectedTest, text);
 
@@ -2162,12 +2219,14 @@ public class ReadingTest {
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setSeparate(false);
         readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
-        Response res = jerseyTest
+        GraphModel ourResult;
+        try (Response res = jerseyTest
                 .target("/reading/" + showers + "/concatenate/" + sweet)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
-        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-        GraphModel ourResult = res.readEntity(GraphModel.class);
+                .post(Entity.json(readingBoundaryModel))) {
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+            ourResult = res.readEntity(GraphModel.class);
+        }
         assertEquals(1, ourResult.getReadings().size());
         assertEquals(1, ourResult.getSequences().size());
         assertEquals(0, ourResult.getRelations().size());
@@ -2204,13 +2263,15 @@ public class ReadingTest {
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("test");
-        Response res = jerseyTest
+        GraphModel ourResult;
+        try (Response res = jerseyTest
                 .target("/reading/" + showers + "/concatenate/" + sweet)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-        GraphModel ourResult = res.readEntity(GraphModel.class);
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+            ourResult = res.readEntity(GraphModel.class);
+        }
         ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
         assertNotNull(ourCompressed);
         assertEquals(showers, ourCompressed.getId());
@@ -2242,13 +2303,15 @@ public class ReadingTest {
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("\"");
-        Response res = jerseyTest
+        GraphModel ourResult;
+        try (Response res = jerseyTest
                 .target("/reading/" + showers + "/concatenate/" + sweet)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-        GraphModel ourResult = res.readEntity(GraphModel.class);
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+            ourResult = res.readEntity(GraphModel.class);
+        }
         ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
         assertNotNull(ourCompressed);
         assertEquals(showers, ourCompressed.getId());
@@ -2267,12 +2330,13 @@ public class ReadingTest {
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("/");
-        Response res = jerseyTest
+        try (Response res = jerseyTest
                 .target("/reading/" + showers + "/concatenate/" + sweet)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+        }
 
         expectedWitnessB = "when april his showers/sweet with fruit the march of drought has pierced to the root";
         Response resp = new Witness(tradId, "B").getWitnessAsText();
@@ -2313,12 +2377,14 @@ public class ReadingTest {
             ReadingBoundaryModel rbm = new ReadingBoundaryModel();
             rbm.setSeparate(false);
             rbm.setCharacter("-");
-            Response response = jerseyTest
+            GraphModel result;
+            try (Response response = jerseyTest
                     .target("/reading/" + rood.getElementId() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(rbm));
-            assertEquals(Status.OK.getStatusCode(), response.getStatus());
-            GraphModel result = response.readEntity(GraphModel.class);
+                    .post(Entity.json(rbm))) {
+                assertEquals(Status.OK.getStatusCode(), response.getStatus());
+                result = response.readEntity(GraphModel.class);
+            }
             HashMap<String, String> text2id = new HashMap<>();
             for (ReadingModel rm : result.getReadings()) {
                 text2id.put(rm.getText(), rm.getId());
@@ -2330,11 +2396,12 @@ public class ReadingTest {
 
             // Then join it with defaults; the separation should be overridden by join_prior settings
             rbm = new ReadingBoundaryModel();
-            response = jerseyTest
+            try (Response response2 = jerseyTest
                     .target("/reading/" + text2id.get("rood") + "/concatenate/" + text2id.get("of"))
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(rbm));
-            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+                    .post(Entity.json(rbm))) {
+                assertEquals(Status.OK.getStatusCode(), response2.getStatus());
+            }
 
             // Check the reading of C
             TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "C").getWitnessAsText().getEntity();
@@ -2354,7 +2421,7 @@ public class ReadingTest {
                 .target("/tradition/" + sapId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        String sapSectId = testSections.get(0).getId();
+        String sapSectId = testSections.getFirst().getId();
         try (Transaction tx = db.beginTx()) {
             // Identify the first five nodes by rank
             Node n1 = tx.findNode(Nodes.READING, "text", "Verbum");
@@ -2370,17 +2437,20 @@ public class ReadingTest {
             assertEquals(3, fourth.size());
 
             ReadingBoundaryModel rbm = new ReadingBoundaryModel();
-            Response response = jerseyTest
+            try (Response response = jerseyTest
                     .target("/reading/" + n1.getElementId() + "/concatenate/" + n2.getElementId())
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(rbm));
-            assertEquals(Status.OK.getStatusCode(), response.getStatus());
-            response = jerseyTest
+                    .post(Entity.json(rbm))) {
+                assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            }
+            GraphModel ourResult;
+            try (Response response2 = jerseyTest
                     .target("/reading/" + n1.getElementId() + "/concatenate/" + n3.getElementId())
                     .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(rbm));
-            assertEquals(Status.OK.getStatusCode(), response.getStatus());
-            GraphModel ourResult = response.readEntity(GraphModel.class);
+                    .post(Entity.json(rbm))) {
+                assertEquals(Status.OK.getStatusCode(), response2.getStatus());
+                ourResult = response2.readEntity(GraphModel.class);
+            }
             assertEquals(1, ourResult.getReadings().size());
             assertEquals(2, ourResult.getSequences().size());
             ourResult.getReadings().forEach(x -> assertEquals("Verbum Ista sequencia", x.getText()));
@@ -2402,9 +2472,10 @@ public class ReadingTest {
 
     @Test
     public void concatenateAllFormsTest() {
-        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "M407", "LR",
-                "1", "src/TestFiles/Matthew-407.json", "cxjson");
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        try (Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "M407", "LR",
+                "1", "src/TestFiles/Matthew-407.json", "cxjson")) {
+            assertEquals(Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        }
         String first_id = null;
         String second_id = null;
         try (Transaction tx = db.beginTx()) {
@@ -2419,11 +2490,13 @@ public class ReadingTest {
         assertNotNull(first_id);
         assertNotNull(second_id);
         ReadingBoundaryModel rbm = new ReadingBoundaryModel();
-        jerseyResult = jerseyTest.target("/reading/" + first_id + "/concatenate/" + second_id)
+        GraphModel ourResult;
+        try (Response jerseyResult = jerseyTest.target("/reading/" + first_id + "/concatenate/" + second_id)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(rbm));
-        assertEquals(Status.OK.getStatusCode(), jerseyResult.getStatus());
-        GraphModel ourResult = jerseyResult.readEntity(GraphModel.class);
+                .post(Entity.json(rbm))) {
+            assertEquals(Status.OK.getStatusCode(), jerseyResult.getStatus());
+            ourResult = jerseyResult.readEntity(GraphModel.class);
+        }
         ReadingModel compressed = ourResult.getReadings().iterator().next();
         assertNotNull(compressed);
         assertEquals("թվկնութես հայո՛ց", compressed.getText());
@@ -2544,7 +2617,7 @@ public class ReadingTest {
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         List<ReadingModel> relatedReadings = jerseyResponse.readEntity(new GenericType<>() {});
         assertEquals(1, relatedReadings.size());
-        assertEquals("the root", relatedReadings.get(0).getText());
+        assertEquals("the root", relatedReadings.getFirst().getText());
         List<ReadingModel> allRels = jerseyTest
                 .target("/reading/" + readId + "/related")
                 .request()
@@ -2567,7 +2640,7 @@ public class ReadingTest {
                 "John verse", "LR", "1","src/TestFiles/john.csv", "csv"), "tradId");
         Response r = jerseyTest.target("/tradition/" + secondTrad + "/reading/" + r1lookup.get("when/1"))
                 .request().get();
-        assertEquals(Status.NO_CONTENT.getStatusCode(), r.getStatus());
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
         r = jerseyTest.target("/tradition/" + tradId + "/reading/" + r1lookup.get("when/1"))
                 .request().get();
         assertEquals(Status.OK.getStatusCode(), r.getStatus());
@@ -2579,9 +2652,10 @@ public class ReadingTest {
         String secondTrad = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest,
                 "Next copy", "LR", "1","src/TestFiles/testTradition.xml", "stemmaweb"), "tradId");
         HashMap<String,String> r2lookup = Util.makeReadingLookup(jerseyTest, secondTrad);
-        Response r = jerseyTest.target("/reading/" + r1lookup.get("april/2") + "/merge/" + r2lookup.get("april/2"))
-                .request().post(Entity.text(null));
-        assertEquals(Status.CONFLICT.getStatusCode(), r.getStatus());
+        try (Response r = jerseyTest.target("/reading/" + r1lookup.get("april/2") + "/merge/" + r2lookup.get("april/2"))
+                .request().post(Entity.text(null))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), r.getStatus());
+        }
 
     }
 

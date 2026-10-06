@@ -1037,7 +1037,7 @@ public class StemmawebLegacyTest {
                 .request()
                 .get();
 
-        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
 
         /*
          *  is( $c->reading('n3')->text, 'with his', "Reading n3 has both words" );
@@ -1073,7 +1073,7 @@ public class StemmawebLegacyTest {
                 .request()
                 .get();
 
-        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
 
 
         /*

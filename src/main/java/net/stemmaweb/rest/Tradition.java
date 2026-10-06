@@ -131,14 +131,14 @@ public class Tradition {
      */
     @Path("/reading/{id}")
     public Reading getReading(@PathParam("id") String rid) {
-        boolean readingInTradition = false;
         try (Transaction tx = db.beginTx()) {
-            if (ReadingService.getTraditionId(tx, rid).equals(traditionId))
-                readingInTradition = true;
+            if (!ReadingService.getTraditionId(tx, rid).equals(traditionId))
+                throw new WebApplicationException(Response.status(Response.Status.NOT_FOUND)
+                        .entity(jsonerror("Reading " + rid + " not found in tradition " + traditionId))
+                        .type(MediaType.APPLICATION_JSON)
+                        .build());
         }
-        if (readingInTradition) return new Reading(rid, traditionId);
-        // Otherwise return a Reading resource that will produce a 404
-        return new Reading("-1");
+        return new Reading(rid, traditionId);
     }
 
     /**
@@ -833,7 +833,7 @@ public class Tradition {
                 Set<Node> removableNodes = new HashSet<>();
                 VariantGraphService.returnEntireTradition(tx, foundTradition)
                         .nodes().forEach(x -> {
-                    DatabaseService.getRelationships(x).forEach(removableRelations::add);
+                            removableRelations.addAll(DatabaseService.getRelationships(x));
                     removableNodes.add(x);
                 });
 
