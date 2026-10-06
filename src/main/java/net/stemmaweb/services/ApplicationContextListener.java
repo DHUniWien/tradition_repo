@@ -46,6 +46,10 @@ public class ApplicationContextListener implements ServletContextListener {
         try {
             GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
             try (Transaction tx = db.beginTx()) {
+            	DatabaseService.ensureConstraints(tx);
+            	tx.commit();
+            }
+            try (Transaction tx = db.beginTx()) {
             	DatabaseService.createRootNode(tx);
             	tx.commit();
             }

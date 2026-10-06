@@ -63,6 +63,11 @@ public class UserTest {
     	new GraphDatabaseServiceProvider(dbbuilder, db);
 
     	try (Transaction tx = db.beginTx()) {
+    		DatabaseService.ensureConstraints(tx);
+    		tx.commit();
+    	}
+
+    	try (Transaction tx = db.beginTx()) {
     		DatabaseService.createRootNode(tx);
     		tx.commit();
     	}

@@ -191,6 +191,10 @@ public class Util {
 
     public static void setupTestDB(GraphDatabaseService db, String userId) {
         // Populate the test database with the root node and a user with id 1
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.ensureConstraints(tx);
+            tx.commit();
+        }
         try(Transaction tx = db.beginTx()) {
         	DatabaseService.createRootNode(tx);
             // Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");

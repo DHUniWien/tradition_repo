@@ -20,5 +20,6 @@ public enum Nodes implements Label {
     PROPERTIES,      // is the properties that a particular annotation node can have
     LINKS,           // is the relationships that a particular annotation node can have
     USER,            // is a user node
+    ANNOTATION,      // a stable marker label on every annotation node, alongside its dynamic type label
     __SYSTEM__       // is a __SYSTEM__ node
 }

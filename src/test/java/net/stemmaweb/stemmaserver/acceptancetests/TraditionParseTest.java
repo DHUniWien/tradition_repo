@@ -64,6 +64,11 @@ public class TraditionParseTest extends TestCase {
 
         // Create a root node and test user
         try (Transaction tx = db.beginTx()) {
+        	DatabaseService.ensureConstraints(tx);
+        	tx.commit();
+        }
+
+        try (Transaction tx = db.beginTx()) {
         	DatabaseService.createRootNode(tx);
             Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
             Node node = tx.createNode(Nodes.USER);

@@ -1,6 +1,8 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -12,11 +14,14 @@ import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
@@ -74,6 +79,68 @@ public class DatabaseServiceTest {
     		assertTrue(DatabaseService.userExists(tx, userId));
     		tx.close();
     	}
+    }
+
+    @Test
+    public void testEnsureConstraintsIdempotent() {
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.ensureConstraints(tx);
+            tx.commit();
+        }
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.ensureConstraints(tx); // must not throw on second call
+            tx.commit();
+        }
+    }
+
+    @Test
+    public void testAssignIdIfCoveredGivesUniqueSequentialIds() {
+        try (Transaction tx = db.beginTx()) {
+            Node r1 = DatabaseService.createNode(tx, Nodes.READING);
+            Node r2 = DatabaseService.createNode(tx, Nodes.READING);
+            Node s1 = DatabaseService.createNode(tx, Nodes.SECTION);
+            assertEquals(1L, r1.getProperty("id"));
+            assertEquals(2L, r2.getProperty("id"));
+            assertEquals(1L, s1.getProperty("id")); // independent per-type counter
+            tx.commit();
+        }
+    }
+
+    @Test
+    public void testCreateNodeSkipsIdForUncoveredLabel() {
+        try (Transaction tx = db.beginTx()) {
+            Node w = DatabaseService.createNode(tx, Nodes.WITNESS);
+            assertFalse(w.hasProperty("id"));
+            tx.commit();
+        }
+    }
+
+    @Test
+    public void testFindNodeOrThrowThrowsNumberFormatExceptionOnBadId() {
+        try (Transaction tx = db.beginTx()) {
+            assertThrows(NumberFormatException.class,
+                () -> DatabaseService.findNodeOrThrow(tx, Nodes.READING, "not-a-number"));
+        }
+    }
+
+    @Test
+    public void testFindNodeOrThrowThrowsNotFoundOnMissingId() {
+        try (Transaction tx = db.beginTx()) {
+            assertThrows(NotFoundException.class,
+                () -> DatabaseService.findNodeOrThrow(tx, Nodes.READING, "999999"));
+        }
+    }
+
+    @Test
+    public void testCreateRelatedRelationshipAssignsId() {
+        try (Transaction tx = db.beginTx()) {
+            Node a = DatabaseService.createNode(tx, Nodes.READING);
+            Node b = DatabaseService.createNode(tx, Nodes.READING);
+            Relationship rel = DatabaseService.createRelatedRelationship(tx, a, b);
+            assertEquals(1L, rel.getProperty("id"));
+            assertEquals(rel, DatabaseService.findRelatedOrThrow(tx, "1"));
+            tx.commit();
+        }
     }
 
     /*

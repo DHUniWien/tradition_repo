@@ -1,18 +1,33 @@
 package net.stemmaweb.services;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.schema.ConstraintDefinition;
+import org.neo4j.graphdb.schema.Schema;
 
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
 /**
  * Generic helper methods for querying the graph database
- * 
+ *
  * @author PSE FS 2015 Team2
  */
 public class DatabaseService {
+
+    /**
+     * Maps the node labels that get an application-assigned, sequential "id"
+     * property to the name of the ROOT-node counter property that feeds it.
+     */
+    private static final Map<Label, String> COVERED_COUNTERS = Map.of(
+            Nodes.READING, "next_reading_id",
+            Nodes.SECTION, "next_section_id",
+            Nodes.ANNOTATION, "next_annotation_id"
+    );
 
     /**
      * Creates a root node for the entire graph.
@@ -26,6 +41,151 @@ public class DatabaseService {
             Node node = tx.createNode(Nodes.ROOT);
             node.setProperty("name", "Root node");
         }
+    }
+
+    /**
+     * Ensures that the node-uniqueness constraints on "id" for READING, SECTION,
+     * and ANNOTATION, and the relationship-uniqueness constraint on "id" for
+     * RELATED, all exist. Safe to call repeatedly (e.g. on every application
+     * startup) -- a constraint that already exists is left alone rather than
+     * re-created. Must be run in its own transaction, separate from any data
+     * writes.
+     *
+     * @param tx the transaction within which we are working
+     */
+    public static void ensureConstraints(Transaction tx) {
+        Schema schema = tx.schema();
+        ensureNodePropertyUniqueness(schema, Nodes.READING, "id");
+        ensureNodePropertyUniqueness(schema, Nodes.SECTION, "id");
+        ensureNodePropertyUniqueness(schema, Nodes.ANNOTATION, "id");
+        ensureRelationshipPropertyUniqueness(schema, ERelations.RELATED, "id");
+    }
+
+    private static void ensureNodePropertyUniqueness(Schema schema, Label label, String property) {
+        for (ConstraintDefinition constraint : schema.getConstraints(label)) {
+            for (String key : constraint.getPropertyKeys()) {
+                if (key.equals(property)) return;
+            }
+        }
+        schema.constraintFor(label).assertPropertyIsUnique(property).create();
+    }
+
+    private static void ensureRelationshipPropertyUniqueness(Schema schema, RelationshipType type, String property) {
+        for (ConstraintDefinition constraint : schema.getConstraints(type)) {
+            for (String key : constraint.getPropertyKeys()) {
+                if (key.equals(property)) return;
+            }
+        }
+        schema.constraintFor(type).assertPropertyIsUnique(property).create();
+    }
+
+    /**
+     * Reads the named counter property off the ROOT node (default 0 if absent),
+     * increments it by 1, writes the incremented value back, and returns it.
+     *
+     * @param tx the transaction within which we are working
+     * @param counterProperty the name of the counter property on the ROOT node
+     * @return the newly-incremented counter value
+     */
+    public static long nextId(Transaction tx, String counterProperty) {
+        Node root = tx.findNode(Nodes.ROOT, "name", "Root node");
+        long current = root.hasProperty(counterProperty) ? (long) root.getProperty(counterProperty) : 0L;
+        long next = current + 1;
+        root.setProperty(counterProperty, next);
+        return next;
+    }
+
+    /**
+     * If the given node has one of the covered labels (READING, SECTION,
+     * ANNOTATION), assigns it the next value from that label's counter as its
+     * "id" property. No-op for any other label. Safe to call once, right after
+     * a node's final covered label is in place, regardless of whether that was
+     * at creation time or via a later addLabel.
+     *
+     * @param tx the transaction within which we are working
+     * @param node the node to assign an id to, if covered
+     */
+    public static void assignIdIfCovered(Transaction tx, Node node) {
+        for (Map.Entry<Label, String> entry : COVERED_COUNTERS.entrySet()) {
+            if (node.hasLabel(entry.getKey())) {
+                node.setProperty("id", nextId(tx, entry.getValue()));
+                return;
+            }
+        }
+    }
+
+    /**
+     * Creates a node with the given labels, assigning it an application-level
+     * "id" property if one of the labels is covered (READING, SECTION,
+     * ANNOTATION).
+     *
+     * @param tx the transaction within which we are working
+     * @param labels the labels to create the node with
+     * @return the newly-created node
+     */
+    public static Node createNode(Transaction tx, Label... labels) {
+        Node node = tx.createNode(labels);
+        assignIdIfCovered(tx, node);
+        return node;
+    }
+
+    /**
+     * Creates a RELATED relationship from one node to another, assigning it an
+     * "id" property from the next_relation_id counter. Does not set any other
+     * property -- callers set type/scope/etc. themselves, as today.
+     *
+     * @param tx the transaction within which we are working
+     * @param from the node the relationship starts from
+     * @param to the node the relationship points to
+     * @return the newly-created relationship
+     */
+    public static Relationship createRelatedRelationship(Transaction tx, Node from, Node to) {
+        Relationship rel = from.createRelationshipTo(to, ERelations.RELATED);
+        rel.setProperty("id", nextId(tx, "next_relation_id"));
+        return rel;
+    }
+
+    /**
+     * Finds the node with the given label and application-level "id" property.
+     *
+     * @param tx the transaction within which we are working
+     * @param label the label of the node to find
+     * @param idStr the "id" property value, as a string
+     * @return the matching node
+     * @throws NumberFormatException if idStr is not a valid long
+     * @throws NotFoundException if no such node exists
+     */
+    public static Node findNodeOrThrow(Transaction tx, Label label, String idStr) {
+        long id = Long.parseLong(idStr);
+        Node node = tx.findNode(label, "id", id);
+        if (node == null) {
+            throw new NotFoundException(String.format("No %s node found with id %s", label.name(), idStr));
+        }
+        return node;
+    }
+
+    /**
+     * Finds the RELATED relationship with the given application-level "id"
+     * property. There is no tx.findRelationship-by-property convenience method,
+     * so this runs a Cypher query.
+     *
+     * @param tx the transaction within which we are working
+     * @param idStr the "id" property value, as a string
+     * @return the matching relationship
+     * @throws NumberFormatException if idStr is not a valid long
+     * @throws NotFoundException if no such relationship exists
+     */
+    public static Relationship findRelatedOrThrow(Transaction tx, String idStr) {
+        long id = Long.parseLong(idStr);
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", id);
+        try (Result result = tx.execute(
+                "MATCH ()-[r:RELATED]-() WHERE r.id = $id RETURN r LIMIT 1", params)) {
+            if (result.hasNext()) {
+                return (Relationship) result.next().get("r");
+            }
+        }
+        throw new NotFoundException("No RELATED relationship found with id " + idStr);
     }
 
     /**
