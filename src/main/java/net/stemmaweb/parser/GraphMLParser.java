@@ -456,8 +456,12 @@ public class GraphMLParser {
                                 am.getId(), am.getLabel(), e.getMessage()));
                     }
                     // Add the new annotation node to the idMap so that it is there for any
-                    // dependent annotations
-                    idMap.put(amid, newAnno.getId());
+                    // dependent annotations. idMap values are elementIds throughout this method
+                    // (see the getNodeByElementId lookups above and in the sanity check below),
+                    // whereas AnnotationModel.getId() is now the new application-assigned numeric
+                    // id -- look the node back up by that id to get its elementId for the map.
+                    idMap.put(amid, DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, newAnno.getId())
+                            .getElementId());
                     // Mark this annotation to be removed from the queue
                     toRemove.add(amid);
                 }

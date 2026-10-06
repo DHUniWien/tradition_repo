@@ -96,6 +96,15 @@ public class GraphMLInputOutputTest extends TestCase {
         }
     }
 
+    // Same deliberate exception as elementIdOf() above, but for an annotation link that
+    // targets another annotation (e.g. a PLACE annotation referenced by a PLACEREF):
+    // looks up that annotation's current elementId given its numeric id.
+    private String annotationElementIdOf(String annotationId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annotationId).getElementId();
+        }
+    }
+
     // The inverse of elementIdOf: looks up a reading's new numeric id given its elementId,
     // for comparing an annotation link's target against a ReadingModel's id.
     private String numericIdOf(String readingElementId) {
@@ -519,11 +528,11 @@ public class GraphMLInputOutputTest extends TestCase {
         thePlace.setLabel("PLACE");
         thePlace.addProperty("name", "Sweden");
         AnnotationLinkModel r1 = new AnnotationLinkModel();
-        r1.setTarget(sect1ref.getId());
+        r1.setTarget(annotationElementIdOf(sect1ref.getId()));
         r1.setType("REFERENCED");
         thePlace.addLink(r1);
         AnnotationLinkModel r2 = new AnnotationLinkModel();
-        r2.setTarget(sect2ref.getId());
+        r2.setTarget(annotationElementIdOf(sect2ref.getId()));
         r2.setType("REFERENCED");
         thePlace.addLink(r2);
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotation").request().post(Entity.json(thePlace));

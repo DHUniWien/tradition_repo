@@ -17,11 +17,14 @@ import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 
 public class AnnotationService {
     public static AnnotationModel addAnnotationToTradition(Transaction tx, Node traditionNode, AnnotationModel spec)
             throws IllegalArgumentException {
         Node newAnno = tx.createNode();
+        newAnno.addLabel(Nodes.ANNOTATION);
+        DatabaseService.assignIdIfCovered(tx, newAnno);
         traditionNode.createRelationshipTo(newAnno, ERelations.HAS_ANNOTATION);
         return updateAnnotation(tx, traditionNode, newAnno, spec);
     }
@@ -35,12 +38,21 @@ public class AnnotationService {
             throw new IllegalArgumentException("No annotation label " + spec.getLabel() + " defined for this tradition");
         AnnotationLabelModel alm = new AnnotationLabelModel(al.get());
 
-        // Remove any old label and set the new label
-        annoNode.getLabels().forEach(annoNode::removeLabel);
+        // Remove any old label (other than the stable ANNOTATION marker label)
+        // and set the new dynamic label
+        for (Label l : annoNode.getLabels()) {
+            if (!l.name().equals(Nodes.ANNOTATION.name()))
+                annoNode.removeLabel(l);
+        }
         annoNode.addLabel(Label.label(alm.getName()));
 
-        // Now check and replace its properties
-        annoNode.getPropertyKeys().forEach(annoNode::removeProperty);
+        // Now check and replace its properties (preserving the stable "id" property,
+        // which is assigned once at creation time and is not part of the annotation's
+        // user-facing spec)
+        for (String pkey : annoNode.getPropertyKeys()) {
+            if (!pkey.equals("id"))
+                annoNode.removeProperty(pkey);
+        }
         for (String pkey : spec.getProperties().keySet()) {
             // Make sure this property name is defined
             if (!alm.getProperties().containsKey(pkey))

@@ -1440,6 +1440,15 @@ public class SectionTest extends TestCase {
         }
     }
 
+    // Same deliberate exception as elementIdOf() above, but for an annotation link that
+    // targets another annotation (e.g. a PLACE annotation referenced by a PLACEREF):
+    // looks up that annotation's current elementId given its numeric id.
+    private String annotationElementIdOf(String annotationId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annotationId).getElementId();
+        }
+    }
+
     private HashMap<String, String> setupComplexAnnotation() {
         HashMap<String, String> data = new HashMap<>();
         // Add the second section
@@ -1510,7 +1519,7 @@ public class SectionTest extends TestCase {
         suecia.setProperties(sprops);
         AnnotationLinkModel slinks = new AnnotationLinkModel();
         slinks.setType("NAMED");
-        slinks.setTarget(ref1.getId());
+        slinks.setTarget(annotationElementIdOf(ref1.getId()));
         suecia.addLink(slinks);
         try (Response response4 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
@@ -1543,7 +1552,7 @@ public class SectionTest extends TestCase {
 
         // Link the new reference to the existing place
         AnnotationLinkModel newLink = new AnnotationLinkModel();
-        newLink.setTarget(ref2.getId());
+        newLink.setTarget(annotationElementIdOf(ref2.getId()));
         newLink.setType("NAMED");
         try (Response response6 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + suecia.getId() + "/link")

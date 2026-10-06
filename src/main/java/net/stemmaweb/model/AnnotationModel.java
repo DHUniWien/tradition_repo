@@ -4,6 +4,7 @@ import org.neo4j.graphdb.*;
 
 import java.util.ArrayList;
 
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import java.util.HashMap;
 import java.util.List;
@@ -46,9 +47,15 @@ public class AnnotationModel {
     }
 
     public AnnotationModel(Node annNode) {
-        this.setId(annNode.getElementId());
-        // We assume there is only one label
-        this.setLabel(annNode.getLabels().iterator().next().name());
+        this.setId(annNode.getProperty("id").toString());
+        // Every annotation node carries the stable ANNOTATION marker label alongside
+        // exactly one dynamic type label (e.g. "TRANSLATION"); find that one.
+        for (Label l : annNode.getLabels()) {
+            if (!l.name().equals(Nodes.ANNOTATION.name())) {
+                this.setLabel(l.name());
+                break;
+            }
+        }
         this.setPrimary(annNode.getProperty("__primary", false).equals(true));
         Map<String,Object> props = annNode.getAllProperties();
         props.remove("__primary");

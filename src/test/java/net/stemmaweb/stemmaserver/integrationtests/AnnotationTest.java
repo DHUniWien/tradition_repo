@@ -71,6 +71,15 @@ public class AnnotationTest extends TestCase {
         }
     }
 
+    // Same deliberate exception as elementIdOf() above, but for an annotation link that
+    // targets another annotation (e.g. a PERSON annotation referenced by a PERSONREF):
+    // looks up that annotation's current elementId given its numeric id.
+    private String annotationElementIdOf(String annotationId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annotationId).getElementId();
+        }
+    }
+
     private AnnotationLabelModel returnTestLabel() {
         AnnotationLabelModel alm = new AnnotationLabelModel();
         alm.setName("TRANSLATION");
@@ -268,7 +277,7 @@ public class AnnotationTest extends TestCase {
 
         // Check that the graph looks right
         try (Transaction tx = db.beginTx()) {
-            Node annoNode = tx.getNodeByElementId(am.getId());
+            Node annoNode = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, am.getId());
             assertTrue(annoNode.hasLabel(Label.label("TRANSLATION")));
             assertEquals(am.getProperties().get("text"), annoNode.getProperty("text"));
             assertEquals(am.getProperties().get("lang"), annoNode.getProperty("lang"));
@@ -285,6 +294,70 @@ public class AnnotationTest extends TestCase {
             Relationship tlink = annoNode.getSingleRelationship(
                     RelationshipType.withName("HAS_ANNOTATION"), Direction.INCOMING);
             assertEquals(tradId, tlink.getStartNode().getProperty("id"));
+        }
+    }
+
+    public void testAnnotationCreatedViaRestEndpointGetsNumericId() {
+        // POST /tradition/{id}/annotation (the real REST endpoint, i.e. Tradition.addAnnotation,
+        // NOT the GraphML reimport path) should produce an annotation whose id is a plain
+        // numeric string, not a Neo4j elementId.
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+        Long.parseLong(am.getId());
+    }
+
+    public void testAnnotationRetainsIdAfterUpdate() {
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+        String originalId = am.getId();
+
+        // PUT an update to the annotation, which exercises updateAnnotation's label-reset loop
+        AnnotationModel update = returnTestAnnotation();
+        update.addProperty("text", "An updated translation text");
+        AnnotationModel updated;
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + originalId)
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(update))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            updated = response.readEntity(AnnotationModel.class);
+        }
+        assertEquals(originalId, updated.getId());
+        assertEquals("An updated translation text", updated.getProperties().get("text"));
+
+        // The node should still satisfy the ANNOTATION uniqueness constraint -- a fresh GET
+        // by the same id should still work, and a second update should too.
+        try (Response response2 = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + originalId)
+                .request()
+                .get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), response2.getStatus());
+            AnnotationModel refetched = response2.readEntity(AnnotationModel.class);
+            assertEquals(originalId, refetched.getId());
+        }
+
+        update.addProperty("text", "Yet another translation text");
+        try (Response response3 = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + originalId)
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(update))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response3.getStatus());
+            updated = response3.readEntity(AnnotationModel.class);
+        }
+        assertEquals(originalId, updated.getId());
+    }
+
+    public void testGetAnnotationWithMalformedIdMatchesCurrentBehavior() {
+        // GET .../annotation/not-a-number -- a malformed id is not caught anywhere along this
+        // path (annotationNotFound only catches NotFoundException, and getAnnotation() has no
+        // catch clause at all), so it propagates as an unmapped exception, which Jersey turns
+        // into a 500. This matches the pre-entity-id behavior for a malformed elementId at the
+        // same endpoint (also an uncaught IllegalArgumentException -> 500).
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/not-a-number")
+                .request()
+                .get()) {
+            assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         }
     }
 
@@ -471,7 +544,7 @@ public class AnnotationTest extends TestCase {
         henry.setPrimary(true);
         henry.addProperty("href", "https://en.wikipedia.org/Saint_Henry");
         prb = new AnnotationLinkModel();
-        prb.setTarget(ref1.getId());
+        prb.setTarget(annotationElementIdOf(ref1.getId()));
         prb.setType("REFERENCED");
         henry.addLink(prb);
         try (Response response5 = jerseyTest
@@ -502,7 +575,7 @@ public class AnnotationTest extends TestCase {
         }
 
         // Add the link
-        prb.setTarget(ref2.getId());
+        prb.setTarget(annotationElementIdOf(ref2.getId()));
         prb.setType("REFERENCED");
         try (Response response7 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + henry.getId() + "/link")
@@ -531,8 +604,8 @@ public class AnnotationTest extends TestCase {
             if (am.getLabel().equals("PERSON")) {
                 assertEquals(2, am.getLinks().size());
                 HashMap<String,Boolean> found = new HashMap<>();
-                found.put(ref1.getId(), false);
-                found.put(ref2.getId(), false);
+                found.put(annotationElementIdOf(ref1.getId()), false);
+                found.put(annotationElementIdOf(ref2.getId()), false);
                 for (AnnotationLinkModel alm : am.getLinks()) {
                     assertEquals("REFERENCED", alm.getType());
                     found.put(alm.getTarget(), true);

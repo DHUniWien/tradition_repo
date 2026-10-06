@@ -25,6 +25,7 @@ import javax.xml.stream.XMLStreamWriter;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Entity;
+import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -70,10 +71,18 @@ public class GraphMLExporter {
             writer.writeStartElement("node");
             writer.writeAttribute("id", node.getElementId());
 
-            // Write out the labels
+            // Write out the labels. The stable ANNOTATION marker label is omitted here --
+            // it is internal plumbing (see Nodes.ANNOTATION), not part of the node's
+            // user-visible type, and GraphMLParser's reimport logic still expects exactly
+            // one label for an annotation-type node.
+            ArrayList<String> labelNames = new ArrayList<>();
+            for (Label l : node.getLabels()) {
+                if (!l.name().equals(Nodes.ANNOTATION.name()))
+                    labelNames.add(l.name());
+            }
             writer.writeStartElement("data");
             writer.writeAttribute("key", "dn" + nodeMap.get("neolabel")[0]);
-            writer.writeCharacters(node.getLabels().toString());
+            writer.writeCharacters(labelNames.toString());
             writer.writeEndElement();
 
             // Write out the properties

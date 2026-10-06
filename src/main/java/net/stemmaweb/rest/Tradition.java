@@ -478,12 +478,11 @@ public class Tradition {
             if (traditionNode == null)
                 return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
             traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-            Node anno = tx.createNode();
-            traditionNode.createRelationshipTo(anno, ERelations.HAS_ANNOTATION);
-            AnnotationModel result = AnnotationService.updateAnnotation(tx, traditionNode, anno, am);
+            AnnotationModel result = AnnotationService.addAnnotationToTradition(tx, traditionNode, am);
             tx.commit();
             return Response.status(Status.CREATED).entity(result).build();
     	} catch (Exception e) {
+    		e.printStackTrace();
     		return Response.serverError().entity(jsonerror(e.getMessage())).build();
     	}
     }

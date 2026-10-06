@@ -82,7 +82,7 @@ public class Annotation {
             if (annotationNotFound(tx)) {
                 response = Response.status(Response.Status.NOT_FOUND).build();
             } else {
-                Node a = tx.getNodeByElementId(annoId);
+                Node a = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
                 result = new AnnotationModel(a);
                 response = Response.ok(result).build();
             }
@@ -121,7 +121,7 @@ public class Annotation {
             if (annotationNotFound(tx))
                 return Response.status(Response.Status.NOT_FOUND).build();
             Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
-            Node annoNode = tx.getNodeByElementId(annoId);
+            Node annoNode = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
             AnnotationModel result = AnnotationService.updateAnnotation(tx, tradNode, annoNode, spec);
             tx.commit();
             return Response.ok(result).build();
@@ -160,7 +160,7 @@ public class Annotation {
         	if (annotationNotFound(tx)) {
         		response = Response.status(Response.Status.NOT_FOUND).build();
         	} else {
-        		Node a = tx.getNodeByElementId(annoId);
+        		Node a = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
         		// Delete all outgoing relationships, which makes this a dangling annotation
         		DatabaseService.getRelationships(a, Direction.OUTGOING).forEach(Relationship::delete);
         		// Make this node no longer a primary, since we are deleting it explicitly
@@ -230,8 +230,8 @@ public class Annotation {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))
                 return Response.status(Response.Status.NOT_FOUND).build();
-            Node aNode = tx.getNodeByElementId(annoId);
-            AnnotationLabelModel labelModel = new AnnotationLabelModel(tradId, aNode.getLabels().iterator().next().name(), tx);
+            Node aNode = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
+            AnnotationLabelModel labelModel = new AnnotationLabelModel(tradId, dynamicLabelOf(aNode), tx);
             AnnotationLinkModel result = AnnotationService.addAnnotationLink(tx, aNode, labelModel, linkModel);
             if (result == null)
                 return Response.notModified().build();
@@ -281,7 +281,7 @@ public class Annotation {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))
                 return Response.status(Response.Status.NOT_FOUND).build();
-            Node annoNode = tx.getNodeByElementId(annoId);
+            Node annoNode = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
             String linkId = findExistingLink(annoNode, linkModel);
             if (linkId == null)
                 return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Specified link not found")).build();
@@ -336,7 +336,7 @@ public class Annotation {
     }
 
     List<Node> collectReferents(Transaction tx, boolean recurse) {
-        Node aNode = tx.getNodeByElementId(annoId);
+        Node aNode = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
         if (recurse) {
             List<Node> result = new ArrayList<>();
             tx.traversalDescription().depthFirst()
@@ -370,7 +370,7 @@ public class Annotation {
         boolean found;
         Node a;
         try {
-            a = tx.getNodeByElementId(annoId);
+            a = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
         } catch (NotFoundException e) {
             return true;
         }
@@ -380,5 +380,15 @@ public class Annotation {
         found = t.hasLabel(Nodes.TRADITION) && t.getProperty("id", "NONE").equals(tradId);
 
         return !found;
+    }
+
+    // Every annotation node carries the stable ANNOTATION marker label alongside exactly
+    // one dynamic type label (e.g. "TRANSLATION"); find that one.
+    private static String dynamicLabelOf(Node aNode) {
+        for (Label l : aNode.getLabels()) {
+            if (!l.name().equals(Nodes.ANNOTATION.name()))
+                return l.name();
+        }
+        return null;
     }
 }
