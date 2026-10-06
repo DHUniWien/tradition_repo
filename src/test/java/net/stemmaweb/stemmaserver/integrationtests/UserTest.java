@@ -86,16 +86,16 @@ public class UserTest {
         try (Transaction tx = db.beginTx()) {
             Node notaUser = tx.findNode(Nodes.USER, "id", "1337");
             assertNull(notaUser);
-            tx.close();
         }
 
         String jsonPayload = "{\"role\":\"user\",\"id\":1337,\"passphrase\":\"ABCDSaltedHash\"}";
-        Response returnJSON = jerseyTest
+        try (Response returnJSON = jerseyTest
                 .target("/user/1337")
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(jsonPayload));
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
-                returnJSON.getStatus());
+                .put(Entity.json(jsonPayload))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(),
+                    returnJSON.getStatus());
+        }
 
         // Now check the list of users and make sure that the new user is there.
         List<UserModel> allUsers = jerseyTest
@@ -117,19 +117,21 @@ public class UserTest {
 
         String firstUser = "{\"role\":\"user\",\"id\":42}";
         String secondUser = "{\"role\":\"admin\",\"id\":42}";
-        Response dummyJSON = jerseyTest
+        try (Response dummyJSON = jerseyTest
                 .target("/user/42")
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(firstUser));
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
-                dummyJSON.getStatus());
+                .put(Entity.json(firstUser))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(),
+                    dummyJSON.getStatus());
+        }
 
-        Response returnJSON = jerseyTest
+        try (Response returnJSON = jerseyTest
                 .target("/user/42")
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(secondUser));
-        assertEquals(Response.status(Response.Status.OK).build().getStatus(),
-                returnJSON.getStatus());
+                .put(Entity.json(secondUser))) {
+            assertEquals(Response.Status.OK.getStatusCode(),
+                    returnJSON.getStatus());
+        }
     }
 
 
@@ -141,17 +143,20 @@ public class UserTest {
         UserModel userModel = new UserModel();
         userModel.setId("43");
         userModel.setRole("user");
-        jerseyTest
+        try (Response r = jerseyTest
                 .target("/user/43")
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(userModel));
+                .put(Entity.json(userModel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(),
+                    r.getStatus());
+        }
 
-        UserModel actualResponse = jerseyTest
+        UserModel createdUser = jerseyTest
                 .target("/user/43")
                 .request()
                 .get(UserModel.class);
-        assertEquals("43",actualResponse.getId());
-        assertEquals("user",actualResponse.getRole());
+        assertEquals("43",createdUser.getId());
+        assertEquals("user",createdUser.getRole());
 
 
     }
@@ -165,7 +170,7 @@ public class UserTest {
                 .target("/user/43")
                 .request()
                 .get();
-        assertEquals(Response.Status.NO_CONTENT.getStatusCode(), actualResponse.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
     }
 
     /**
@@ -180,9 +185,11 @@ public class UserTest {
         UserModel userModel = new UserModel();
         userModel.setId("1");
         userModel.setRole("user");
-        jerseyTest.target("/user/1")
+        try (Response r = jerseyTest.target("/user/1")
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(userModel));
+                .put(Entity.json(userModel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
 
         /*
          * Create User 2
@@ -190,9 +197,10 @@ public class UserTest {
         userModel = new UserModel();
         userModel.setId("2");
         userModel.setRole("user/2");
-        jerseyTest.target("/user/2")
+        Response r = jerseyTest.target("/user/2")
                 .request(MediaType.APPLICATION_JSON)
                 .put(Entity.json(userModel));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
 
         /*
          * Create a test tradition for user 1
@@ -235,10 +243,11 @@ public class UserTest {
             /*
              * Try to remove user 1 with all traditions. This should fail
              */
-            Response actualResponse = jerseyTest.target("/user/1")
+            try (Response actualResponse = jerseyTest.target("/user/1")
                     .request()
-                    .delete();
-            assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), actualResponse.getStatus());
+                    .delete()) {
+                assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), actualResponse.getStatus());
+            }
 
             /*
              * Check that user 1 is still there
@@ -255,20 +264,22 @@ public class UserTest {
             /*
              * Delete tradition 842
              */
-            actualResponse = jerseyTest.target("/tradition/842")
+            try (Response actualResponse = jerseyTest.target("/tradition/842")
                     .request()
-                    .delete();
-            assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+                    .delete()) {
+                assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+            }
             tradition = tx.findNode(Nodes.TRADITION, "id", "842");
             assertNull(tradition);
 
             /*
              * Try again to remove user 1
              */
-            actualResponse = jerseyTest.target("/user/1")
+            try (Response actualResponse = jerseyTest.target("/user/1")
                     .request()
-                    .delete();
-            assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+                    .delete()) {
+                assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+            }
 
             /*
              * Check that user 1 is now gone
@@ -288,7 +299,6 @@ public class UserTest {
             tradition = tx.findNode(Nodes.TRADITION, "id", "843");
             assertNotNull(tradition);
 
-            tx.close();
         }
     }
 
@@ -303,9 +313,10 @@ public class UserTest {
         UserModel userModel = new UserModel();
         userModel.setId("1");
         userModel.setRole("user");
-        jerseyTest.target("/user/1")
+        Response r = jerseyTest.target("/user/1")
                 .request(MediaType.APPLICATION_JSON)
                 .put(Entity.json(userModel));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
 
         /*
          * Create a test tradition for user 1
@@ -374,10 +385,12 @@ public class UserTest {
     @Test
     public void getUserTraditions(){
         String jsonPayload = "{\"role\":\"user\",\"id\":837462}";
-        jerseyTest
+        try (Response r = jerseyTest
                 .target("/user/837462")
                 .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(jsonPayload));
+                .put(Entity.json(jsonPayload))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
         
         try (Transaction tx = db.beginTx())
         {
@@ -401,7 +414,7 @@ public class UserTest {
                 .request()
                 .get(new GenericType<>() {
                 });
-        TraditionModel tradLoaded = traditions.get(0);
+        TraditionModel tradLoaded = traditions.getFirst();
         assertEquals(trad.getId(), tradLoaded.getId());
         assertEquals(trad.getName(), tradLoaded.getName());
 
@@ -409,7 +422,7 @@ public class UserTest {
                 .target("/user/837462/traditions")
                 .request(MediaType.APPLICATION_JSON)
                 .get();
-        assertEquals(Response.ok().build().getStatus(), getStemmaResponse.getStatus());
+        assertEquals(Response.Status.OK.getStatusCode(), getStemmaResponse.getStatus());
 
         Response getNotFoundStemmaResponse = jerseyTest
                 .target("/user/xy/traditions")

@@ -65,7 +65,7 @@ public class RelationType {
         try (Transaction tx = db.beginTx()){
             Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(tx, traditionId));
             if (foundRelType == null) {
-                response = Response.noContent().build();
+                response = Response.status(Response.Status.NOT_FOUND).build();
             } else {
             	response = Response.ok(new RelationTypeModel(foundRelType)).build();
             }

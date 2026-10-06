@@ -61,7 +61,7 @@ public class User {
             if (foundUser != null) {
                 return Response.ok(new UserModel(foundUser)).build();
             } else {
-                return Response.noContent().build();
+                return Response.status(Status.NOT_FOUND).build();
             }
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
