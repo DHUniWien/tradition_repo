@@ -15,6 +15,7 @@ import java.util.stream.StreamSupport;
 import net.stemmaweb.services.AnnotationService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.w3c.dom.Document;
@@ -447,9 +448,16 @@ public class GraphMLParser {
             toRemove.forEach(annotationsToAdd::remove);
         }
 
-        // Sanity check: if we created any relationship-less nodes, delete them again.
-        idMap.values().stream().map(tx::getNodeByElementId)
-                .filter(n -> !n.hasRelationship()).forEach(Node::delete);
+        // Sanity check: if we created any relationship-less nodes, make sure they are deleted.
+        try {
+            idMap.values().stream().map(tx::getNodeByElementId)
+                    .filter(n -> !n.hasRelationship()).forEach(Node::delete);
+        } catch (NotFoundException e) {
+            // Two idMap entries can point at the same node (e.g. a merged annotation target),
+            // in which case the second delete attempt hits an already-deleted node. Don't let
+            // this cleanup step fail the whole import.
+            System.err.println("Triggered NotFoundException in graphml parse sanity check: " + e.getMessage());
+        }
 
         return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentId)).build();
     }

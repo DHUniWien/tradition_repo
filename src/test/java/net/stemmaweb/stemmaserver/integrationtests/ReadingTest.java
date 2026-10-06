@@ -1602,9 +1602,10 @@ public class ReadingTest {
         rcpm.addProperty(new KeyPropertyModel("text", "the"));
         String toDelete = readingLookup.get("teh/15");
         String toKeep = readingLookup.get("the/16");
-        Response result = jerseyTest.target("/reading/" + toDelete)
-                .request().put(Entity.json(rcpm));
-        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        try (Response result = jerseyTest.target("/reading/" + toDelete)
+                .request().put(Entity.json(rcpm))) {
+            assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        }
 
         // Set a same-rank lexical relation
         RelationModel rel = new RelationModel();
@@ -1633,7 +1634,6 @@ public class ReadingTest {
             assertEquals(String.format("Conflicting lexical relation to node %s prevents merge", rel.getTarget()),
                     Util.getValueFromJson(result4, "error"));
         }
-
     }
 
     @Test
@@ -1712,6 +1712,19 @@ public class ReadingTest {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(2, remaining.stream().filter(x -> x.getText().equals("march")).count());
+    }
+
+    @Test
+    public void splitReadingNoSpecTest() {
+        String rotw = readingLookup.get("rood-of-the-world/16");
+        // split reading
+        Response response = jerseyTest
+                .target("/reading/" + rotw + "/split/0")
+                .request(MediaType.APPLICATION_JSON)
+                .post(null);
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("Please specify a model for how the reading should be split!",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -2164,6 +2177,26 @@ public class ReadingTest {
         assertEquals("application/json;charset=utf-8", response.getMediaType().toString());
         assertEquals("There is no tradition with this id",
                 Util.getValueFromJson(response, "error"));
+    }
+
+    // try to compress without specifying a boundary model
+    @Test
+    public void compressReadingsNoSpecTest() {
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
+
+        // A null body should produce a concatenation with the words joined by a space.
+        GraphModel ourResult;
+        try (Response res = jerseyTest.target("/reading/" + showers + "/concatenate/" + sweet)
+                .request(MediaType.APPLICATION_JSON)
+                .post(null)) {
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+            ourResult = res.readEntity(GraphModel.class);
+        }
+        ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
+        assertEquals(showers, ourCompressed.getId());
+        assertEquals("showers sweet", ourCompressed.getText());
+        assertFalse(ourCompressed.getJoin_prior() || ourCompressed.getJoin_next());
     }
 
     // compress with separate set to 1, but the empty string between words TODO what do we want here?

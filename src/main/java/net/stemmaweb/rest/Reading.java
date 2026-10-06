@@ -770,7 +770,7 @@ public class Reading {
 
     /**
      * Splits up a single reading into smaller consecutive reading units. Note that this
-     * operation should not change the text of any witness! This is the opposite of the
+     * operation should not change the text sequence for any witness! This is the opposite of the
      * {@code compress} call.
      *
      * @title Split a reading
@@ -797,7 +797,10 @@ public class Reading {
     @ReturnType(clazz = GraphModel.class)
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
-        assert (model != null);
+        if (model == null) {
+            errorMessage = "Please specify a model for how the reading should be split!";
+            return errorResponse(Status.BAD_REQUEST);
+        }
         GraphModel readingsAndRelations;
         Node originalReading;
         try (Transaction tx = db.beginTx()) {
@@ -1050,6 +1053,10 @@ public class Reading {
         // some defaults if we fall through and haven't changed it
         errorMessage = "problem with a reading. could not compress";
         Response resp;
+
+        // If a boundary model hasn't been passed, instantiate a default
+        if (boundary == null)
+            boundary = new ReadingBoundaryModel();
 
         try (Transaction tx = db.beginTx()) {
             read1 = tx.getNodeByElementId(readId);
