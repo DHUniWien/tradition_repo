@@ -140,7 +140,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, s.size());
-        assertEquals("Tradition", s.get(0).getName());
+        assertEquals("Tradition", s.getFirst().getName());
 
         // Does the tradition have the right number of readings?
         ArrayList<ReadingModel> rdgs = jerseyTest.target("/tradition/" + tradId + "/readings")
@@ -156,7 +156,7 @@ public class GraphMLInputOutputTest extends TestCase {
         try (Transaction tx = db.beginTx()) {
 //        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
             List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tx, tradId).nodes().spliterator(), false)
-                    .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
+                    .filter(x -> x.hasLabel(Nodes.READING)).toList();
             for (Node rdg : ourReadings)
                 assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
             tx.commit();
@@ -219,7 +219,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request().get(new GenericType<>() {});
         assertEquals(37, witnesses.size());
         // Get the GraphML output, make sure it has correct # of nodes & edges
-        String targetSection = sections.get(0).getId();
+        String targetSection = sections.getFirst().getId();
         String sectFileName = "section-" + targetSection + ".xml";
         Response r = jerseyTest.target("/tradition/" + multiTradId + "/section/"
                 + targetSection + "/graphml")
@@ -285,7 +285,7 @@ public class GraphMLInputOutputTest extends TestCase {
         try (Transaction tx = db.beginTx()) {
 //        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(legendId, db).nodes().stream()
             List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tx, legendId).nodes().spliterator(), false)
-                    .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
+                    .filter(x -> x.hasLabel(Nodes.READING)).toList();
             for (Node rdg : ourReadings)
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));
             tx.commit();
@@ -296,7 +296,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(3, rtypes.size());
-        List<String> rnames = rtypes.stream().map(RelationTypeModel::getName).collect(Collectors.toList());
+        List<String> rnames = rtypes.stream().map(RelationTypeModel::getName).toList();
         assertTrue(rnames.contains("collated"));
         assertTrue(rnames.contains("orthographic"));
         assertTrue(rnames.contains("spelling"));
@@ -528,8 +528,8 @@ public class GraphMLInputOutputTest extends TestCase {
                 .queryParam("label", "PLACE")
                 .request().get(new GenericType<>() {});
         assertEquals(1, placeAnnos.size());
-        assertEquals(thePlace.getLabel(), placeAnnos.get(0).getLabel());
-        assertEquals(thePlace.getProperties().get("name"), placeAnnos.get(0).getProperties().get("name"));
+        assertEquals(thePlace.getLabel(), placeAnnos.getFirst().getLabel());
+        assertEquals(thePlace.getProperties().get("name"), placeAnnos.getFirst().getProperties().get("name"));
         List<AnnotationModel> s1Annos = jerseyTest
                 .target("/tradition/" + newTradId + "/section/" + ourSections.get(0).getId() + "/annotations")
                 .request().get(new GenericType<>() {});

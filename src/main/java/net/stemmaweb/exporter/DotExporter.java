@@ -495,7 +495,7 @@ public class DotExporter
             // No archetype, so we don't know where is okay to start traversal;
             // just output the list of edges from this stemma in any order.
             Result txEdges = tx.execute(String.format("MATCH (s)-[:HAS_WITNESS]->(a:WITNESS)-[:TRANSMITTED " +
-                            "{hypothesis:'%s'}]->(b:WITNESS) WHERE id(s) = \"%s\" RETURN a, b",
+                            "{hypothesis:'%s'}]->(b:WITNESS) WHERE elementId(s) = \"%s\" RETURN a, b",
                     stemmaTitle, startNodeStemma.getElementId()));
             while (txEdges.hasNext()) {
                 Map<String, Object> vector = txEdges.next();

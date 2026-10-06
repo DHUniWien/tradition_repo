@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import net.stemmaweb.parser.StemmarestImportException;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -64,10 +63,6 @@ public class StemmaTest {
 
     @Before
     public void setUp() throws Exception {
-
-//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
-//                .newImpermanentDatabase())
-//                .getDatabase();
         DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
     	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     	new GraphDatabaseServiceProvider(dbbuilder, db);
@@ -113,17 +108,23 @@ public class StemmaTest {
             secondStemma = stemmata.get(0);
         }
 
-        String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; \n}";
+        String expected = """
+digraph "stemma" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];  B [ class=extant ];
+  C [ class=extant ]; 0 -> A;  0 -> B;  A -> C;
+}""";
 
         Util.assertStemmasEquivalent(expected, firstStemma.getDot());
         assertEquals("stemma", firstStemma.getIdentifier());
         assertFalse(firstStemma.getIs_undirected());
 
-        String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];  "
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; \n}";
+        String expected2 = """
+graph "Semstem 1402333041_0" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];  B [ class=extant ];
+  C [ class=extant ]; 0 -- A;  A -- B;  B -- C;
+}""";
         Util.assertStemmasEquivalent(expected2, secondStemma.getDot());
         assertEquals("Semstem 1402333041_0", secondStemma.getIdentifier());
         assertTrue(secondStemma.getIs_undirected());
@@ -159,9 +160,15 @@ public class StemmaTest {
                 .request(MediaType.APPLICATION_JSON)
                 .get(StemmaModel.class);
 
-        String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ];\n 0 -> A;  0 -> B;  A -> C; \n}";
+        String expected = """
+digraph "stemma" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];  B [ class=extant ];
+  C [ class=extant ];
+  0 -> A;
+  0 -> B;
+  A -> C;
+}""";
         Util.assertStemmasEquivalent(expected, stemma.getDot());
 
         String stemmaTitle2 = "Semstem 1402333041_0";
@@ -170,9 +177,16 @@ public class StemmaTest {
                 .request(MediaType.APPLICATION_JSON)
                 .get(StemmaModel.class);
 
-        String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];\n  "
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ];\n 0 -- A;  A -- B;  B -- C; \n}";
+        String expected2 = """
+graph "Semstem 1402333041_0" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  0 -- A;
+  A -- B;
+  B -- C;
+}""";
         Util.assertStemmasEquivalent(expected2, stemma2.getDot());
 
         Response getStemmaResponse = jerseyTest
@@ -184,26 +198,25 @@ public class StemmaTest {
 
     @Test
     public void setStemmaTest() {
-    	StemmaModel input = new StemmaModel();
 
         try (Transaction tx = db.beginTx()) {
-        	Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-        	ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-        	assertEquals(2, stemmata.size());
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+            ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            assertEquals(2, stemmata.size());
+        }
+        StemmaModel input = new StemmaModel();
+        input.setDot("graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}");
         	
-        	input.setDot("graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}");
-        	
-        	try (Response actualStemmaResponse = jerseyTest
-        			.target("/tradition/" + tradId + "/stemma"  )
-        			.request(MediaType.APPLICATION_JSON)
-        			.post(Entity.json(input))) {
-        		assertEquals(Response.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
-        	}
-        	
+        try (Response actualStemmaResponse = jerseyTest
+                .target("/tradition/" + tradId + "/stemma"  )
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(input))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
+        }
+        try (Transaction tx = db.beginTx()) {
             Result result2 = tx.execute("match (t:TRADITION {id:'" + tradId +
                     "'})--(s:STEMMA) return count(s) AS res2");
             assertEquals(3L, result2.columnAs("res2").next());
-            tx.close();
         }
 
         String stemmaTitle = "Semstem 1402333041_1";
@@ -218,9 +231,14 @@ public class StemmaTest {
 
     @Test
     public void setStemmaDifferentHypotheticalsTest() {
-        String newStemmaDot = "digraph \"stick\" {\n"
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ];\n A -> B;  A -> C; \n}";
+        String newStemmaDot = """
+digraph "stick" {
+  A [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  A -> B;
+  A -> C;\s
+}""";
         StemmaModel newStemma = new StemmaModel();
         newStemma.setDot(newStemmaDot);
         try (Response result = jerseyTest
@@ -239,9 +257,17 @@ public class StemmaTest {
 
     @Test
     public void addContaminatedStemmaTest() {
-        String newStemmaDot = "digraph \"loop\" {\n 0 [ class=hypothetical ];"
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ];\n 0 -> A; A -> B;  A -> C; 0 -> C;\n}";
+        String newStemmaDot = """
+digraph "loop" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  0 -> A;
+  A -> B;
+  A -> C;
+  0 -> C;
+}""";
         StemmaModel newStemma = new StemmaModel();
         newStemma.setDot(newStemmaDot);
 
@@ -282,9 +308,9 @@ public class StemmaTest {
             assertTrue(stNodes.hasNext());
             Node startNodeStemma = stNodes.next();
 
-            Iterable<Relationship> rel1 = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
-            assertFalse(rel1.iterator().hasNext());
+            List<Relationship> rel1 = DatabaseService.getRelationships(startNodeStemma,
+                    Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
+            assertTrue(rel1.isEmpty());
 
             String newStemmaDot = "digraph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; C -> B;  B -> A;  A -> 0;}";
             StemmaModel newStemmaResponse = jerseyTest
@@ -293,10 +319,10 @@ public class StemmaTest {
                     .post(null, StemmaModel.class);
             Util.assertStemmasEquivalent(newStemmaDot, newStemmaResponse.getDot());
 
-            Iterable<Relationship> rel2 = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
-            assertTrue(rel2.iterator().hasNext());
-            assertEquals(newNodeId, rel2.iterator().next().getEndNode().getProperty("sigil").toString());
+            List<Relationship> rel2 = DatabaseService.getRelationships(startNodeStemma,
+                    Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
+            assertFalse(rel2.isEmpty());
+            assertEquals(newNodeId, rel2.getFirst().getEndNode().getProperty("sigil").toString());
 
             try (Response actualStemmaResponseSecond = jerseyTest
                     .target("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + secondNodeId)
@@ -343,10 +369,10 @@ public class StemmaTest {
             assertTrue(stNodes.hasNext());
             Node startNodeStemma = stNodes.next();
 
-            Iterable<Relationship> relBevor = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
-            assertTrue(relBevor.iterator().hasNext());
-            assertEquals("0", relBevor.iterator().next().getEndNode().getProperty("sigil").toString());
+            List<Relationship> relBevor = DatabaseService.getRelationships(startNodeStemma,
+                    Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
+            assertFalse(relBevor.isEmpty());
+            assertEquals("0", relBevor.getFirst().getEndNode().getProperty("sigil").toString());
 
             try (Response actualStemmaResponse = jerseyTest
                     .target("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + newNodeId)
@@ -355,11 +381,11 @@ public class StemmaTest {
                 assertEquals(Response.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
             }
 
-            Iterable<Relationship> relAfter = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
-            assertTrue(relAfter.iterator().hasNext());
+            List<Relationship> relAfter = DatabaseService.getRelationships(startNodeStemma,
+                    Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
+            assertFalse(relAfter.isEmpty());
             assertEquals(newNodeId,
-                    relAfter.iterator().next().getEndNode().getProperty("sigil").toString());
+                    relAfter.getFirst().getEndNode().getProperty("sigil").toString());
         }
     }
 
@@ -415,8 +441,16 @@ public class StemmaTest {
     public void uploadInvalidStemmaTest () {
         // A stemma with a node (A) that is not labeled as extant or hypothetical.
         StemmaModel input = new StemmaModel();
-        input.setDot("graph \"invalid\" {\n  0 [ class=hypothetical, label=\"*\" ];  " +
-                "\"α\" [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;\n}");
+        input.setDot("""
+graph "invalid" {
+  0 [ class=hypothetical, label="*" ];
+  "α" [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  0 -- A;
+  A -- B;
+  A -- C;
+}""");
         try (Response actualStemmaResponse = jerseyTest
                 .target("/tradition/" + tradId + "/stemma")
                 .request(MediaType.APPLICATION_JSON)
@@ -459,8 +493,16 @@ public class StemmaTest {
     @Test
     public void recordStemmaLabelTest () {
         StemmaModel input = new StemmaModel();
-        input.setDot("graph \"labeltest\" {\n  0 [ class=hypothetical, label=\"*\" ];  " +
-                "\"α\" [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- \"α\";  \"α\" -- B;  \"α\" -- C;\n}");
+        input.setDot("""
+graph "labeltest" {
+  0 [ class=hypothetical, label="*" ];
+  "α" [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  0 -- "α";
+  "α" -- B;
+  "α" -- C;
+}""");
         try (Response actualStemmaResponse = jerseyTest
                 .target("/tradition/" + tradId + "/stemma")
                 .request(MediaType.APPLICATION_JSON)
@@ -486,81 +528,80 @@ public class StemmaTest {
     public void deleteStemmaTest () {
         String fileName = "src/TestFiles/florilegium_graphml.xml";
         String tradId = createTraditionFromFile("Florilegium", fileName);
+        int originalNodeCount = 0;
 
-        try (Transaction tx = db.beginTx()) {
-        	// Count the nodes to start with
-        	int originalNodeCount = countGraphNodes(tx);
+        StemmaModel stemmaCM = new StemmaModel(); // its name will be "Stemma"
+        StemmaModel stemmaTF = new StemmaModel(); // its name will be "TF Stemma"
+        try {
+            byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
+            stemmaCM.setDot(new String(encoded, StandardCharsets.UTF_8));
 
-        	// Add two stemmata and check the node count
-        	StemmaModel stemmaCM = new StemmaModel(); // its name will be "Stemma"
-        	StemmaModel stemmaTF = new StemmaModel(); // its name will be "TF Stemma"
-        	DotParser parser = new DotParser(tx);
-        	try {
-        		byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
-        		stemmaCM.setDot(new String(encoded, StandardCharsets.UTF_8));
-
-        		encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium_tf.dot"));
-        		stemmaTF.setDot(new String(encoded, StandardCharsets.UTF_8));
-        	} catch (Exception e) {
-        		fail();
-        	}
-        	try {
-                String stemmaId = parser.importStemmaFromDot(tradId, stemmaCM);
-                assertEquals(stemmaCM.getIdentifier(), stemmaId);
-        		assertEquals(originalNodeCount + 9, countGraphNodes(tx));
-        	} catch (StemmarestImportException e) {
-                fail();
-        	}
-        	try  {
-                String stemmaId = parser.importStemmaFromDot(tradId, stemmaTF);
-        		assertEquals(stemmaTF.getIdentifier(), stemmaId);
-        	} catch (StemmarestImportException e) {
-                fail();
-        	}
-        	tx.close();
-        	
-        	assertEquals(originalNodeCount + 19, countGraphNodes(tx));
-        	
-        	// Delete one stemma
-        	try (Response deleteResponse = jerseyTest
-        			.target("/tradition/" + tradId + "/stemma/Stemma")
-        			.request()
-        			.delete()) {
-        		assertEquals(Response.Status.OK.getStatusCode(), deleteResponse.getStatus());
-        	}
-        	
-        	// Check the node count
-        	assertEquals(originalNodeCount + 10, countGraphNodes(tx));
-        	
-        	// Check the remaining stemma
-        	String tfTitle = "TF Stemma";
-        	StemmaModel remainingStemma = jerseyTest
-        			.target("/tradition/" + tradId + "/stemma/" + tfTitle)
-        			.request(MediaType.APPLICATION_JSON)
-        			.get(StemmaModel.class);
-        	Util.assertStemmasEquivalent(stemmaTF.getDot(), remainingStemma.getDot());
-        	tx.close();
+            encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium_tf.dot"));
+            stemmaTF.setDot(new String(encoded, StandardCharsets.UTF_8));
         } catch (Exception e) {
-        	e.printStackTrace();
+            fail();
         }
+        try (Transaction tx = db.beginTx()) {
+            // Count the nodes to start with
+            originalNodeCount = countGraphNodes(tx);
+
+            // Add two stemmata and check the node count
+            DotParser parser = new DotParser(tx);
+
+            String stemmaId = parser.importStemmaFromDot(tradId, stemmaCM);
+            assertEquals(stemmaCM.getIdentifier(), stemmaId);
+            assertEquals(originalNodeCount + 9, countGraphNodes(tx));
+
+            stemmaId = parser.importStemmaFromDot(tradId, stemmaTF);
+            assertEquals(stemmaTF.getIdentifier(), stemmaId);
+            tx.commit();
+        } catch (Exception e) {
+            fail();
+        }
+        try (Transaction tx = db.beginTx()) {
+            assertEquals(originalNodeCount + 19, countGraphNodes(tx));
+        }
+        	
+        // Delete one stemma
+        try (Response deleteResponse = jerseyTest
+                .target("/tradition/" + tradId + "/stemma/Stemma")
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), deleteResponse.getStatus());
+        }
+        try (Transaction tx = db.beginTx()) {
+            // Check the node count
+            assertEquals(originalNodeCount + 10, countGraphNodes(tx));
+        }
+        	
+        // Check the remaining stemma
+        String tfTitle = "TF Stemma";
+        StemmaModel remainingStemma = jerseyTest
+                .target("/tradition/" + tradId + "/stemma/" + tfTitle)
+                .request(MediaType.APPLICATION_JSON)
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(stemmaTF.getDot(), remainingStemma.getDot());
     }
 
     @Test
     public void replaceStemmaTest() {
-    	Node traditionNode = null;
-    	ArrayList<Node> stemmata;
-
-    	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-            tx.close();
+        try (Transaction tx = db.beginTx()) {
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+            ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            assertEquals(2, stemmata.size());
         }
 
-    	assertEquals(2, stemmata.size());
-
         StemmaModel input = new StemmaModel();
-        input.setDot("graph stemma {\n  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  " +
-                "C [ class=extant ]; 0 -- A;  A -- B;  A -- C;\n}");
+        input.setDot("""
+graph stemma {
+  0 [ class=hypothetical ];
+  A [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  0 -- A;
+  A -- B;
+  A -- C;
+}""");
 
         try (Response actualStemmaResponse = jerseyTest
                 .target("/tradition/" + tradId + "/stemma/stemma")
@@ -569,6 +610,7 @@ public class StemmaTest {
             assertEquals(Response.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
         }
         try (Transaction tx = db.beginTx()) {
+        	Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         	assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
         }
 
@@ -581,20 +623,22 @@ public class StemmaTest {
 
     @Test
     public void replaceStemmaWithDudTest() {
-    	Node traditionNode = null;
-    	ArrayList<Node> stemmata;
-
-    	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-            tx.close();
+        try (Transaction tx = db.beginTx()) {
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+    		ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            assertEquals(2, stemmata.size());
         }
 
-    	assertEquals(2, stemmata.size());
-
-        String original = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
-                + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; \n}";
+        String original = """
+digraph "stemma" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  0 -> A;
+  0 -> B;
+  A -> C;
+}""";
         String input = "graph stemma {\n  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- D;\n}";
 
         try (Response actualStemmaResponse = jerseyTest
@@ -606,12 +650,11 @@ public class StemmaTest {
 
         // Do we still have the old one?
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-            tx.close();
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+    		ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            assertEquals(2, stemmata.size());
         }
 
-    	assertEquals(2, stemmata.size());
         StemmaModel storedStemma = jerseyTest
                 .target("/tradition/" + tradId + "/stemma/stemma"  )
                 .request(MediaType.APPLICATION_JSON)
@@ -622,16 +665,11 @@ public class StemmaTest {
     @Test
     public void replaceStemmaNameMismatchTest() {
         // This used to fail; now the name given in the model overrides the name in the dot.
-    	Node traditionNode = null;
-    	ArrayList<Node> stemmata;
-
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-            tx.close();
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+            ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            assertEquals(2, stemmata.size());
         }
-
-        assertEquals(2, stemmata.size());
 
         String input = "graph stemma2 {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}";
         StemmaModel stemmaSpec = new StemmaModel();
@@ -647,12 +685,11 @@ public class StemmaTest {
 
         // Do we still have the old one?
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-            tx.close();
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+            ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            assertEquals(2, stemmata.size());
         }
 
-    	assertEquals(2, stemmata.size());
         StemmaModel storedStemma = jerseyTest
                 .target("/tradition/" + tradId + "/stemma/stemma"  )
                 .request(MediaType.APPLICATION_JSON)
@@ -664,57 +701,58 @@ public class StemmaTest {
     @Test
     public void importStemmaFromNewickTest() {
         String newickSpec = "((((((((((((M,C),D),S),F),L),V),U),T2),J),A),B),T1);";
-        String dotEquivalent = "graph \"RHM 1382784254\" {\n" +
-                "  0 [ class=hypothetical ];\n" +
-                "  1 [ class=hypothetical ];\n" +
-                "  10 [ class=hypothetical ];\n" +
-                "  11 [ class=hypothetical ];\n" +
-                "  2 [ class=hypothetical ];\n" +
-                "  3 [ class=hypothetical ];\n" +
-                "  4 [ class=hypothetical ];\n" +
-                "  5 [ class=hypothetical ];\n" +
-                "  6 [ class=hypothetical ];\n" +
-                "  7 [ class=hypothetical ];\n" +
-                "  8 [ class=hypothetical ];\n" +
-                "  9 [ class=hypothetical ];\n" +
-                "  A [ class=extant ];\n" +
-                "  B [ class=extant ];\n" +
-                "  C [ class=extant ];\n" +
-                "  D [ class=extant ];\n" +
-                "  F [ class=extant ];\n" +
-                "  J [ class=extant ];\n" +
-                "  L [ class=extant ];\n" +
-                "  M [ class=extant ];\n" +
-                "  S [ class=extant ];\n" +
-                "  T1 [ class=extant ];\n" +
-                "  T2 [ class=extant ];\n" +
-                "  U [ class=extant ];\n" +
-                "  V [ class=extant ];\n" +
-                "  0 -- 1;\n" +
-                "  0 -- T1;\n" +
-                "  10 -- 11;\n" +
-                "  10 -- 9;\n" +
-                "  10 -- D;\n" +
-                "  11 -- C;\n" +
-                "  11 -- M;\n" +
-                "  1 -- 2;\n" +
-                "  1 -- B;\n" +
-                "  2 -- 3;\n" +
-                "  2 -- A;\n" +
-                "  3 -- 4;\n" +
-                "  4 -- 5;\n" +
-                "  5 -- 6;\n" +
-                "  6 -- 7;\n" +
-                "  7 -- 8;\n" +
-                "  8 -- 9;\n" +
-                "  F -- 8;\n" +
-                "  J -- 3;\n" +
-                "  L -- 7;\n" +
-                "  S -- 9;\n" +
-                "  T2 -- 4;\n" +
-                "  U -- 5;\n" +
-                "  V -- 6;\n" +
-                "}";
+        String dotEquivalent = """
+graph "RHM 1382784254" {
+  0 [ class=hypothetical ];
+  1 [ class=hypothetical ];
+  10 [ class=hypothetical ];
+  11 [ class=hypothetical ];
+  2 [ class=hypothetical ];
+  3 [ class=hypothetical ];
+  4 [ class=hypothetical ];
+  5 [ class=hypothetical ];
+  6 [ class=hypothetical ];
+  7 [ class=hypothetical ];
+  8 [ class=hypothetical ];
+  9 [ class=hypothetical ];
+  A [ class=extant ];
+  B [ class=extant ];
+  C [ class=extant ];
+  D [ class=extant ];
+  F [ class=extant ];
+  J [ class=extant ];
+  L [ class=extant ];
+  M [ class=extant ];
+  S [ class=extant ];
+  T1 [ class=extant ];
+  T2 [ class=extant ];
+  U [ class=extant ];
+  V [ class=extant ];
+  0 -- 1;
+  0 -- T1;
+  10 -- 11;
+  10 -- 9;
+  10 -- D;
+  11 -- C;
+  11 -- M;
+  1 -- 2;
+  1 -- B;
+  2 -- 3;
+  2 -- A;
+  3 -- 4;
+  4 -- 5;
+  5 -- 6;
+  6 -- 7;
+  7 -- 8;
+  8 -- 9;
+  F -- 8;
+  J -- 3;
+  L -- 7;
+  S -- 9;
+  T2 -- 4;
+  U -- 5;
+  V -- 6;
+}""";
         String stemmaName = "From RHM";
         StemmaModel sm = new StemmaModel();
         sm.setIdentifier(stemmaName);

@@ -345,9 +345,8 @@ public class StemmawebParser {
 				try {
 					parser.importStemmaFromDot(tradId, sm);
 				} catch (StemmarestImportException e) {
-                    return Response.status(e.getStatus())
-                            .entity(jsonerror(e.getMessage()))
-                            .build();
+                    // If a stemma has an error, warn but continue the tradition import
+                    System.err.println("Could not import embedded stemma, skipping: " + e.getMessage());
 				}
             }
         }
