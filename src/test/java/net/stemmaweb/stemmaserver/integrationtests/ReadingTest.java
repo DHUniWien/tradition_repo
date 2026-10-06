@@ -50,6 +50,9 @@ import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
@@ -688,6 +691,66 @@ public class ReadingTest {
             tx.commit();
         } catch (Exception e) {
             fail();
+        }
+    }
+
+    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
+    // Reading id (see the entity-id-system design spec): it stays an elementId string even
+    // though the same reading's own "id" property is now numeric. Looks up a reading's
+    // current elementId given its numeric id, for use when building an annotation link.
+    private String elementIdOf(String readingId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
+        }
+    }
+
+    // Regression test: deleting an emendation that has an annotation linked to it. The
+    // generic "delete all my relationships" loop in deleteUserReading() must not choke on a
+    // non-sequence relationship (like an annotation link) whose other endpoint is an
+    // Annotation node, which has no "id" property (that lands in a later task).
+    @Test
+    public void deleteEmendationWithAnnotationLinkTest() {
+        ProposedEmendationModel pem = new ProposedEmendationModel();
+        pem.setAuthority("A. Caesar");
+        pem.setText("fructumque");
+        pem.setFromRank(7L);
+        pem.setToRank(9L);
+        GraphModel emendation = jerseyTest
+                .target("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(pem), GraphModel.class);
+        ReadingModel emended = emendation.getReadings().iterator().next();
+
+        // Define a minimal annotation label that can link to a reading
+        AnnotationLabelModel alm = new AnnotationLabelModel();
+        alm.setName("NOTE");
+        HashMap<String, String> alink = new HashMap<>();
+        alink.put("READING", "REF");
+        alm.setLinks(alink);
+        try (Response labelResp = jerseyTest
+                .target("/tradition/" + tradId + "/annotationlabel/" + alm.getName())
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(alm))) {
+            assertEquals(Status.CREATED.getStatusCode(), labelResp.getStatus());
+        }
+
+        // Annotate the emendation reading
+        AnnotationModel am = new AnnotationModel();
+        am.setLabel("NOTE");
+        AnnotationLinkModel link = new AnnotationLinkModel();
+        link.setTarget(elementIdOf(emended.getId()));
+        link.setType("REF");
+        am.addLink(link);
+        try (Response annoResp = jerseyTest
+                .target("/tradition/" + tradId + "/annotation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(am))) {
+            assertEquals(Status.CREATED.getStatusCode(), annoResp.getStatus());
+        }
+
+        // Now deleting the emendation should still succeed, despite the inbound annotation link
+        try (Response resp = jerseyTest.target("/reading/" + emended.getId()).request().delete()) {
+            assertEquals(Status.OK.getStatusCode(), resp.getStatus());
         }
     }
 
