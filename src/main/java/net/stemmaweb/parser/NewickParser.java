@@ -1,6 +1,5 @@
 package net.stemmaweb.parser;
 
-import static net.stemmaweb.Util.jsonresp;
 import static net.stemmaweb.parser.Util.findOrCreateExtant;
 
 import java.io.BufferedReader;
@@ -28,14 +27,14 @@ public class NewickParser {
         this.tx = tx;
     }
     /**
-     * Parses the Newick string in a StemmaModel into a stemma object, and returns an appropriate Response.
+     * Parses the Newick string in a StemmaModel into a stemma object. Its sister method (importStemmaFromDot)
+     * returns the stemma name, but this isn't used for the Newick parsing so isn't returned.
      *
      * @param tradId     - The ID of the tradition to which this stemma should be added
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
-     * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
      * @throws StemmarestImportException if something goes wrong
      */
-    public String importStemmaFromNewick(String tradId, StemmaModel stemmaSpec) throws StemmarestImportException {
+    public void importStemmaFromNewick(String tradId, StemmaModel stemmaSpec) throws StemmarestImportException {
         // Get our tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
@@ -95,6 +94,5 @@ public class NewickParser {
         		traditionNode.getProperty("stemweb_jobid", 0)))
         	traditionNode.removeProperty("stemweb_jobid");
 
-        return stemmaSpec.getIdentifier();
     }
 }

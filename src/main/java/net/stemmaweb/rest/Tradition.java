@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jakarta.ws.rs.*;
 import net.stemmaweb.services.*;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.json.JSONObject;
@@ -27,16 +28,6 @@ import com.alexmerz.graphviz.ParseException;
 import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.DefaultValue;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -98,7 +89,15 @@ public class Tradition {
      */
     @Path("/section/{sectionId}")
     public Section getSection(@PathParam("sectionId") String sectionId) {
-    	return new Section(traditionId, sectionId);
+        try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, traditionId, sectionId)) {
+                throw new WebApplicationException(Response.status(Response.Status.NOT_FOUND)
+                        .entity(jsonerror("Section " + sectionId + " not found in tradition " + traditionId))
+                        .type(MediaType.APPLICATION_JSON)
+                        .build());
+            }
+        }
+        return new Section(traditionId, sectionId);
     }
 
     /**
