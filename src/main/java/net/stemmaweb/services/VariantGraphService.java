@@ -197,7 +197,8 @@ public class VariantGraphService {
             }
             // Set the commonality property. It is true if the size of the 'distinct' set is 1.
             distinct.stream().filter(x -> !x.isEmpty())
-                    .forEach(x -> tx.getNodeByElementId(x).setProperty(propName, distinct.size() == 1));
+                    .forEach(x -> DatabaseService.findNodeOrThrow(tx, Nodes.READING, x)
+                            .setProperty(propName, distinct.size() == 1));
         }
     }
 
@@ -314,7 +315,7 @@ public class VariantGraphService {
         // Go through the alignment model rank by rank, finding the majority reading for each rank
         String sectionId = sectionNode.getProperty("id").toString();
         result.add(getStartNode(tx, sectionId));
-        majorityReadings.forEach(x -> result.add(tx.getNodeByElementId(x)));
+        majorityReadings.forEach(x -> result.add(DatabaseService.findNodeOrThrow(tx, Nodes.READING, x)));
         result.add(getEndNode(tx, sectionId));
 
         return result;
@@ -962,7 +963,8 @@ public class VariantGraphService {
     // NOTE: as is, this form is only used by callers that don't care about the return value. This may change...
     public static void mergeReadings(Transaction tx, String stayingRdgId, String deletingRdgId, String traditionId)
             throws IllegalStateException {
-        mergeReadings(tx, tx.getNodeByElementId(stayingRdgId), tx.getNodeByElementId(deletingRdgId), traditionId);
+        mergeReadings(tx, DatabaseService.findNodeOrThrow(tx, Nodes.READING, stayingRdgId),
+                DatabaseService.findNodeOrThrow(tx, Nodes.READING, deletingRdgId), traditionId);
     }
 
     /**
@@ -1014,9 +1016,9 @@ public class VariantGraphService {
         		Direction.BOTH, ERelations.RELATED)) {
             RelationModel rel = new RelationModel(oldRel);
             if (oldRel.getStartNode().equals(deletingReading))
-                rel.setSource(stayingReading.getElementId());
+                rel.setSource(stayingReading.getProperty("id").toString());
             else
-                rel.setTarget(stayingReading.getElementId());
+                rel.setTarget(stayingReading.getProperty("id").toString());
             try {
                 GraphModel addResult = RelationService.createLocalRelation(tx, traditionId, rel);
                 if (!addResult.getRelations().isEmpty()) {
@@ -1024,7 +1026,7 @@ public class VariantGraphService {
                 }
             } catch (Exception e) {
                 throw new IllegalStateException(String.format("Conflicting %s relation to node %s prevents merge",
-                        rel.getType(), oldRel.getOtherNode(deletingReading).getElementId()));
+                        rel.getType(), oldRel.getOtherNode(deletingReading).getProperty("id").toString()));
             }
         }
         // Now delete all the relations from deletingReading, including any that were created just now

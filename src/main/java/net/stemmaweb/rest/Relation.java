@@ -144,8 +144,8 @@ public class Relation {
                 if (typeDefinition == null)
                     throw new IllegalStateException("Relation type definition for " + relationModel.getType() + " does not exist");
                 Boolean use_normal = typeDefinition.getUse_regular();
-                Node readingA = tx.getNodeByElementId(relationModel.getSource());
-                Node readingB = tx.getNodeByElementId(relationModel.getTarget());
+                Node readingA = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getSource());
+                Node readingB = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getTarget());
                 Node startingPoint = VariantGraphService.getTraditionNode(tx, tradId);
                 if (scope.equals(SCOPE_SECTION))
                     startingPoint = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, String.valueOf(readingA.getProperty("section_id")));
@@ -166,7 +166,7 @@ public class Relation {
                     String node_section = cur_node.getProperty("section_id").toString();
                     String key = node_section + "/" + node_rank;
                     HashSet<String> cur_set = ranks.getOrDefault(key, new HashSet<>());
-                    cur_set.add(cur_node.getElementId());
+                    cur_set.add(cur_node.getProperty("id").toString());
                     ranks.putIfAbsent(key, cur_set);
                 }
 
@@ -176,7 +176,7 @@ public class Relation {
                         .collect(Collectors.toCollection(HashSet::new));
                 RelationModel userel;
                 for (Node cur_node : ourB) {
-                    String nodeB_id = cur_node.getElementId();
+                    String nodeB_id = cur_node.getProperty("id").toString();
                     long node_rank = (Long) cur_node.getProperty("rank");
                     String node_section = cur_node.getProperty("section_id").toString();
                     String key = node_section + "/" + node_rank;
@@ -243,8 +243,8 @@ public class Relation {
         ArrayList<RelationModel> deleted = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            Node readingA = tx.getNodeByElementId(relationModel.getSource());
-            Node readingB = tx.getNodeByElementId(relationModel.getTarget());
+            Node readingA = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getSource());
+            Node readingB = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getTarget());
 
             switch (relationModel.getScope()) {
                 case SCOPE_LOCAL:
@@ -267,8 +267,8 @@ public class Relation {
 
                     for (Relationship rel : toCheck.relationships()) {
                         if (rel.getType().name().equals(ERelations.RELATED.name())) {
-                            Node ra = tx.getNodeByElementId(relationModel.getSource());
-                            Node rb = tx.getNodeByElementId(relationModel.getTarget());
+                            Node ra = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getSource());
+                            Node rb = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getTarget());
 
                             if ((rel.getStartNode().getProperty("text").equals(ra.getProperty("text"))
                                     || rel.getEndNode().getProperty("text").equals(ra.getProperty("text")))

@@ -39,6 +39,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -330,9 +331,9 @@ public class StemmawebInputOutputTest {
                     "(q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
             assertTrue (result.hasNext());
             Map<String, Object> row = result.next();
-            blasphemias = ((Node) row.get("bs")).getElementId();
-            aporia = ((Node) row.get("a")).getElementId();
-            blasphemia = ((Node) row.get("b")).getElementId();
+            blasphemias = ((Node) row.get("bs")).getProperty("id").toString();
+            aporia = ((Node) row.get("a")).getProperty("id").toString();
+            blasphemia = ((Node) row.get("b")).getProperty("id").toString();
         }
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel(); // take all the defaults
@@ -342,7 +343,7 @@ public class StemmawebInputOutputTest {
                 .post(Entity.json(readingBoundaryModel));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         try(Transaction tx = db.beginTx()) {
-            Node bsNode = tx.getNodeByElementId(blasphemias);
+            Node bsNode = DatabaseService.findNodeOrThrow(tx, Nodes.READING, blasphemias);
             assertEquals("βλασφημίας ἀπορία", bsNode.getProperty("text"));
         }
 

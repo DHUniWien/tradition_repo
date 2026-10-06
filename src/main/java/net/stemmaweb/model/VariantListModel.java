@@ -223,7 +223,7 @@ public class VariantListModel {
                                         Node vEnd) {
         // Retrieve any existing VariantLocationModel, or create a new one
         VariantLocationModel vlm = new VariantLocationModel();
-        String key = String.format("%s -- %s", vStart.getElementId(), vEnd.getElementId());
+        String key = String.format("%s -- %s", vStart.getProperty("id").toString(), vEnd.getProperty("id").toString());
         Optional<VariantLocationModel> ovlm = this.getVariantlist().stream()
                 .filter(x -> key.equals(x.lookupKey())).findFirst();
         if (ovlm.isPresent()) {

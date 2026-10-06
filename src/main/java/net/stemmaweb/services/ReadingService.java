@@ -35,7 +35,7 @@ public class ReadingService {
      */
     public static String getTraditionId (Transaction tx, String readId) {
         try {
-            Node rdg = tx.getNodeByElementId(readId);
+            Node rdg = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             return DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, rdg.getProperty("section_id").toString())
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING)
                     .getStartNode().getProperty("id").toString();
@@ -52,7 +52,10 @@ public class ReadingService {
      */
     public static void copyReadingProperties(Node oldReading, Node newReading) {
         for (String key : oldReading.getPropertyKeys()) {
-            if (oldReading.hasProperty(key) && !key.equals("is_lemma")) {
+            // "id" is excluded: the new reading gets its own fresh id assigned by the
+            // caller (via DatabaseService.assignIdIfCovered) rather than inheriting the
+            // old reading's, which would violate the READING.id uniqueness constraint.
+            if (oldReading.hasProperty(key) && !key.equals("is_lemma") && !key.equals("id")) {
                 newReading.setProperty(key, oldReading.getProperty(key));
             }
         }
@@ -77,7 +80,7 @@ public class ReadingService {
     }
 
     public static HashSet<String> collectWitnesses(Transaction tx, String readId, Boolean includeAllLayers) {
-        return collectWitnesses(tx.getNodeByElementId(readId), includeAllLayers);
+        return collectWitnesses(DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId), includeAllLayers);
     }
 
     public static HashSet<String> collectWitnesses(Node reading, Boolean includeAllLayers) {
@@ -328,7 +331,7 @@ public class ReadingService {
     // Gets the neighbour reading in the given direction for the given witness. Returns
     // the relevant ReadingModel, or sets errorMessage and returns null.
     public static Node getNeighbourReadingInSequence(Transaction tx, String readId, String witnessId, String layer, Direction dir) {
-        Node read = tx.getNodeByElementId(readId);
+        Node read = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
         // Sanity check: does the requested witness+layer actually exist in this node in
         // either direction?
         ReadingModel rm = new ReadingModel(read);

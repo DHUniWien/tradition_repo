@@ -148,8 +148,8 @@ public class TranspositionTest {
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
 
-            assertEquals(theId, loadedRelationship.getStartNode().getElementId());
-            assertEquals(roodId, loadedRelationship.getEndNode().getElementId());
+            assertEquals(theId, loadedRelationship.getStartNode().getProperty("id").toString());
+            assertEquals(roodId, loadedRelationship.getEndNode().getProperty("id").toString());
             assertEquals("uncertain", loadedRelationship.getProperty("type"));
             assertEquals(0L, loadedRelationship.getProperty("alters_meaning"));
             assertEquals("yes", loadedRelationship.getProperty("is_significant"));
@@ -178,8 +178,8 @@ public class TranspositionTest {
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
 
-            assertEquals(tehId, loadedRelationship.getStartNode().getElementId());
-            assertEquals(rootId, loadedRelationship.getEndNode().getElementId());
+            assertEquals(tehId, loadedRelationship.getStartNode().getProperty("id").toString());
+            assertEquals(rootId, loadedRelationship.getEndNode().getProperty("id").toString());
             assertEquals("transposition", loadedRelationship.getProperty("type"));
             assertEquals(0L, loadedRelationship.getProperty("alters_meaning"));
             assertEquals("yes", loadedRelationship.getProperty("is_significant"));

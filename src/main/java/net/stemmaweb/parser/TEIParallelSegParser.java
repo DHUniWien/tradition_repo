@@ -145,7 +145,7 @@ public class TEIParallelSegParser {
                                 break;
 
                             case "app":
-                                documentPrior = parseApp(reader, parentNode.getElementId(), documentPrior, false);
+                                documentPrior = parseApp(reader, parentId, documentPrior, false);
                                 break;
 
                             case "note":
@@ -163,7 +163,7 @@ public class TEIParallelSegParser {
                                     .filter(activeWitnesses::get)
                                     .collect(Collectors.toCollection(ArrayList::new));
                             // Make a reading chain of the text
-                            chain = makeReadingChain(reader, parentNode.getElementId(), readingWitnesses, "witnesses");
+                            chain = makeReadingChain(reader, parentId, readingWitnesses, "witnesses");
                             if (!chain.isEmpty()) {
                                 // Add a placeholder to the end of the chain
                                 Node chainEnd = createPlaceholderNode("chainEnd");
@@ -397,7 +397,7 @@ public class TEIParallelSegParser {
         for (String word : words) {
             if (word.matches("^\\s*$"))
                 continue;
-            Node wordNode = tx.createNode(Nodes.READING);
+            Node wordNode = DatabaseService.createNode(tx, Nodes.READING);
             wordNode.setProperty("text", word);
             wordNode.setProperty("section_id", sectId);
             // wordNode.setProperty("rank", 0L);
@@ -424,7 +424,7 @@ public class TEIParallelSegParser {
     }
 
     private Node createPlaceholderNode (String name) {
-        Node ph = tx.createNode(Nodes.READING);
+        Node ph = DatabaseService.createNode(tx, Nodes.READING);
         ph.setProperty("is_placeholder", true);
         if (name != null) ph.setProperty("text", name);
         placeholderNodes.add(ph);

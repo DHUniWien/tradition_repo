@@ -328,8 +328,8 @@ public class RelationService {
      */
     public static GraphModel createLocalRelation(Transaction tx, String tradId, RelationModel relationModel)
             throws Exception {
-        Node readingA = tx.getNodeByElementId(relationModel.getSource());
-        Node readingB = tx.getNodeByElementId(relationModel.getTarget());
+        Node readingA = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getSource());
+        Node readingB = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getTarget());
 
         Node ourSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, readingA.getProperty("section_id").toString());
         Node ourTradition = ourSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
@@ -470,7 +470,7 @@ public class RelationService {
         // transitivity effects have been accounted for.
         for (RelationModel rm : newRelationResult.getRelations()) {
             TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tx, tradId, rtm);
-            Node startNode = tx.getNodeByElementId(rm.getSource());
+            Node startNode = DatabaseService.findNodeOrThrow(tx, Nodes.READING, rm.getSource());
             ArrayList<Node> relatedNodes = new ArrayList<>();
             // Get all the readings that are related by this or a more closely-bound type.
             tx.traversalDescription().depthFirst()

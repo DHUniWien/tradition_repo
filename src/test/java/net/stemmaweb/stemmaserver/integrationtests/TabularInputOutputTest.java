@@ -46,9 +46,11 @@ import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.model.WitnessTokensModel;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -116,10 +118,10 @@ public class TabularInputOutputTest extends TestCase {
                 .post(Entity.json(readingBoundaryModel));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         try (Transaction tx = db.beginTx()) {
-            assertEquals(tx.getNodeByElementId(firstComp).getProperty("rank"),
-                    tx.getNodeByElementId(firstTest).getProperty("rank"));
-            assertEquals(tx.getNodeByElementId(secondComp).getProperty("rank"),
-                    tx.getNodeByElementId(secondTest).getProperty("rank"));
+            assertEquals(DatabaseService.findNodeOrThrow(tx, Nodes.READING, firstComp).getProperty("rank"),
+                    DatabaseService.findNodeOrThrow(tx, Nodes.READING, firstTest).getProperty("rank"));
+            assertEquals(DatabaseService.findNodeOrThrow(tx, Nodes.READING, secondComp).getProperty("rank"),
+                    DatabaseService.findNodeOrThrow(tx, Nodes.READING, secondTest).getProperty("rank"));
             tx.commit();
         }
 
@@ -515,11 +517,11 @@ public class TabularInputOutputTest extends TestCase {
             Result res = tx.execute("MATCH (n:READING {text:\"Plätzchen\", rank:5}) RETURN n");
             Iterator<Node> nodes = res.columnAs("n");
             assertTrue(nodes.hasNext());
-            ptz = nodes.next().getElementId();
+            ptz = nodes.next().getProperty("id").toString();
             res = tx.execute("MATCH (n:READING {text:\"Pläzchen\", rank:5}) RETURN n");
             nodes = res.columnAs("n");
             assertTrue(nodes.hasNext());
-            pz = nodes.next().getElementId();
+            pz = nodes.next().getProperty("id").toString();
             tx.commit();
         }
         RelationModel spellingrel = new RelationModel();

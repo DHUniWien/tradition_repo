@@ -131,7 +131,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
     public ReadingModel(Node node) {
         if (node.hasProperty("grammar_invalid"))
             this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
-        this.setId(node.getElementId());
+        this.setId(node.getProperty("id").toString());
         this.setSection(node.getProperty("section_id").toString());
         // If there is an "ncommon" property, use this in preference to "is_common"
         // because it means we are in normalized mode

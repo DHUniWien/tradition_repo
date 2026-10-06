@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.ReadingService;
 
@@ -88,11 +89,11 @@ public class VariantLocationModel {
         // Gather all the nodes we need
         Set<Node> clusterNodes = new HashSet<>();
         for (ReadingModel rm : this.getBase())
-            clusterNodes.add(tx.getNodeByElementId(rm.getId()));
+            clusterNodes.add(DatabaseService.findNodeOrThrow(tx, Nodes.READING, rm.getId()));
         HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
         for (VariantModel vm : this.getVariants())
             for (ReadingModel rm : vm.getReadings()) {
-                Node vrdg = tx.getNodeByElementId(rm.getId());
+                Node vrdg = DatabaseService.findNodeOrThrow(tx, Nodes.READING, rm.getId());
                 clusterNodes.add(vrdg);
                 // As long as we're here, make a map of variant node -> VariantModel
                 vModelForReading.put(vrdg, vm);

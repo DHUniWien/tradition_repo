@@ -20,6 +20,7 @@ import org.neo4j.graphdb.Transaction;
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -171,7 +172,7 @@ public class CollateXJsonParser {
                                 expandExtraField(thisReading.getProperty("extra").toString(),
                                         witParts, rm.getExtra()));
                     } else {
-                        thisReading = tx.createNode(Nodes.READING);
+                        thisReading = DatabaseService.createNode(tx, Nodes.READING);
                         thisReading.setProperty("text", rm.getText());
                         thisReading.setProperty("normal_form", rm.getNormal_form());
                         if (rm.getDisplay() != null)

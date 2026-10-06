@@ -58,8 +58,8 @@ public class SequenceModel {
     public SequenceModel(Relationship rel) {
         this();
         type = rel.getType().toString();
-        source = rel.getStartNode().getElementId() + "";
-        target = rel.getEndNode().getElementId() + "";
+        source = rel.getStartNode().getProperty("id").toString();
+        target = rel.getEndNode().getProperty("id").toString();
         id = rel.getElementId();
 
         for (String p : rel.getPropertyKeys()) {

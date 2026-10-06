@@ -12,6 +12,7 @@ import java.util.Optional;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -76,7 +77,7 @@ public class CollateXParser {
             for (int i = 0; i < readingNodes.getLength(); i++) {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
-                Node reading = tx.createNode(Nodes.READING);
+                Node reading = DatabaseService.createNode(tx, Nodes.READING);
                 reading.setProperty("section_id", parentNode.getProperty("id").toString());
 
                 NodeList dataNodes = ((Element) readingNodes.item(i)).getElementsByTagName("data");
@@ -138,8 +139,8 @@ public class CollateXParser {
                 Relationship relation = source.createRelationshipTo(target, rtype);
                 if (rtype != null && rtype.equals(ERelations.RELATED)) {
                     transpositionSeen = true;
-                    relation.setProperty("source", source.getElementId());
-                    relation.setProperty("target", target.getElementId());
+                    relation.setProperty("source", source.getProperty("id").toString());
+                    relation.setProperty("target", target.getProperty("id").toString());
                     relation.setProperty("type", "transposition");
                     relation.setProperty("reading_a", source.getProperty("text"));
                     relation.setProperty("reading_b", target.getProperty("text"));

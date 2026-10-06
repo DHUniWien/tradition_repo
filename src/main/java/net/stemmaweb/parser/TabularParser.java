@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.RelationService;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
@@ -179,7 +180,7 @@ public class TabularParser {
                     // Does the reading exist?
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
-                        readingNode = tx.createNode(Nodes.READING);
+                        readingNode = DatabaseService.createNode(tx, Nodes.READING);
                         readingNode.setProperty("section_id", parentNode.getProperty("id").toString());
                         readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);

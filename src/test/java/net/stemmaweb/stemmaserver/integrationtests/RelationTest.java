@@ -121,8 +121,8 @@ public class RelationTest {
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
 
-            assertEquals(source, loadedRelationship.getStartNode().getElementId());
-            assertEquals(target, loadedRelationship.getEndNode().getElementId());
+            assertEquals(source, loadedRelationship.getStartNode().getProperty("id").toString());
+            assertEquals(target, loadedRelationship.getEndNode().getProperty("id").toString());
             assertEquals("repetition", loadedRelationship.getProperty("type"));
             assertEquals(0L, loadedRelationship.getProperty("alters_meaning"));
             assertEquals("yes", loadedRelationship.getProperty("is_significant"));
@@ -223,8 +223,8 @@ public class RelationTest {
         String relId;
         try (Transaction tx = db.beginTx()) {
             // For test exercising reasons we plumb around in the database instead of using the API
-            Node march1 = tx.getNodeByElementId(readingLookup.get("march/11"));
-            Node march2 = tx.getNodeByElementId(readingLookup.get("march/13"));
+            Node march1 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingLookup.get("march/11"));
+            Node march2 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingLookup.get("march/13"));
 
             Relationship rel = march1.getSingleRelationship(ERelations.RELATED, Direction.BOTH);
             //checks that the correct relationship has been found
@@ -241,7 +241,7 @@ public class RelationTest {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Node march1 = tx.getNodeByElementId(readingLookup.get("march/11"));
+            Node march1 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingLookup.get("march/11"));
             Iterable<Relationship> rels = march1.getRelationships(ERelations.RELATED);
 
             assertFalse(rels.iterator().hasNext());
@@ -280,8 +280,8 @@ public class RelationTest {
         final Comparator<Node> highestRank = (o1, o2) -> Long.valueOf(o2.getProperty("rank").toString())
                 .compareTo(Long.valueOf(o1.getProperty("rank").toString()));
 
-        String idThe = getReading("the", highestRank).getElementId();
-        String idTeh = getReading("teh", highestRank).getElementId();
+        String idThe = getReadingId("the", highestRank);
+        String idTeh = getReadingId("teh", highestRank);
         assertFalse(idTeh.isBlank());
         assertFalse(idThe.isBlank());
         // Create the test relationship
@@ -447,7 +447,7 @@ public class RelationTest {
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
-            Node the = tx.getNodeByElementId(target);
+            Node the = DatabaseService.findNodeOrThrow(tx, Nodes.READING, target);
             List<Relationship> rels = DatabaseService.getRelationships(the, ERelations.RELATED);
             assertTrue(rels.isEmpty()); // make sure node 28 does not have a relationship now!
         }
@@ -512,7 +512,7 @@ public class RelationTest {
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
-            Node the17 = tx.getNodeByElementId(readingLookup.get("the/17"));
+            Node the17 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingLookup.get("the/17"));
             List<Relationship> the17rels = DatabaseService.getRelationships(the17, ERelations.RELATED);
             assertTrue(the17rels.isEmpty()); // make sure node 21 does not have a relationship now!
             tx.commit();
@@ -531,17 +531,17 @@ public class RelationTest {
 	        assertTrue(nodes.hasNext());
 	        Node firstNode = nodes.next();
 	        assertFalse(nodes.hasNext());
-            firstNodeId = firstNode.getElementId();
-	
+            firstNodeId = firstNode.getProperty("id").toString();
+
 	        result = tx.execute("match (w:READING {text:'pierced'}) return w");
 	        nodes = result.columnAs("w");
 	        assertTrue(nodes.hasNext());
 	        Node secondNode = nodes.next();
 	        assertFalse(nodes.hasNext());
-            secondNodeId = secondNode.getElementId();
-	
-	        relationship.setSource(firstNode.getElementId());
-	        relationship.setTarget(secondNode.getElementId());
+            secondNodeId = secondNode.getProperty("id").toString();
+
+	        relationship.setSource(firstNodeId);
+	        relationship.setTarget(secondNodeId);
 	        relationship.setType("grammatical");
 	        relationship.setAlters_meaning(0L);
 	        relationship.setIs_significant("yes");
@@ -558,12 +558,12 @@ public class RelationTest {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Node node1 = tx.getNodeByElementId(firstNodeId);
+            Node node1 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, firstNodeId);
 
             List<Relationship> rels = DatabaseService.getRelationships(node1, ERelations.RELATED);
             assertTrue(rels.isEmpty()); // make sure node does not have a relationship now!
 
-            Node node2 = tx.getNodeByElementId(secondNodeId);
+            Node node2 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, secondNodeId);
             rels = DatabaseService.getRelationships(node2, ERelations.RELATED);
             assertTrue(rels.isEmpty()); // make sure node does not have a relationship now!
         }
@@ -623,8 +623,8 @@ public class RelationTest {
             Node other = tx.findNode(Nodes.READING, "text", "heinricus");
             assertEquals(1, henries.size());
             assertNotNull(other);
-            myId = henries.getFirst().getElementId();
-            otherId = other.getElementId();
+            myId = henries.getFirst().getProperty("id").toString();
+            otherId = other.getProperty("id").toString();
         }
         RelationModel r = new RelationModel();
         r.setSource(otherId);
@@ -645,13 +645,13 @@ public class RelationTest {
         String the1Id = "";
         String the2Id = "";
         try (Transaction tx = db.beginTx()) {
-            roodId = tx.findNode(Nodes.READING, "text", "rood").getElementId();
+            roodId = tx.findNode(Nodes.READING, "text", "rood").getProperty("id").toString();
             List<Node> thes = tx.findNodes(Nodes.READING, "text", "the").stream().toList();
             for (Node the : thes) {
                 if (the.getProperty("rank").equals(17L))
-                    the1Id = the.getElementId();
+                    the1Id = the.getProperty("id").toString();
                 else
-                    the2Id = the.getElementId();
+                    the2Id = the.getProperty("id").toString();
             }
         }
         assertFalse(the1Id.isBlank());
@@ -814,6 +814,18 @@ public class RelationTest {
             result = available.getFirst();
         }
         return result;
+    }
+
+    // Like getReading, but returns the reading's application-assigned numeric id (fetched
+    // while still inside the transaction, since a Node's properties -- unlike its elementId --
+    // cannot be read once the transaction that produced it has closed).
+    private String getReadingId(String text, Comparator<Node> c) {
+        try (Transaction tx = db.beginTx()) {
+            List<Node> available = tx.findNodes(Nodes.READING, "text", text).stream().collect(Collectors.toList());
+            if (c != null)
+                available.sort(c);
+            return available.getFirst().getProperty("id").toString();
+        }
     }
 
     /*

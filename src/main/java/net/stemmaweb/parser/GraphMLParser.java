@@ -277,19 +277,16 @@ public class GraphMLParser {
                                 deletedAsAnnotation = true;
                             }
                         }
-                        // Assign an application-level id to a brand new Section node, now that its
-                        // final label(s) are in place. Don't do this for the parentNode-reuse case
-                        // (isSingleSection section node) -- that node already has its id from
+                        // Assign an application-level id to a brand new Section or Reading node, now
+                        // that its final label(s) are in place. Don't do this for the parentNode-reuse
+                        // case (isSingleSection section node) -- that node already has its id from
                         // Tradition.createNewSection -- nor for a node that turned out to be an
-                        // annotation and was just deleted above. Restricted to SECTION only: Reading
-                        // nodes aren't yet consistently id-assigned anywhere else in the codebase (the
-                        // bare-createNode-then-addLabel sites in Reading.java, and the property-copy in
-                        // ReadingService.copyReadingProperties, are out of this task's scope), so
-                        // assigning Reading nodes an id only here would create a node with an id that
-                        // promptly gets blindly copied onto a second node by reading duplication,
-                        // violating the READING.id uniqueness constraint. Left for Task 3 to add
-                        // alongside those other call sites.
-                        if (isNewNode && !deletedAsAnnotation && entity.hasLabel(Nodes.SECTION))
+                        // annotation and was just deleted above. Now safe for READING too (Task 3):
+                        // ReadingService.copyReadingProperties excludes "id" from the properties it
+                        // blindly copies onto a duplicated/split reading, and the reading-duplication/
+                        // split call sites assign the new reading its own fresh id afterwards instead
+                        // of inheriting this one, so no two reading nodes end up sharing an id.
+                        if (isNewNode && !deletedAsAnnotation)
                             DatabaseService.assignIdIfCovered(tx, entity);
                     }
                 }

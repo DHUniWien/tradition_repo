@@ -162,8 +162,8 @@ public class VariantGraphServiceTest {
             Node n1 = tx.findNode(Nodes.READING, "text", "Heinäricki");
             Node n2 = tx.findNode(Nodes.READING, "text", "Henärickus");
             RelationModel rm = new RelationModel();
-            rm.setSource(n1.getElementId());
-            rm.setTarget(n2.getElementId());
+            rm.setSource(n1.getProperty("id").toString());
+            rm.setTarget(n2.getProperty("id").toString());
             rm.setType("collated");
             rm.setScope("local");
             Relation relRest = new Relation(newTradId);

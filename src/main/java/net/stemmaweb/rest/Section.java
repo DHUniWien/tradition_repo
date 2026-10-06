@@ -109,7 +109,7 @@ public class Section {
         // Check that the reading actually belongs to our section
         boolean readingInSection;
         try (Transaction tx = db.beginTx()) {
-            ReadingModel rdg = new ReadingModel(tx.getNodeByElementId(readingId));
+            ReadingModel rdg = new ReadingModel(DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId));
             readingInSection = rdg.getSection().equals(sectId);
         } catch (NotFoundException | IllegalArgumentException e) {
             readingInSection = false;
@@ -581,7 +581,7 @@ public class Section {
 
     private String rankForReading(String rdgId, Transaction tx) {
         String answer;
-        Node rdgNode = tx.getNodeByElementId(rdgId);
+        Node rdgNode = DatabaseService.findNodeOrThrow(tx, Nodes.READING, rdgId);
         answer = rdgNode.getProperty("rank").toString();
 
         return answer;
@@ -845,14 +845,14 @@ public class Section {
     		
     		// Close off the prior rank with a new END node, and the requested rank with a new
     		// START node
-    		Node newEnd = tx.createNode(Nodes.READING);
+    		Node newEnd = DatabaseService.createNode(tx, Nodes.READING);
     		newEnd.setProperty("is_end", true);
     		newEnd.setProperty("text", "#END#");
     		newEnd.setProperty("rank", rank);
     		newEnd.setProperty("section_id", sectId);
     		thisSection.createRelationshipTo(newEnd, ERelations.HAS_END);
     		
-    		Node newStart = tx.createNode(Nodes.READING);
+    		Node newStart = DatabaseService.createNode(tx, Nodes.READING);
     		newStart.setProperty("is_start", true);
     		newStart.setProperty("text", "#START#");
     		newStart.setProperty("rank", 0L);
@@ -861,7 +861,7 @@ public class Section {
     		
     		Node newLacuna = null;
     		if (lacunoseWitsPresent) {
-    			newLacuna = tx.createNode(Nodes.READING);
+    			newLacuna = DatabaseService.createNode(tx, Nodes.READING);
     			newLacuna.setProperty("is_lacuna", true);
     			newLacuna.setProperty("text", "#LACUNA#");
     			newLacuna.setProperty("rank", 1L);
@@ -1351,7 +1351,7 @@ public class Section {
     		// Recreate links, checking for branching
     		Node priorLemma = startNode;
     		for (ReadingModel tl : sectionLemmata) {
-    			Node thisLemma = tx.getNodeByElementId(tl.getId());
+    			Node thisLemma = DatabaseService.findNodeOrThrow(tx, Nodes.READING, tl.getId());
     			ReadingModel pl = new ReadingModel(priorLemma);
     			// Check that we don't have same-rank readings
     			if (priorLemma.getProperty("rank").equals(thisLemma.getProperty("rank")))
@@ -1519,7 +1519,7 @@ public class Section {
     			return Response.status(Response.Status.BAD_REQUEST)
     					.entity(jsonerror("Invalid rank range specified for emendation")).build();
     		// Make the emendation node
-    		Node emendation = tx.createNode(Nodes.READING, Nodes.EMENDATION);
+    		Node emendation = DatabaseService.createNode(tx, Nodes.READING, Nodes.EMENDATION);
     		emendation.setProperty("text", proposal.getText());
     		emendation.setProperty("authority", proposal.getAuthority());
     		emendation.setProperty("rank", proposal.getFromRank());

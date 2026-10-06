@@ -35,6 +35,8 @@ import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -57,6 +59,16 @@ public class AnnotationTest extends TestCase {
         tradId = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR",
                 "1", "src/TestFiles/legendfrag.xml", "stemmaweb"), "tradId");
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+    }
+
+    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
+    // Reading id (see the entity-id-system design spec): it stays an elementId string even
+    // though the same reading's own "id" property is now numeric. Looks up a reading's
+    // current elementId given its numeric id, for use when building an annotation link.
+    private String elementIdOf(String readingId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
+        }
     }
 
     private AnnotationLabelModel returnTestLabel() {
@@ -93,11 +105,11 @@ public class AnnotationTest extends TestCase {
         props.put("lang", "EN");
         am.setProperties(props);
         AnnotationLinkModel start = new AnnotationLinkModel();
-        start.setTarget(readingLookup.get("in/1"));
+        start.setTarget(elementIdOf(readingLookup.get("in/1")));
         start.setType("BEGIN");
         start.setFollow("SEQUENCE/witness/A");
         AnnotationLinkModel end = new AnnotationLinkModel();
-        end.setTarget(readingLookup.get("oriundus/9"));
+        end.setTarget(elementIdOf(readingLookup.get("oriundus/9")));
         end.setType("END");
         am.addLink(start);
         am.addLink(end);
@@ -355,7 +367,7 @@ public class AnnotationTest extends TestCase {
         AnnotationModel am = addTestAnnotation();
 
         AnnotationLinkModel alm = new AnnotationLinkModel();
-        alm.setTarget(readingLookup.get("venerabilis/3"));
+        alm.setTarget(elementIdOf(readingLookup.get("venerabilis/3")));
         alm.setType("BEGIN");
         try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
@@ -439,10 +451,10 @@ public class AnnotationTest extends TestCase {
         ref1.setLabel("PERSONREF");
         AnnotationLinkModel prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(readingLookup.get("pontifex/4"));
+        prb.setTarget(elementIdOf(readingLookup.get("pontifex/4")));
         AnnotationLinkModel pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(readingLookup.get("Henricus/6"));
+        pre.setTarget(elementIdOf(readingLookup.get("Henricus/6")));
         ref1.addLink(prb);
         ref1.addLink(pre);
         try (Response response4 = jerseyTest
@@ -475,10 +487,10 @@ public class AnnotationTest extends TestCase {
         ref2.setLabel("PERSONREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(readingLookup.get("luminaribus/4"));
+        prb.setTarget(elementIdOf(readingLookup.get("luminaribus/4")));
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(readingLookup.get("luminaribus/4"));
+        pre.setTarget(elementIdOf(readingLookup.get("luminaribus/4")));
         ref2.addLink(prb);
         ref2.addLink(pre);
         try (Response response6 = jerseyTest
@@ -644,7 +656,7 @@ public class AnnotationTest extends TestCase {
             props.put("value", nameToValue.get(k));
             am.setProperties(props);
             AnnotationLinkModel start = new AnnotationLinkModel();
-            start.setTarget(readingLookup.get("in/1"));
+            start.setTarget(elementIdOf(readingLookup.get("in/1")));
             start.setType("ATTACHED");
             am.addLink(start);
 

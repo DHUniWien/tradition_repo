@@ -96,8 +96,8 @@ public class RelationModel {
      * @param includeReadings - Whether to set the source_reading and target_reading fields
      */
     public RelationModel(Relationship rel, Boolean includeReadings){
-        source = rel.getStartNode().getElementId();
-        target = rel.getEndNode().getElementId();
+        source = rel.getStartNode().getProperty("id").toString();
+        target = rel.getEndNode().getProperty("id").toString();
         if (includeReadings) {
             source_reading = new ReadingModel(rel.getStartNode());
             target_reading = new ReadingModel(rel.getEndNode());

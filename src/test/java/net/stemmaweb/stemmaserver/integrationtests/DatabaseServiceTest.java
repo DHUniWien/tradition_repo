@@ -96,15 +96,20 @@ public class DatabaseServiceTest {
     @Test
     public void testAssignIdIfCoveredGivesUniqueSequentialIds() {
         try (Transaction tx = db.beginTx()) {
+            // setUp()'s own tradition import (via the stemmaweb parser and
+            // Tradition.createNewSection, both now routed through DatabaseService.createNode)
+            // already minted some number of reading and section ids, so the counters can't be
+            // assumed to start at 0 here -- capture the baseline first, then assert relative to it.
+            long baseReading = (long) DatabaseService.createNode(tx, Nodes.READING).getProperty("id");
+            long baseSection = (long) DatabaseService.createNode(tx, Nodes.SECTION).getProperty("id");
+
             Node r1 = DatabaseService.createNode(tx, Nodes.READING);
             Node r2 = DatabaseService.createNode(tx, Nodes.READING);
             Node s1 = DatabaseService.createNode(tx, Nodes.SECTION);
-            assertEquals(1L, r1.getProperty("id"));
-            assertEquals(2L, r2.getProperty("id"));
-            // independent per-type counter -- starts at 2 here because setUp()'s own tradition
-            // import (via Tradition.createNewSection, now routed through DatabaseService.createNode
-            // as of the Section entity-id task) already minted section id 1
-            assertEquals(2L, s1.getProperty("id"));
+            assertEquals(baseReading + 1, r1.getProperty("id"));
+            assertEquals(baseReading + 2, r2.getProperty("id"));
+            // independent per-type counter
+            assertEquals(baseSection + 1, s1.getProperty("id"));
             tx.commit();
         }
     }

@@ -42,6 +42,7 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
@@ -83,6 +84,24 @@ public class GraphMLInputOutputTest extends TestCase {
         Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2");
 
+    }
+
+    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
+    // Reading id (see the entity-id-system design spec): it stays an elementId string even
+    // though the same reading's own "id" property is now numeric. Looks up a reading's
+    // current elementId given its numeric id, for use when building an annotation link.
+    private String elementIdOf(String readingId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
+        }
+    }
+
+    // The inverse of elementIdOf: looks up a reading's new numeric id given its elementId,
+    // for comparing an annotation link's target against a ReadingModel's id.
+    private String numericIdOf(String readingElementId) {
+        try (Transaction tx = db.beginTx()) {
+            return tx.getNodeByElementId(readingElementId).getProperty("id").toString();
+        }
     }
 
     public void testZipOutput() {
@@ -413,13 +432,17 @@ public class GraphMLInputOutputTest extends TestCase {
         }
         assertFalse(startId.isBlank());
         assertFalse(endId.isBlank());
+        // startId/endId are elementId-shaped (annotation link targets are not migrated to the
+        // new Reading id); translate to the new numeric id to compare against ReadingModel.id.
+        String startReadingId = numericIdOf(startId);
+        String endReadingId = numericIdOf(endId);
         List<ReadingModel> translated = new ArrayList<>();
         boolean in_translation = false;
         for (ReadingModel rm : sectionReadings) {
-            if (rm.getId().equals(startId))
+            if (rm.getId().equals(startReadingId))
                 in_translation = true;
             if (in_translation) translated.add(rm);
-            if (rm.getId().equals(endId))
+            if (rm.getId().equals(endReadingId))
                 in_translation = false;
         }
         String expected = "և զկնի հինկ ամին եկեալ մարախ յայնմ գաւառին որպէս զաւազ ծովու և ապականեաց զերկիր.";
@@ -464,11 +487,11 @@ public class GraphMLInputOutputTest extends TestCase {
         sect1ref.setLabel("PLACEREF");
         sect1ref.addProperty("authority", "tla");
         AnnotationLinkModel s1b = new AnnotationLinkModel();
-        s1b.setTarget(readingLookup.get("swecia/2"));
+        s1b.setTarget(elementIdOf(readingLookup.get("swecia/2")));
         s1b.setType("BEGIN");
         sect1ref.addLink(s1b);
         AnnotationLinkModel s1e = new AnnotationLinkModel();
-        s1e.setTarget(readingLookup.get("swecia/2"));
+        s1e.setTarget(elementIdOf(readingLookup.get("swecia/2")));
         s1e.setType("END");
         sect1ref.addLink(s1e);
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotation/").request().post(Entity.json(sect1ref));
@@ -480,11 +503,11 @@ public class GraphMLInputOutputTest extends TestCase {
         sect2ref.setLabel("PLACEREF");
         sect2ref.addProperty("authority", "tla");
         AnnotationLinkModel s2b = new AnnotationLinkModel();
-        s2b.setTarget(readingLookup.get("terre/6"));
+        s2b.setTarget(elementIdOf(readingLookup.get("terre/6")));
         s2b.setType("BEGIN");
         sect2ref.addLink(s2b);
         AnnotationLinkModel s2e = new AnnotationLinkModel();
-        s2e.setTarget(readingLookup.get("illius/7"));
+        s2e.setTarget(elementIdOf(readingLookup.get("illius/7")));
         s2e.setType("END");
         sect2ref.addLink(s2e);
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotation").request().post(Entity.json(sect2ref));

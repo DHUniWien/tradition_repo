@@ -1077,9 +1077,9 @@ public class SectionTest extends TestCase {
                 while (ri.hasNext()) {
                     Node n = ri.next();
                     if (n.getProperty("rank").equals(3L))
-                        firstId = n.getElementId();
+                        firstId = n.getProperty("id").toString();
                     if (n.getProperty("rank").equals(5L))
-                        secondId = n.getElementId();
+                        secondId = n.getProperty("id").toString();
                 }
             }
             // Get rid of all the "collated" relationships
@@ -1099,7 +1099,7 @@ public class SectionTest extends TestCase {
 
         // Check that the ranks are correct
         try (Transaction tx = db.beginTx()) {
-            Node remain = tx.getNodeByElementId(firstId);
+            Node remain = DatabaseService.findNodeOrThrow(tx, Nodes.READING, firstId);
             assertEquals(5L, remain.getProperty("rank"));
             Node capv = tx.findNode(Nodes.READING, "text", "Venerabilis");
             assertEquals(5L, capv.getProperty("rank"));
@@ -1430,6 +1430,16 @@ public class SectionTest extends TestCase {
 
     }
 
+    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
+    // Reading id (see the entity-id-system design spec): it stays an elementId string even
+    // though the same reading's own "id" property is now numeric. Looks up a reading's
+    // current elementId given its numeric id, for use when building an annotation link.
+    private String elementIdOf(String readingId) {
+        try (Transaction tx = db.beginTx()) {
+            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
+        }
+    }
+
     private HashMap<String, String> setupComplexAnnotation() {
         HashMap<String, String> data = new HashMap<>();
         // Add the second section
@@ -1477,10 +1487,10 @@ public class SectionTest extends TestCase {
         ref1.setLabel("PLACEREF");
         AnnotationLinkModel prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(readingLookup.get("suecia/2"));
+        prb.setTarget(elementIdOf(readingLookup.get("suecia/2")));
         AnnotationLinkModel pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(readingLookup.get("suecia/2"));
+        pre.setTarget(elementIdOf(readingLookup.get("suecia/2")));
         ref1.addLink(prb);
         ref1.addLink(pre);
         try (Response response3 = jerseyTest
@@ -1516,10 +1526,10 @@ public class SectionTest extends TestCase {
         ref2.setLabel("PLACEREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(readingLookup.get("magisque/15"));
+        prb.setTarget(elementIdOf(readingLookup.get("magisque/15")));
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(readingLookup.get("magisque/15"));
+        pre.setTarget(elementIdOf(readingLookup.get("magisque/15")));
         ref2.addLink(prb);
         ref2.addLink(pre);
         try (Response response5 = jerseyTest

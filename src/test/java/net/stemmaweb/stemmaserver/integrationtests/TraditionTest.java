@@ -516,8 +516,8 @@ public class TraditionTest {
             RelationModel txrel = new RelationModel();
             txrel.setType("transposition");
             txrel.setScope("local");
-            txrel.setSource(String.valueOf(tx1.getElementId()));
-            txrel.setTarget(String.valueOf(tx2.getElementId()));
+            txrel.setSource(String.valueOf(tx1.getProperty("id")));
+            txrel.setTarget(String.valueOf(tx2.getProperty("id")));
             jerseyResponse = jerseyTest.target("/tradition/" + florId + "/relation")
                     .request()
                     .post(Entity.json(txrel));

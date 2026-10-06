@@ -36,7 +36,7 @@ public class Util {
 
     // Start and end node creation
     static Node createStartNode(Transaction tx, Node parentNode) {
-        Node startNode = tx.createNode(Nodes.READING);
+        Node startNode = DatabaseService.createNode(tx, Nodes.READING);
         startNode.setProperty("is_start", true);
         startNode.setProperty("section_id", parentNode.getProperty("id").toString());
         startNode.setProperty("rank", 0L);
@@ -47,7 +47,7 @@ public class Util {
 
     // Start and end node creation
     static Node createEndNode(Transaction tx, Node parentNode) {
-        Node endNode = tx.createNode(Nodes.READING);
+        Node endNode = DatabaseService.createNode(tx, Nodes.READING);
         endNode.setProperty("is_end", true);
         endNode.setProperty("section_id", parentNode.getProperty("id").toString());
         endNode.setProperty("text", "#END#");

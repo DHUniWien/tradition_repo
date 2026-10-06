@@ -119,7 +119,7 @@ public class Reading {
     public Response getReading() {
         ReadingModel reading;
         try (Transaction tx = db.beginTx()) {
-            reading = new ReadingModel(tx.getNodeByElementId(readId));
+            reading = new ReadingModel(DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId));
         } catch (NotFoundException | IllegalArgumentException e) {
             // The tradition and reading were set, but to something that doesn't exist
             return Response.noContent().build();
@@ -165,7 +165,7 @@ public class Reading {
         Node reading;
         String currentKey = "";
         try (Transaction tx = db.beginTx()) {
-            reading = tx.getNodeByElementId(readId);
+            reading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
                 currentKey = keyPropertyModel.getKey();
                 if (currentKey.equals("id")) {
@@ -231,7 +231,7 @@ public class Reading {
     public Response deleteUserReading() {
         GraphModel deletedElements = new GraphModel();
         try (Transaction tx = db.beginTx()) {
-            Node reading = tx.getNodeByElementId(readId);
+            Node reading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             // Can we delete the reading?
             if (!reading.hasLabel(Nodes.EMENDATION)) {
                 errorMessage = "Only emendation readings can be deleted";
@@ -303,7 +303,7 @@ public class Reading {
     public Response setReadingAsLemma(@FormParam("value") @DefaultValue("false") String value) {
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node reading = tx.getNodeByElementId(readId);
+            Node reading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             if (value.equals("true")) {
                 if (!reading.hasProperty("is_lemma") || !reading.getProperty("is_lemma").equals(true)) {
                     Map<String, Object> criteria = new HashMap<>();
@@ -374,10 +374,10 @@ public class Reading {
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             // Get a reading model so we can easily check the witnesses
-            Node us = tx.getNodeByElementId(readId);
+            Node us = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             ReadingModel thisReading = new ReadingModel(us);
             // Make our lacuna node
-            Node lacuna = tx.createNode(Nodes.READING);
+            Node lacuna = DatabaseService.createNode(tx, Nodes.READING);
             lacuna.setProperty("is_lacuna", true);
             lacuna.setProperty("rank", (Long) us.getProperty("rank") + 1);
             lacuna.setProperty("section_id", us.getProperty("section_id"));
@@ -497,9 +497,9 @@ public class Reading {
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             List<Node> related = collectRelatedReadings(tx, Collections.singletonList(onRelationType));
-            Node us = tx.getNodeByElementId(readId);
+            Node us = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             String key = us.hasProperty("normal_form") ? "normal_form" : "text";
-            Object ourNormalForm = tx.getNodeByElementId(readId).getProperty(key);
+            Object ourNormalForm = us.getProperty(key);
             // Set the normal form on this reading if it wasn't already there
             us.setProperty("normal_form", ourNormalForm);
             for (Node n : related) {
@@ -526,7 +526,7 @@ public class Reading {
 
     private List<Node> collectRelatedReadings(Transaction tx, List<String> filterTypes) {
         List<Node> allRelated = new ArrayList<>();
-        Node reading = tx.getNodeByElementId(readId);
+        Node reading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
         RelationService.RelatedReadingsTraverser rt;
         if (filterTypes == null || filterTypes.isEmpty())
             // Traverse all relations
@@ -566,7 +566,7 @@ public class Reading {
     public Response deleteAllRelations() {
         ArrayList<RelationModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node reading = tx.getNodeByElementId(readId);
+            Node reading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             for (Relationship rel : DatabaseService.getRelationships(reading, ERelations.RELATED)) {
                 deleted.add(new RelationModel(rel));
                 rel.delete();
@@ -660,7 +660,7 @@ public class Reading {
         try (Transaction tx = db.beginTx()) {
             List<String> readings = duplicateModel.getReadings().stream().map(String::valueOf).toList();
             for (String readId : readings) {
-                originalReading = tx.getNodeByElementId(readId);
+                originalReading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
                 List<String> newWitnesses = duplicateModel.getWitnesses();
 
                 if (!canBeDuplicated(originalReading, newWitnesses)) {
@@ -768,15 +768,17 @@ public class Reading {
             throws Exception {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
+        DatabaseService.assignIdIfCovered(tx, addedReading);
 
         // add witnesses to the correct sequence links
         HashSet<Relationship> newSequences = new HashSet<>();
+        String originalReadingId = originalReading.getProperty("id").toString();
         for (String wit : newWitnesses) {
             HashMap<String, String> witness = parseSigil(wit);
-            Node prior = getNeighbourReadingInSequence(tx, originalReading.getElementId(), witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
-            Node next = getNeighbourReadingInSequence(tx, originalReading.getElementId(), witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
+            Node prior = getNeighbourReadingInSequence(tx, originalReadingId, witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
+            Node next = getNeighbourReadingInSequence(tx, originalReadingId, witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
             if (prior == null || next == null) {
-                throw new Exception("No prior / next node found for reading " + originalReading.getElementId() + "!");
+                throw new Exception("No prior / next node found for reading " + originalReadingId + "!");
             }
             // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
             newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
@@ -795,8 +797,8 @@ public class Reading {
         for (RelationModel rm : VariantGraphService.sectionRelations(tx, sectId)) {
             Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
             if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
-                    (rm.getSource().equals(originalReading.getElementId()) ||
-                            rm.getTarget().equals(originalReading.getElementId()))) {
+                    (rm.getSource().equals(originalReadingId) ||
+                            rm.getTarget().equals(originalReadingId))) {
                 Relationship newRel = addedReading.createRelationshipTo(
                         originalRel.getOtherNode(originalReading),
                         ERelations.RELATED);
@@ -806,8 +808,8 @@ public class Reading {
             } else if (!(originalRel.hasProperty("colocation") &&
                     originalRel.getProperty("colocation").equals(true))) {
                 // Get the related readings
-                ReadingModel relSource = new ReadingModel(tx.getNodeByElementId(rm.getSource()));
-                ReadingModel relTarget = new ReadingModel(tx.getNodeByElementId(rm.getTarget()));
+                ReadingModel relSource = new ReadingModel(DatabaseService.findNodeOrThrow(tx, Nodes.READING, rm.getSource()));
+                ReadingModel relTarget = new ReadingModel(DatabaseService.findNodeOrThrow(tx, Nodes.READING, rm.getTarget()));
                 if ((relSource.getRank() < ourRank && relTarget.getRank() > ourRank)
                         || (relSource.getRank() > ourRank && relTarget.getRank() < ourRank)) {
                     originalRel.delete();
@@ -855,8 +857,8 @@ public class Reading {
         GraphModel result;
 
         try (Transaction tx = db.beginTx()) {
-            Node keepingReading = tx.getNodeByElementId(readId);
-            Node deletingReading = tx.getNodeByElementId(secondReadId);
+            Node keepingReading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
+            Node deletingReading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, secondReadId);
 
             ReadingModel drm = new ReadingModel(deletingReading);
 
@@ -958,7 +960,7 @@ public class Reading {
         GraphModel readingsAndRelations;
         Node originalReading;
         try (Transaction tx = db.beginTx()) {
-            originalReading = tx.getNodeByElementId(readId);
+            originalReading = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
             String originalText = originalReading.getProperty("text").toString();
             if (splitIndex >= originalText.length())
                 errorMessage = "The index must be smaller than the text length";
@@ -1065,6 +1067,7 @@ public class Reading {
             Node newReading = tx.createNode();
 
             ReadingService.copyReadingProperties(lastReading, newReading);
+            DatabaseService.assignIdIfCovered(tx, newReading);
             newReading.setProperty("text", splitWords[i]);
             // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
             Long previousRank = (Long) lastReading.getProperty("rank");
@@ -1253,8 +1256,8 @@ public class Reading {
             boundary = new ReadingBoundaryModel();
 
         try (Transaction tx = db.beginTx()) {
-            read1 = tx.getNodeByElementId(readId);
-            read2 = tx.getNodeByElementId(readId2);
+            read1 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId);
+            read2 = DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId2);
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
                 errorMessage = "the first reading has a higher rank then the second reading";
                 resp =  errorResponse(Status.CONFLICT);

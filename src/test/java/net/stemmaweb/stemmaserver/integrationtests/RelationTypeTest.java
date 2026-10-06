@@ -27,6 +27,8 @@ import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -109,9 +111,9 @@ public class RelationTypeTest {
             for (String rid : createdRels) {
                 Relationship link = tx.getRelationshipByElementId(rid);
                 String lookfor = String.format("%s -> %s: %s",
-                        link.getStartNode().getElementId(), link.getEndNode().getElementId(), link.getProperty("type"));
+                        link.getStartNode().getProperty("id").toString(), link.getEndNode().getProperty("id").toString(), link.getProperty("type"));
                 String lookrev = String.format("%s -> %s: %s",
-                        link.getEndNode().getElementId(), link.getStartNode().getElementId(), link.getProperty("type"));
+                        link.getEndNode().getProperty("id").toString(), link.getStartNode().getProperty("id").toString(), link.getProperty("type"));
                 String message = String.format("looking for %s in %s", lookfor,
                         java.util.Arrays.toString(expectedLinks.toArray()));
                 assertTrue(message,expectedLinks.remove(lookfor) ^ expectedLinks.remove(lookrev));
@@ -471,7 +473,7 @@ public class RelationTypeTest {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = tx.getNodeByElementId(nid);
+                Node n = DatabaseService.findNodeOrThrow(tx, Nodes.READING, nid);
                 assertEquals(22L, n.getProperty("rank"));
             }
             tx.commit();
@@ -506,7 +508,7 @@ public class RelationTypeTest {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = tx.getNodeByElementId(nid);
+                Node n = DatabaseService.findNodeOrThrow(tx, Nodes.READING, nid);
                 assertEquals(24L, n.getProperty("rank"));
             }
             tx.commit();
@@ -531,7 +533,7 @@ public class RelationTypeTest {
         testReadings.add(ricko25);
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = tx.getNodeByElementId(nid);
+                Node n = DatabaseService.findNodeOrThrow(tx, Nodes.READING, nid);
                 assertEquals(25L, n.getProperty("rank"));
             }
             tx.commit();
