@@ -71,7 +71,7 @@ public class VariantCrawler {
                         Map<String,Set<String>> pathWits = new HashMap<>();
                         for (String layer : r.getPropertyKeys()) {
                             List<String> followWits = Arrays.stream((String[]) r.getProperty(layer)).filter(
-                                    x -> !excludeWitnesses.contains(x)).collect(Collectors.toList());
+                                    x -> !excludeWitnesses.contains(x)).toList();
                             if (!followWits.isEmpty())
                                 pathWits.put(layer, new HashSet<>(followWits));
                         }
@@ -85,7 +85,7 @@ public class VariantCrawler {
                 Map<String,Set<String>> witsSoFar = pathWitnesses.getOrDefault(key, null);
                 if (witsSoFar == null || witsSoFar.isEmpty()) {
                     // We have no "through" witnesses for this path, so don't go any farther.
-                    return Iterables.emptyResourceIterable();
+                    return ResourceIterable.of(List.of());
                 }
                 // Now for each witness sigil in witsSoFar, find the relationship that continues it.
                 Map<String, Relationship> continuations = new HashMap<>();
@@ -94,7 +94,7 @@ public class VariantCrawler {
                     // Do the base layer first.
                     Set<String> relBaseWits = new HashSet<>(Arrays.asList(
                             (String[]) r.getProperty("witnesses", new String[0])));
-                    for (String sig : baseWits.stream().filter(relBaseWits::contains).collect(Collectors.toList())) {
+                    for (String sig : baseWits.stream().filter(relBaseWits::contains).toList()) {
                         continuations.put(sig, r);
                     }
                     // Now check whether this relationship continues any non-base witness paths.
@@ -103,15 +103,13 @@ public class VariantCrawler {
                         if (r.hasProperty(layer)) {
                             // Get any layer witnesses that are directly continued
                             Set<String> relLayerWits = new HashSet<>(Arrays.asList((String[]) r.getProperty(layer)));
-                            for (String sig : witsSoFar.get(layer).stream().filter(relLayerWits::contains)
-                                    .collect(Collectors.toList())) {
+                            for (String sig : witsSoFar.get(layer).stream().filter(relLayerWits::contains).toList()) {
                                 continuations.put(String.format("%s|%s", sig, layer), r);
                             }
                         }
                         // Get any layer witnesses that have reverted to the base witness, assuming a direct layer
                         // continuation has not been found
-                        for (String sig : witsSoFar.get(layer).stream().filter(relBaseWits::contains)
-                                .collect(Collectors.toList())) {
+                        for (String sig : witsSoFar.get(layer).stream().filter(relBaseWits::contains).toList()) {
                             String contKey = String.format("%s|%s", sig, layer);
                             if (!continuations.containsKey(contKey)) continuations.put(contKey, r);
                         }
@@ -121,7 +119,7 @@ public class VariantCrawler {
                     for (String layer : r.getPropertyKeys()) {
                         if (layer.equals("witnesses")) continue;
                         Set<String> relLayerWits = new HashSet<>(Arrays.asList((String[]) r.getProperty(layer)));
-                        for (String sig : relLayerWits.stream().filter(baseWits::contains).collect(Collectors.toList())) {
+                        for (String sig : relLayerWits.stream().filter(baseWits::contains).toList()) {
                             String contKey = String.format("%s|%s", sig, layer);
                             if (!continuations.containsKey(contKey)) continuations.put(contKey, r);
                         }
