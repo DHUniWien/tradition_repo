@@ -23,6 +23,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
@@ -104,6 +105,8 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             ReadingModel rdg = new ReadingModel(tx.getNodeByElementId(readingId));
             readingInSection = rdg.getSection().equals(sectId);
+        } catch (NotFoundException | IllegalArgumentException e) {
+            readingInSection = false;
         }
         return readingInSection ? new Reading(readingId, tradId) : new Reading("-1");
     }

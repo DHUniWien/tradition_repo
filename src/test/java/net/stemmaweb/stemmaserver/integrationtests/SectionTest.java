@@ -211,7 +211,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         // LATER make this return something useful
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), jerseyResponse.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), jerseyResponse.getStatus());
     }
 
     public void testSectionWitnesses() {
@@ -257,11 +257,14 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<>() {});
         assertEquals(30, tReadings.size());
 
-        Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
-        tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
-                .request()
-                .get(new GenericType<>() {});
-        assertEquals(77, tReadings.size());
+        try (Response ignored = Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2")) {
+            // This doesn't actually need to be inside this block, but I need something here
+            tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
+                    .request()
+                    .get(new GenericType<>() {});
+            assertEquals(77, tReadings.size());
+        }
 
         try (Response jerseyResult = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + firstSectId)
@@ -1040,13 +1043,14 @@ public class SectionTest extends TestCase {
         String secondId = "";
         try (Transaction tx = db.beginTx()) {
             // Find the venerabili
-            ResourceIterator<Node> ri = tx.findNodes(Nodes.READING, "text", "venerabilis");
-            while (ri.hasNext()) {
-                Node n = ri.next();
-                if (n.getProperty("rank").equals(3L))
-                    firstId = n.getElementId();
-                if (n.getProperty("rank").equals(5L))
-                    secondId = n.getElementId();
+            try (ResourceIterator<Node> ri = tx.findNodes(Nodes.READING, "text", "venerabilis")) {
+                while (ri.hasNext()) {
+                    Node n = ri.next();
+                    if (n.getProperty("rank").equals(3L))
+                        firstId = n.getElementId();
+                    if (n.getProperty("rank").equals(5L))
+                        secondId = n.getElementId();
+                }
             }
             // Get rid of all the "collated" relationships
             tx.getAllRelationships().stream()
@@ -1399,15 +1403,16 @@ public class SectionTest extends TestCase {
     private HashMap<String, String> setupComplexAnnotation() {
         HashMap<String, String> data = new HashMap<>();
         // Add the second section
-        Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2");
-        // Get both section IDs
-        List<SectionModel> ourSections = jerseyTest
-                .target("/tradition/" + tradId + "/sections")
-                .request()
-                .get(new GenericType<>() {});
-        data.put("section1", ourSections.getFirst().getId());
-        data.put("section2", ourSections.get(1).getId());
+        try (Response ignored = Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2")) {
+            // Get both section IDs
+            List<SectionModel> ourSections = jerseyTest
+                    .target("/tradition/" + tradId + "/sections")
+                    .request()
+                    .get(new GenericType<>() {});
+            data.put("section1", ourSections.getFirst().getId());
+            data.put("section2", ourSections.get(1).getId());
+        }
         // Make some reading lookups
         HashMap<String, String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
 
