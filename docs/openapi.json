@@ -8652,6 +8652,9 @@
           },
           "target" : {
             "type" : "string"
+          },
+          "targetLabel" : {
+            "type" : "string"
           }
         }
       },

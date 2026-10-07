@@ -137,9 +137,9 @@ public class DotExporter
                 // HACK - now that we know which nodes are functioning as the start and end nodes, set the
                 // subgraph and the silent node that keeps the graph straight. Make sure we only do this once.
                 if (!subgraphWritten) {
-                    write("\tsubgraph { rank=same " + startNode.getElementId() + " \"#SILENT#\" }\n");
+                    write("\tsubgraph { rank=same " + startNode.getProperty("id").toString() + " \"#SILENT#\" }\n");
                     write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
-                    write("\t" + endNode.getElementId() + "->\"#SILENT#\" [color=white,penwidth=0];\n");
+                    write("\t" + endNode.getProperty("id").toString() + "->\"#SILENT#\" [color=white,penwidth=0];\n");
                     subgraphWritten = true;
                 }
 
@@ -182,7 +182,7 @@ public class DotExporter
                     // will be tied to "section" i.e. section end nodes instead.
                     // Intermediate section end nodes should be displayed as a "section" node.
                     if (node.equals(sectionEndNode) && !node.equals(endNode)) {
-                        nodeSpec = nodeSpec(node, dm).replace("END", "SECTION_" + sectionNode.getElementId());
+                        nodeSpec = nodeSpec(node, dm).replace("END", "SECTION_" + sectionNode.getProperty("id").toString());
                     } else if (node.equals(sectionStartNode) && !node.equals(startNode))
                         continue;
 
@@ -195,7 +195,7 @@ public class DotExporter
                         if (rel == null)
                             continue;
                         Node relStartNode = rel.getStartNode();
-                        String relStartNodeId = relStartNode.getElementId();
+                        String relStartNodeId = relStartNode.getProperty("id").toString();
 
                         boolean witnessLink = false; // Does the witness filter need this sequence?
                         if (node.equals(sectionStartNode) || dm.getExcludeWitnesses().isEmpty())
@@ -226,7 +226,7 @@ public class DotExporter
                         // Get the label
                         String label = sequenceLabel(convertProps(rel), numWits, dm);
                         Long rankDiff = (Long) node.getProperty("rank") - (Long) relStartNode.getProperty("rank");
-                        seqSpecs.add(relshipText(relStartNodeId, node.getElementId(), label, rel.getElementId(),
+                        seqSpecs.add(relshipText(relStartNodeId, node.getProperty("id").toString(), label, rel.getElementId(),
                                 calcPenWidth(convertProps(rel)), rankDiff, edge_is_lemma));
 
                     }
@@ -255,29 +255,29 @@ public class DotExporter
                 }
 
                 // Now that all the nodes are processed, set this section's end node as the last one seen
-                lastSectionEndId = sectionEndNode.getElementId();
+                lastSectionEndId = sectionEndNode.getProperty("id").toString();
 
                 // Write out reading relationships that survived the node filter
                 if (dm.getIncludeRelated())
                     for (Relationship relatedRel : relsToWrite) {
                         if (writtenNodes.contains(relatedRel.getStartNode())
                                 && writtenNodes.contains(relatedRel.getEndNode()))
-                            write("\t" + relatedRel.getStartNode().getElementId() + "->" +
-                                    relatedRel.getEndNode().getElementId() + " [style=dotted, constraint=false, arrowhead=none, " +
+                            write("\t" + relatedRel.getStartNode().getProperty("id").toString() + "->" +
+                                    relatedRel.getEndNode().getProperty("id").toString() + " [style=dotted, constraint=false, arrowhead=none, " +
                                     "label=\"" + relatedRel.getProperty("type").toString() + "\", id=\"e" +
-                                    relatedRel.getElementId() + "\"];\n");
+                                    relatedRel.getProperty("id").toString() + "\"];\n");
                     }
 
                 // Write any remaining lemma links
                 for (Node n : lemmaLinks.keySet()) {
                     LemmaLink ll = lemmaLinks.get(n);
                     write(String.format("\t%s->%s [id=l%s];\n",
-                            n.getElementId(), ll.end.getElementId(), ll.id));
+                            n.getProperty("id").toString(), ll.end.getProperty("id").toString(), ll.id));
                 }
                 // Write any emendation links
                 for (Relationship r : emendationAnchors)
 					write(String.format("\t%s->%s [color=white,penwidth=0,arrowhead=none];\n",
-							r.getStartNode().getElementId(), r.getEndNode().getElementId()));
+							r.getStartNode().getProperty("id").toString(), r.getEndNode().getProperty("id").toString()));
 
             }
 
@@ -343,7 +343,7 @@ public class DotExporter
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
         // Get the proper node ID
         String nodeDotId = node.hasLabel(Nodes.EMENDATION) ? "ne" : "n";
-        nodeDotId+= node.getElementId();
+        nodeDotId+= node.getProperty("id").toString();
         if (node.getProperty("is_end", false).equals(true)) nodeDotId = "__END__";
         else if (node.getProperty("is_start", false).equals(true)) nodeDotId = "__START__";
 
@@ -378,7 +378,7 @@ public class DotExporter
             nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
 
         // Put it all together
-        return("\t" + node.getElementId() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
+        return("\t" + node.getProperty("id").toString() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
     }
 
     private static String sequenceLabel(Map<String, String[]> witnessInfo, int numWits, DisplayOptionModel dm) {

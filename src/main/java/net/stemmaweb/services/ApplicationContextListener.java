@@ -43,18 +43,24 @@ public class ApplicationContextListener implements ServletContextListener {
         this.context = event.getServletContext();
         //Output a simple message to the server's console
         // logger.debug("This is debug - Listener: context initialized");
+        // Deliberately do NOT catch-and-swallow here: ensureConstraints must run in its own
+        // transaction, separate from createRootNode's data write (mixing a schema write with
+        // a data write in one transaction throws), but if either step fails, the exception
+        // must propagate and fail startup cleanly. Swallowing it would let the server start
+        // without a ROOT node and/or without the entity-id uniqueness constraints, so that
+        // every subsequent DatabaseService.nextId call fails later with an NPE instead.
         try {
             GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
             try (Transaction tx = db.beginTx()) {
-            	DatabaseService.ensureConstraints(tx);
-            	tx.commit();
+                DatabaseService.ensureConstraints(tx);
+                tx.commit();
             }
             try (Transaction tx = db.beginTx()) {
-            	DatabaseService.createRootNode(tx);
-            	tx.commit();
+                DatabaseService.createRootNode(tx);
+                tx.commit();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to initialize database schema/root node", e);
         }
     }
 

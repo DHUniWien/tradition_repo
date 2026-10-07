@@ -61,25 +61,6 @@ public class AnnotationTest extends TestCase {
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
     }
 
-    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
-    // Reading id (see the entity-id-system design spec): it stays an elementId string even
-    // though the same reading's own "id" property is now numeric. Looks up a reading's
-    // current elementId given its numeric id, for use when building an annotation link.
-    private String elementIdOf(String readingId) {
-        try (Transaction tx = db.beginTx()) {
-            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
-        }
-    }
-
-    // Same deliberate exception as elementIdOf() above, but for an annotation link that
-    // targets another annotation (e.g. a PERSON annotation referenced by a PERSONREF):
-    // looks up that annotation's current elementId given its numeric id.
-    private String annotationElementIdOf(String annotationId) {
-        try (Transaction tx = db.beginTx()) {
-            return DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annotationId).getElementId();
-        }
-    }
-
     private AnnotationLabelModel returnTestLabel() {
         AnnotationLabelModel alm = new AnnotationLabelModel();
         alm.setName("TRANSLATION");
@@ -114,11 +95,13 @@ public class AnnotationTest extends TestCase {
         props.put("lang", "EN");
         am.setProperties(props);
         AnnotationLinkModel start = new AnnotationLinkModel();
-        start.setTarget(elementIdOf(readingLookup.get("in/1")));
+        start.setTarget(readingLookup.get("in/1"));
+        start.setTargetLabel("READING");
         start.setType("BEGIN");
         start.setFollow("SEQUENCE/witness/A");
         AnnotationLinkModel end = new AnnotationLinkModel();
-        end.setTarget(elementIdOf(readingLookup.get("oriundus/9")));
+        end.setTarget(readingLookup.get("oriundus/9"));
+        end.setTargetLabel("READING");
         end.setType("END");
         am.addLink(start);
         am.addLink(end);
@@ -287,7 +270,7 @@ public class AnnotationTest extends TestCase {
             for (AnnotationLinkModel alm : am.getLinks()) {
                 Relationship link = links.get(alm.getType());
                 assertEquals(link.getType().name(), alm.getType());
-                assertEquals(link.getEndNode().getElementId(), alm.getTarget());
+                assertEquals(link.getEndNode().getProperty("id").toString(), alm.getTarget());
                 if (alm.getType().equals("START"))
                     assertEquals(alm.getFollow(), link.getProperty("follow").toString());
             }
@@ -345,6 +328,48 @@ public class AnnotationTest extends TestCase {
             updated = response3.readEntity(AnnotationModel.class);
         }
         assertEquals(originalId, updated.getId());
+    }
+
+    public void testGetAnnotationRoundTripsThroughPutUnmodified() {
+        // Regression test: AnnotationModel's constructor used to copy the system "id"
+        // property straight into the user-facing properties map, so a GET followed
+        // immediately by an unmodified PUT would fail with 400 ("No property id defined
+        // for this annotation label") -- the properties map now has "id" removed.
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+
+        AnnotationModel fetched;
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId())
+                .request()
+                .get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            fetched = response.readEntity(AnnotationModel.class);
+        }
+        assertFalse(fetched.getProperties().containsKey("id"));
+
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId())
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(fetched))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        }
+    }
+
+    public void testCreateAnnotationLabelWithIdPropertyRejected() {
+        // Regression test: a client-declared property named "id" would collide with the
+        // system-assigned entity id on every annotation of this type.
+        AnnotationLabelModel alm = new AnnotationLabelModel();
+        alm.setName("BADLABEL");
+        Map<String, String> aprop = new HashMap<>();
+        aprop.put("id", "String");
+        alm.setProperties(aprop);
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotationlabel/" + alm.getName())
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(alm))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        }
     }
 
     public void testGetAnnotationWithMalformedIdMatchesCurrentBehavior() {
@@ -440,7 +465,8 @@ public class AnnotationTest extends TestCase {
         AnnotationModel am = addTestAnnotation();
 
         AnnotationLinkModel alm = new AnnotationLinkModel();
-        alm.setTarget(elementIdOf(readingLookup.get("venerabilis/3")));
+        alm.setTarget(readingLookup.get("venerabilis/3"));
+        alm.setTargetLabel("READING");
         alm.setType("BEGIN");
         try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
@@ -478,6 +504,64 @@ public class AnnotationTest extends TestCase {
          * am.getLinks().stream().filter(x -> x.getType().equals("BEGIN")).count());
          */    }
 
+    public void testAddAnnotationLinkToReadingByRestIdSucceeds() {
+        // Regression test for the critical bug this fix wave addresses: a client that only
+        // has a reading's REST-visible numeric id (not its internal elementId) must still be
+        // able to point a new annotation link at it, by supplying targetLabel="READING"
+        // alongside that numeric id.
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget(readingLookup.get("venerabilis/3"));
+        alm.setTargetLabel("READING");
+        alm.setType("BEGIN");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            AnnotationModel updated = response.readEntity(AnnotationModel.class);
+            assertEquals(3, updated.getLinks().size());
+        }
+    }
+
+    public void testAddAnnotationLinkMissingTargetLabelReturns400() {
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget(readingLookup.get("venerabilis/3"));
+        // targetLabel deliberately left unset
+        alm.setType("BEGIN");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        }
+    }
+
+    public void testAddAnnotationLinkDisallowedTargetLabelReturns400() {
+        // The TRANSLATION label's links schema only declares READING -> BEGIN,END. Pointing
+        // a link at a (perfectly valid) SECTION node with type BEGIN must be rejected, since
+        // validation is against exactly the specified targetLabel, not inferred from the node.
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+        SectionModel sect = Util.getSingleSection(jerseyTest, tradId);
+
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget(sect.getId());
+        alm.setTargetLabel("SECTION");
+        alm.setType("BEGIN");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        }
+    }
+
     public void testAddComplexAnnotation() {
         // Add our second section
         Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
@@ -499,7 +583,7 @@ public class AnnotationTest extends TestCase {
         // Make a PERSON annotation label
         AnnotationLabelModel person = new AnnotationLabelModel();
         person.setName("PERSON");
-        person.addLink("PERSONREF", "REFERENCED");
+        person.addLink("ANNOTATION", "REFERENCED");
         person.addProperty("href", "String");
         try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/annotationlabel/" + person.getName())
@@ -524,10 +608,12 @@ public class AnnotationTest extends TestCase {
         ref1.setLabel("PERSONREF");
         AnnotationLinkModel prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(elementIdOf(readingLookup.get("pontifex/4")));
+        prb.setTarget(readingLookup.get("pontifex/4"));
+        prb.setTargetLabel("READING");
         AnnotationLinkModel pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(elementIdOf(readingLookup.get("Henricus/6")));
+        pre.setTarget(readingLookup.get("Henricus/6"));
+        pre.setTargetLabel("READING");
         ref1.addLink(prb);
         ref1.addLink(pre);
         try (Response response4 = jerseyTest
@@ -544,7 +630,8 @@ public class AnnotationTest extends TestCase {
         henry.setPrimary(true);
         henry.addProperty("href", "https://en.wikipedia.org/Saint_Henry");
         prb = new AnnotationLinkModel();
-        prb.setTarget(annotationElementIdOf(ref1.getId()));
+        prb.setTarget(ref1.getId());
+        prb.setTargetLabel("ANNOTATION");
         prb.setType("REFERENCED");
         henry.addLink(prb);
         try (Response response5 = jerseyTest
@@ -560,10 +647,12 @@ public class AnnotationTest extends TestCase {
         ref2.setLabel("PERSONREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(elementIdOf(readingLookup.get("luminaribus/4")));
+        prb.setTarget(readingLookup.get("luminaribus/4"));
+        prb.setTargetLabel("READING");
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(elementIdOf(readingLookup.get("luminaribus/4")));
+        pre.setTarget(readingLookup.get("luminaribus/4"));
+        pre.setTargetLabel("READING");
         ref2.addLink(prb);
         ref2.addLink(pre);
         try (Response response6 = jerseyTest
@@ -575,7 +664,8 @@ public class AnnotationTest extends TestCase {
         }
 
         // Add the link
-        prb.setTarget(annotationElementIdOf(ref2.getId()));
+        prb.setTarget(ref2.getId());
+        prb.setTargetLabel("ANNOTATION");
         prb.setType("REFERENCED");
         try (Response response7 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + henry.getId() + "/link")
@@ -604,8 +694,8 @@ public class AnnotationTest extends TestCase {
             if (am.getLabel().equals("PERSON")) {
                 assertEquals(2, am.getLinks().size());
                 HashMap<String,Boolean> found = new HashMap<>();
-                found.put(annotationElementIdOf(ref1.getId()), false);
-                found.put(annotationElementIdOf(ref2.getId()), false);
+                found.put(ref1.getId(), false);
+                found.put(ref2.getId(), false);
                 for (AnnotationLinkModel alm : am.getLinks()) {
                     assertEquals("REFERENCED", alm.getType());
                     found.put(alm.getTarget(), true);
@@ -729,7 +819,8 @@ public class AnnotationTest extends TestCase {
             props.put("value", nameToValue.get(k));
             am.setProperties(props);
             AnnotationLinkModel start = new AnnotationLinkModel();
-            start.setTarget(elementIdOf(readingLookup.get("in/1")));
+            start.setTarget(readingLookup.get("in/1"));
+            start.setTargetLabel("READING");
             start.setType("ATTACHED");
             am.addLink(start);
 

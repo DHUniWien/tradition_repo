@@ -1,10 +1,10 @@
 package net.stemmaweb.model;
 
-import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
 
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.DatabaseService;
 
 /**
  * A model for an outbound link (relationship) from an annotation to some target node.
@@ -21,16 +21,39 @@ public class AnnotationLinkModel {
      */
     private String follow;
     /**
-     * The ID of the target node for this annotation link.
+     * The ID of the target node for this annotation link. For a covered target type
+     * (READING, SECTION, ANNOTATION) this is the target's application-assigned numeric
+     * id; for any other (uncovered) target type this is the target node's elementId, as
+     * a permanent, deliberate exception (see the entity ID system design spec).
      */
     private String target;
+    /**
+     * The Neo4j label of the target node (e.g. "READING", "SECTION", "ANNOTATION", or
+     * an uncovered type like "WITNESS"). Required because ids are only unique per label,
+     * not globally, and a link type can be validly declared for more than one target
+     * label in an AnnotationLabel's links schema -- so the label cannot be safely
+     * inferred and must be supplied explicitly.
+     */
+    private String targetLabel;
 
     public AnnotationLinkModel() {}
 
     public AnnotationLinkModel(Relationship r) {
-//        GraphDatabaseService db = r.getGraphDatabase();
         setType(r.getType().name());
-        setTarget(r.getEndNode().getElementId());
+        Node end = r.getEndNode();
+        String covered = DatabaseService.coveredLabelOf(end);
+        if (covered != null) {
+            setTargetLabel(covered);
+            setTarget(end.getProperty("id").toString());
+        } else {
+            // Uncovered type: assume, as elsewhere in this codebase, that the node
+            // carries exactly one label.
+            for (Label l : end.getLabels()) {
+                setTargetLabel(l.name());
+                break;
+            }
+            setTarget(end.getElementId());
+        }
         if (r.hasProperty("follow"))
             setFollow(r.getProperty("follow").toString());
     }
@@ -57,5 +80,13 @@ public class AnnotationLinkModel {
 
     public void setTarget(String target) {
         this.target = target;
+    }
+
+    public String getTargetLabel() {
+        return targetLabel;
+    }
+
+    public void setTargetLabel(String targetLabel) {
+        this.targetLabel = targetLabel;
     }
 }

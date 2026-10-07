@@ -38,7 +38,6 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -87,32 +86,6 @@ public class DotOutputTest {
         assertEquals(Response.status(Response.Status.NOT_FOUND).build().getStatus(), resp.getStatus());
     }
 
-    // Like makeElementIdLookup, but for a single reading's new numeric id.
-    private String elementIdOf(String readingId) {
-        try (Transaction tx = db.beginTx()) {
-            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
-        }
-    }
-
-    // DotExporter identifies nodes in its output by Neo4j elementId -- a graph-internal
-    // reference scoped to the exported file, not the application-assigned Reading id (same
-    // precedent as the GraphML exporter). Builds a text/rank -> elementId lookup, mirroring
-    // Util.makeReadingLookup's key format, for verifying dot output against specific readings.
-    private HashMap<String, String> makeElementIdLookup(String forTradId) {
-        HashMap<String, String> result = new HashMap<>();
-        List<ReadingModel> readings = jerseyTest
-                .target("/tradition/" + forTradId + "/readings")
-                .request()
-                .get(new GenericType<>() {});
-        try (Transaction tx = db.beginTx()) {
-            for (ReadingModel r : readings) {
-                String key = String.format("%s/%d", r.getText(), r.getRank());
-                result.put(key, DatabaseService.findNodeOrThrow(tx, Nodes.READING, r.getId()).getElementId());
-            }
-        }
-        return result;
-    }
-
     @Test
     public void getDotTest() {
         String str = jerseyTest
@@ -120,7 +93,7 @@ public class DotOutputTest {
                 .request()
                 .get(String.class);
 
-        HashMap<String,String> readingLookup = makeElementIdLookup(tradId);
+        HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
 
         String[] exp = new String[64];
         exp[0] = "digraph \"Tradition\" \\{";
@@ -297,6 +270,15 @@ public class DotOutputTest {
         return dotLine.replaceAll("\\s+", "").split("\\[")[0];
     }
 
+    // Reading/relation ids are now small sequential integers, so a plain substring
+    // check for a node id is prone to false-positive collisions (e.g. "1" is a
+    // substring of "14"). This checks whether a dot edge line's source or target
+    // node token is exactly the given id.
+    private static boolean edgeLineInvolvesNode(String line, String nodeId) {
+        Matcher m = Pattern.compile("^\\t(\\d+)->(\\d+)\\s.*").matcher(line);
+        return m.matches() && (m.group(1).equals(nodeId) || m.group(2).equals(nodeId));
+    }
+
     @Test
     public void testEmendedLemmatisedDot() {
         // Get the section ID
@@ -306,11 +288,9 @@ public class DotOutputTest {
                 .get(new GenericType<>() {});
         String sectId = tradSections.get(0).getId();
 
-        // Get the reading hash (numeric ids, for REST calls) and a parallel elementId-based
-        // hash (for matching against DotExporter's output, which still identifies nodes by
-        // elementId -- see makeElementIdLookup)
+        // Get the reading hash (numeric ids, for REST calls, which are also the ids
+        // DotExporter's output now uses directly).
         HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, msTradId);
-        HashMap<String,String> dotLookup = makeElementIdLookup(msTradId);
 
         // Propose an emendation and set it
         ProposedEmendationModel pem = new ProposedEmendationModel();
@@ -326,9 +306,8 @@ public class DotOutputTest {
         GraphModel newEmendation = response.readEntity(GraphModel.class);
         assertEquals(1, newEmendation.getReadings().size());
         ReadingModel eReading = newEmendation.getReadings().iterator().next();
-        // DotExporter identifies nodes by elementId, not the new Reading id -- translate once
-        // for use in the dot-content assertions below.
-        String eReadingDotId = elementIdOf(eReading.getId());
+        // DotExporter now identifies nodes by their application-assigned Reading id directly.
+        String eReadingDotId = eReading.getId();
 
         // Check that the dot contains the emendation and that it is connected in the graph
         response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
@@ -339,17 +318,17 @@ public class DotOutputTest {
         // Check that the node is in there and its ID is correct
         assertTrue(traditionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReadingDotId, eReadingDotId, eReading.getText())));
-        assertFalse(traditionDot.contains("n" + eReadingDotId));
+        assertFalse(traditionDot.contains("\"n" + eReadingDotId + "\""));
         // Check that the node has its anchoring links
         int anchoringLinks = 0;
         for (String l : traditionDot.split("\n")) {
-            if (l.contains(eReadingDotId) && l.contains("->")) {
+            if (edgeLineInvolvesNode(l, eReadingDotId)) {
                 anchoringLinks++;
                 assertTrue(l.contains("[color=white,penwidth=0,arrowhead=none]"));
             }
         }
         assertEquals(12, anchoringLinks);
-        assertTrue(traditionDot.contains(String.format("%s->%s", dotLookup.get("venerabilis/3"), eReadingDotId)));
+        assertTrue(traditionDot.contains(String.format("\t%s->%s ", readingLookup.get("venerabilis/3"), eReadingDotId)));
 
         // Lemmatise the emendation and a string of other readings
         List<String> lemmata = Stream.of("in/1", "swecia/2", "venerabilis/3", "de/7", "anglia/8", "oriundus/9")
@@ -376,17 +355,17 @@ public class DotOutputTest {
         // Check that the emendation is there as before
         assertTrue(sectionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReadingDotId, eReadingDotId, eReading.getText())));
-        assertFalse(sectionDot.contains("n" + eReadingDotId));
+        assertFalse(sectionDot.contains("\"n" + eReadingDotId + "\""));
         // Check that the node has its anchoring links
         anchoringLinks = 0;
         for (String l : sectionDot.split("\n")) {
-            if (l.contains(eReadingDotId) && l.contains("->")) {
+            if (edgeLineInvolvesNode(l, eReadingDotId)) {
                 anchoringLinks++;
                 assertTrue(l.contains("[color=white,penwidth=0,arrowhead=none]"));
             }
         }
         assertEquals(12, anchoringLinks);
-        assertTrue(sectionDot.contains(String.format("%s->%s", dotLookup.get("venerabilis/3"), eReadingDotId)));
+        assertTrue(sectionDot.contains(String.format("\t%s->%s ", readingLookup.get("venerabilis/3"), eReadingDotId)));
 
         // Now set the section lemma path
         response = jerseyTest
@@ -407,11 +386,11 @@ public class DotOutputTest {
         // Now the emendation should be linked via a lemma path
         assertTrue(sectionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReadingDotId, eReadingDotId, eReading.getText())));
-        assertFalse(sectionDot.contains("n" + eReadingDotId));
+        assertFalse(sectionDot.contains("\"n" + eReadingDotId + "\""));
         assertTrue(sectionDot.contains(String.format(
-                "%s->%s [id=l", dotLookup.get("venerabilis/3"), eReadingDotId)));
+                "\t%s->%s [id=l", readingLookup.get("venerabilis/3"), eReadingDotId)));
         assertTrue(sectionDot.contains(String.format(
-                "%s->%s [id=l", eReadingDotId, dotLookup.get("de/7"))));
+                "\t%s->%s [id=l", eReadingDotId, readingLookup.get("de/7"))));
 
         // Get a normalised version of the dot
         response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
@@ -424,11 +403,11 @@ public class DotOutputTest {
         // Check that the emendation is there
         assertTrue(sectionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReadingDotId, eReadingDotId, eReading.getText())));
-        assertFalse(sectionDot.contains("n" + eReadingDotId));
+        assertFalse(sectionDot.contains("\"n" + eReadingDotId + "\""));
         assertTrue(sectionDot.contains(String.format(
-                "%s->%s [id=l", dotLookup.get("venerabilis/3"), eReadingDotId)));
+                "\t%s->%s [id=l", readingLookup.get("venerabilis/3"), eReadingDotId)));
         assertTrue(sectionDot.contains(String.format(
-                "%s->%s [id=l", eReadingDotId, dotLookup.get("de/7"))));
+                "\t%s->%s [id=l", eReadingDotId, readingLookup.get("de/7"))));
 
         // Check that there aren't any nodes referred to that shouldn't exist, e.g. for anchor edges
         HashSet<String> nodeIds = new HashSet<>();

@@ -89,6 +89,12 @@ public class DatabaseService {
      */
     public static long nextId(Transaction tx, String counterProperty) {
         Node root = tx.findNode(Nodes.ROOT, "name", "Root node");
+        // Acquire a write lock on the ROOT node before reading the counter, so that two
+        // concurrent transactions creating entities of the same covered type cannot both
+        // read the same starting value and race to the same "next" value (which would
+        // otherwise surface as an uncaught ConstraintViolationException / 500 at commit
+        // time for whichever transaction commits second).
+        tx.acquireWriteLock(root);
         long current = root.hasProperty(counterProperty) ? (long) root.getProperty(counterProperty) : 0L;
         long next = current + 1;
         root.setProperty(counterProperty, next);
@@ -112,6 +118,40 @@ public class DatabaseService {
                 return;
             }
         }
+    }
+
+    /**
+     * Returns whether the given label is one of the covered labels (READING, SECTION,
+     * ANNOTATION) that gets an application-assigned "id" property and uniqueness
+     * constraint. Compares by label name, so this works equally for a label obtained
+     * via the {@code Nodes} enum or via {@code Label.label(someString)}.
+     *
+     * @param label the label to check
+     * @return true if the label is covered
+     */
+    public static boolean isCoveredLabel(Label label) {
+        for (Label covered : COVERED_COUNTERS.keySet()) {
+            if (covered.name().equals(label.name())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns the name of the covered label (READING, SECTION, or ANNOTATION) that the
+     * given node carries, or null if it carries none of them. A node is expected to carry
+     * at most one of these three -- e.g. an Emendation node also carries READING (but
+     * EMENDATION is not itself a covered label), and an Annotation node also carries its
+     * dynamic per-tradition type label (which is not itself a covered label either) -- so
+     * there is no ambiguity to resolve here.
+     *
+     * @param node the node to check
+     * @return the covered label's name, or null
+     */
+    public static String coveredLabelOf(Node node) {
+        for (Label covered : COVERED_COUNTERS.keySet()) {
+            if (node.hasLabel(covered)) return covered.name();
+        }
+        return null;
     }
 
     /**

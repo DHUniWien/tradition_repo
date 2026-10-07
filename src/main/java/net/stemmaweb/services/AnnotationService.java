@@ -103,15 +103,52 @@ public class AnnotationService {
 
     public static AnnotationLinkModel addAnnotationLink(Transaction tx, Node annoNode, AnnotationLabelModel labelModel,
                                                         AnnotationLinkModel linkModel) {
+        String targetLabelName = linkModel.getTargetLabel();
+        if (targetLabelName == null || targetLabelName.isBlank())
+            throw new IllegalArgumentException("Annotation link requires a targetLabel");
+
         if (findExistingLink(annoNode, linkModel) != null)
             return null;
 
-        // See if the proposed link is valid
-        Node target = tx.getNodeByElementId(linkModel.getTarget());
+        // Resolve the target node. For a covered label (READING, SECTION, ANNOTATION),
+        // look it up by its application-assigned id, exactly as any other covered-entity
+        // lookup. Otherwise, fall back to the permanent elementId exception for uncovered
+        // target types, but verify the resolved node actually carries the claimed label --
+        // the client is now asserting the label, rather than it being read off the node.
+        Label targetLabel = Label.label(targetLabelName);
+        Node target;
+        if (DatabaseService.isCoveredLabel(targetLabel)) {
+            target = DatabaseService.findNodeOrThrow(tx, targetLabel, linkModel.getTarget());
+        } else {
+            target = tx.getNodeByElementId(linkModel.getTarget());
+            if (!target.hasLabel(targetLabel))
+                throw new IllegalArgumentException("Target node " + linkModel.getTarget()
+                        + " does not carry label " + targetLabelName);
+        }
+
+        // See if the proposed link is valid, checking allowed link types against exactly
+        // the label the client specified -- not every label the target node happens to
+        // carry, since the same link type can be validly declared for more than one
+        // target label in the links schema (e.g. {"READING": "BEGINS,ENDS", "SECTION":
+        // "BEGINS,ENDS"}), making a union-based check ambiguous.
         ArrayList<String> allowedLinks = new ArrayList<>();
-        for (Label l : target.getLabels()) {
-            if (labelModel.getLinks().containsKey(l.name()))
-                allowedLinks.addAll(Arrays.asList(labelModel.getLinks().get(l.name()).split(",")));
+        if (labelModel.getLinks().containsKey(targetLabelName))
+            allowedLinks.addAll(Arrays.asList(labelModel.getLinks().get(targetLabelName).split(",")));
+        else if (targetLabelName.equals(Nodes.ANNOTATION.name())) {
+            // Backward compatibility: a schema authored/reimported from before the
+            // ANNOTATION marker label existed keys its links map by the target's dynamic
+            // per-tradition type label (e.g. "PERSONREF") instead of "ANNOTATION". This is
+            // a validation-only fallback -- target resolution above always goes through
+            // the covered "ANNOTATION" label and id, regardless of which key matches here.
+            String dynamicLabel = null;
+            for (Label l : target.getLabels()) {
+                if (!l.name().equals(Nodes.ANNOTATION.name())) {
+                    dynamicLabel = l.name();
+                    break;
+                }
+            }
+            if (dynamicLabel != null && labelModel.getLinks().containsKey(dynamicLabel))
+                allowedLinks.addAll(Arrays.asList(labelModel.getLinks().get(dynamicLabel).split(",")));
         }
         if (!allowedLinks.contains(linkModel.getType()))
             throw new IllegalArgumentException("Link type " + linkModel.getType() + " not allowed for node " + linkModel.getTarget());
@@ -124,9 +161,13 @@ public class AnnotationService {
     }
 
     public static String findExistingLink(Node aNode, AnnotationLinkModel linkModel) {
+        boolean covered = linkModel.getTargetLabel() != null
+                && DatabaseService.isCoveredLabel(Label.label(linkModel.getTargetLabel()));
         for (Relationship r : DatabaseService.getRelationships(aNode, Direction.OUTGOING)) {
-            if (r.getType().name().equals(linkModel.getType())
-                    && r.getEndNode().getElementId().equals(linkModel.getTarget())) {
+            boolean targetMatches = covered
+                    ? r.getEndNode().getProperty("id", "").toString().equals(linkModel.getTarget())
+                    : r.getEndNode().getElementId().equals(linkModel.getTarget());
+            if (r.getType().name().equals(linkModel.getType()) && targetMatches) {
                 return r.getElementId();
             }
         }

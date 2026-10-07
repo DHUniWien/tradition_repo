@@ -263,6 +263,14 @@ public class GraphMLParser {
                     idMap.put(xmlId, entity.getElementId());
                     // and, if the node didn't already exist, update its labels and properties.
                     if (!exists) {
+                        // A hand-crafted (not self-exported) GraphML file could carry its own
+                        // "id" property on a covered (Reading/Section) node; our own exports
+                        // already omit it, but strip it here too, before it gets applied below,
+                        // so a foreign file can't collide with (or be clobbered by) the fresh id
+                        // assignIdIfCovered mints further down.
+                        if (neolabel.contains("READING") || neolabel.contains("SECTION")
+                                || neolabel.contains("ANNOTATION"))
+                            nodeProperties.remove("id");
                         boolean deletedAsAnnotation = false;
                         for (String l : entityLabel) {
                             try {
@@ -353,6 +361,12 @@ public class GraphMLParser {
                 	newRel = neolabel.equals("RELATED")
                 	        ? DatabaseService.createRelatedRelationship(tx, source, target)
                 	        : source.createRelationshipTo(target, ERelations.valueOf(neolabel));
+                    // A hand-crafted (not self-exported) GraphML file could carry its own "id"
+                    // property on a RELATED edge; our own exports already omit it, but strip it
+                    // here too so a foreign file can't silently clobber the fresh id
+                    // createRelatedRelationship just minted above.
+                    if (neolabel.equals("RELATED"))
+                        edgeProperties.remove("id");
                     edgeProperties.forEach(newRel::setProperty);
                     // Catch any relation types and witnesses that were used, so that we can ensure
                     // their existence when we are done
@@ -445,7 +459,25 @@ public class GraphMLParser {
                     // We can update the links with the "real" nodes and create the annotation.
                     for (AnnotationLinkModel alm : am.getLinks()) {
                         Node nodeTarget = tx.getNodeByElementId(idMap.get(alm.getTarget()));
-                        alm.setTarget(nodeTarget.getElementId());
+                        String covered = DatabaseService.coveredLabelOf(nodeTarget);
+                        if (covered != null) {
+                            // Always the covered label itself (e.g. "ANNOTATION" for an
+                            // Annotation-kind target, never its dynamic per-tradition type
+                            // label) -- this must match what AnnotationService.addAnnotationLink
+                            // resolves the target *by* (via the id property), not just what it
+                            // validates against; see that method's own backward-compatibility
+                            // fallback for schemas that key their links map by the dynamic label.
+                            alm.setTargetLabel(covered);
+                            alm.setTarget(nodeTarget.getProperty("id").toString());
+                        } else {
+                            String singleLabel = null;
+                            for (org.neo4j.graphdb.Label l : nodeTarget.getLabels()) {
+                                singleLabel = l.name();
+                                break;
+                            }
+                            alm.setTargetLabel(singleLabel);
+                            alm.setTarget(nodeTarget.getElementId());
+                        }
                     }
                     AnnotationModel newAnno;
                     try {

@@ -119,9 +119,10 @@ public class GraphMLExporter {
     /**
      * The application-assigned "id" property on Reading/Section/Annotation nodes (see
      * DatabaseService.assignIdIfCovered), and likewise on RELATED relationships (see
-     * DatabaseService.createRelatedRelationship), is a per-tradition counter value: meaningless
-     * outside the tradition that minted it, and reassigned fresh on every reimport regardless of
-     * what a GraphML file says. It must not be round-tripped through GraphML -- besides being
+     * DatabaseService.createRelatedRelationship), is a global counter value (scoped to the
+     * whole ROOT node, not per-tradition): meaningless outside the tradition that minted it,
+     * and reassigned fresh on every reimport regardless of what a GraphML file says. It must
+     * not be round-tripped through GraphML -- besides being
      * pointless to preserve, the property name collides with Tradition's own (string, UUID) "id"
      * property whenever a tradition's metadata and its sections are serialized into the same XML
      * file (tradition.xml's tradition-meta crawl includes each section node as a boundary leaf).

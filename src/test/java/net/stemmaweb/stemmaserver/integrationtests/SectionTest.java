@@ -1430,25 +1430,6 @@ public class SectionTest extends TestCase {
 
     }
 
-    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
-    // Reading id (see the entity-id-system design spec): it stays an elementId string even
-    // though the same reading's own "id" property is now numeric. Looks up a reading's
-    // current elementId given its numeric id, for use when building an annotation link.
-    private String elementIdOf(String readingId) {
-        try (Transaction tx = db.beginTx()) {
-            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
-        }
-    }
-
-    // Same deliberate exception as elementIdOf() above, but for an annotation link that
-    // targets another annotation (e.g. a PLACE annotation referenced by a PLACEREF):
-    // looks up that annotation's current elementId given its numeric id.
-    private String annotationElementIdOf(String annotationId) {
-        try (Transaction tx = db.beginTx()) {
-            return DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annotationId).getElementId();
-        }
-    }
-
     private HashMap<String, String> setupComplexAnnotation() {
         HashMap<String, String> data = new HashMap<>();
         // Add the second section
@@ -1480,7 +1461,7 @@ public class SectionTest extends TestCase {
         // Make a PLACE annotation label
         AnnotationLabelModel place = new AnnotationLabelModel();
         place.setName("PLACE");
-        place.addLink("PLACEREF", "NAMED");
+        place.addLink("ANNOTATION", "NAMED");
         place.addProperty("href", "String");
         place.addProperty("locatable", "Boolean");
 
@@ -1496,10 +1477,12 @@ public class SectionTest extends TestCase {
         ref1.setLabel("PLACEREF");
         AnnotationLinkModel prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(elementIdOf(readingLookup.get("suecia/2")));
+        prb.setTarget(readingLookup.get("suecia/2"));
+        prb.setTargetLabel("READING");
         AnnotationLinkModel pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(elementIdOf(readingLookup.get("suecia/2")));
+        pre.setTarget(readingLookup.get("suecia/2"));
+        pre.setTargetLabel("READING");
         ref1.addLink(prb);
         ref1.addLink(pre);
         try (Response response3 = jerseyTest
@@ -1519,7 +1502,8 @@ public class SectionTest extends TestCase {
         suecia.setProperties(sprops);
         AnnotationLinkModel slinks = new AnnotationLinkModel();
         slinks.setType("NAMED");
-        slinks.setTarget(annotationElementIdOf(ref1.getId()));
+        slinks.setTarget(ref1.getId());
+        slinks.setTargetLabel("ANNOTATION");
         suecia.addLink(slinks);
         try (Response response4 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
@@ -1535,10 +1519,12 @@ public class SectionTest extends TestCase {
         ref2.setLabel("PLACEREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(elementIdOf(readingLookup.get("magisque/15")));
+        prb.setTarget(readingLookup.get("magisque/15"));
+        prb.setTargetLabel("READING");
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(elementIdOf(readingLookup.get("magisque/15")));
+        pre.setTarget(readingLookup.get("magisque/15"));
+        pre.setTargetLabel("READING");
         ref2.addLink(prb);
         ref2.addLink(pre);
         try (Response response5 = jerseyTest
@@ -1552,7 +1538,8 @@ public class SectionTest extends TestCase {
 
         // Link the new reference to the existing place
         AnnotationLinkModel newLink = new AnnotationLinkModel();
-        newLink.setTarget(annotationElementIdOf(ref2.getId()));
+        newLink.setTarget(ref2.getId());
+        newLink.setTargetLabel("ANNOTATION");
         newLink.setType("NAMED");
         try (Response response6 = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + suecia.getId() + "/link")

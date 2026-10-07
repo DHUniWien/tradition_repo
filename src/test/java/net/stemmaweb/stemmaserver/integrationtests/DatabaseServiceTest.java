@@ -7,6 +7,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
 import org.junit.Before;
@@ -172,6 +176,62 @@ public class DatabaseServiceTest {
             }
             tx.commit();
         }
+    }
+
+    @Test
+    public void testConcurrentCreationNeverDuplicatesId() throws Exception {
+        // testRapidSequentialCreationNeverDuplicatesId above runs everything in one
+        // transaction, so it cannot catch a race between two genuinely concurrent
+        // transactions. This test uses two real transactions, interleaved via explicit
+        // handshaking so that the second transaction's nextId call is guaranteed to be
+        // attempted while the first transaction's is still open (and, before the fix,
+        // uncommitted) -- which is exactly the window the ROOT-node write lock closes.
+        CountDownLatch aHasCreatedNode = new CountDownLatch(1);
+        CountDownLatch bIsAboutToCreateNode = new CountDownLatch(1);
+        AtomicLong idA = new AtomicLong(-1);
+        AtomicLong idB = new AtomicLong(-1);
+        AtomicReference<Throwable> failureA = new AtomicReference<>();
+        AtomicReference<Throwable> failureB = new AtomicReference<>();
+
+        Thread threadA = new Thread(() -> {
+            try (Transaction tx = db.beginTx()) {
+                Node r = DatabaseService.createNode(tx, Nodes.READING);
+                idA.set((long) r.getProperty("id"));
+                aHasCreatedNode.countDown();
+                // Give thread B a real chance to reach its own nextId call (and block on
+                // the ROOT write lock, if the fix is in place) before we commit and
+                // release the lock.
+                bIsAboutToCreateNode.await(5, TimeUnit.SECONDS);
+                Thread.sleep(300);
+                tx.commit();
+            } catch (Throwable e) {
+                failureA.set(e);
+            }
+        });
+
+        Thread threadB = new Thread(() -> {
+            try {
+                aHasCreatedNode.await(5, TimeUnit.SECONDS);
+                try (Transaction tx = db.beginTx()) {
+                    bIsAboutToCreateNode.countDown();
+                    Node r = DatabaseService.createNode(tx, Nodes.READING);
+                    idB.set((long) r.getProperty("id"));
+                    tx.commit();
+                }
+            } catch (Throwable e) {
+                failureB.set(e);
+            }
+        });
+
+        threadA.start();
+        threadB.start();
+        threadA.join(10000);
+        threadB.join(10000);
+
+        if (failureA.get() != null) throw new AssertionError("Thread A failed", failureA.get());
+        if (failureB.get() != null) throw new AssertionError("Thread B failed", failureB.get());
+        assertTrue("Both threads should have gotten an id", idA.get() >= 0 && idB.get() >= 0);
+        assertTrue("Concurrent creation must never assign the same id twice", idA.get() != idB.get());
     }
 
     /*

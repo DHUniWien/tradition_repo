@@ -694,16 +694,6 @@ public class ReadingTest {
         }
     }
 
-    // AnnotationLinkModel.target is a deliberate exception that is NOT migrated to the new
-    // Reading id (see the entity-id-system design spec): it stays an elementId string even
-    // though the same reading's own "id" property is now numeric. Looks up a reading's
-    // current elementId given its numeric id, for use when building an annotation link.
-    private String elementIdOf(String readingId) {
-        try (Transaction tx = db.beginTx()) {
-            return DatabaseService.findNodeOrThrow(tx, Nodes.READING, readingId).getElementId();
-        }
-    }
-
     // Regression test: deleting an emendation that has an annotation linked to it. The
     // generic "delete all my relationships" loop in deleteUserReading() must not choke on a
     // non-sequence relationship (like an annotation link) whose other endpoint is an
@@ -738,7 +728,8 @@ public class ReadingTest {
         AnnotationModel am = new AnnotationModel();
         am.setLabel("NOTE");
         AnnotationLinkModel link = new AnnotationLinkModel();
-        link.setTarget(elementIdOf(emended.getId()));
+        link.setTarget(emended.getId());
+        link.setTargetLabel("READING");
         link.setType("REF");
         am.addLink(link);
         try (Response annoResp = jerseyTest
@@ -1070,6 +1061,68 @@ public class ReadingTest {
                 assertEquals(val1, val2);
             }
             tx.commit();
+        }
+    }
+
+    @Test
+    public void duplicateCopiesColocatedRelationWithFreshIdTest() {
+        // Regression test for the "id"-skip guard in Reading.duplicate()'s colocated-relation
+        // copy loop (Reading.java's `for (String key : originalRel.getPropertyKeys()) { if
+        // (key.equals("id")) continue; ... }`). Without that guard, a reading duplicated while
+        // it still carries a colocated RELATED relationship would have its copy of that
+        // relationship inherit the *original* relationship's id instead of getting a fresh one
+        // -- this was only ever found by reading the code, with no test catching it.
+        //
+        // ReadingstestTradition.xml already ships an "orthographic" (colocation) relation
+        // between the two "fruit" readings at rank 8 (witnesses A,C and B respectively) --
+        // reuse it rather than constructing a fresh same-rank pair, since
+        // VariantGraphService.sectionRelations only reports RELATED edges on readings its
+        // SEQUENCE traversal actually reaches.
+        List<ReadingModel> allReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
+                .request().get(new GenericType<>() {});
+        ReadingModel fruitAC = allReadings.stream()
+                .filter(r -> r.getText().equals("fruit") && r.getWitnesses().contains("A"))
+                .findFirst().orElseThrow();
+        ReadingModel fruitB = allReadings.stream()
+                .filter(r -> r.getText().equals("fruit") && r.getWitnesses().contains("B"))
+                .findFirst().orElseThrow();
+        String firstNodeId = fruitAC.getId();
+        String secondNodeId = fruitB.getId();
+
+        List<RelationModel> before = jerseyTest.target("/tradition/" + tradId + "/relations")
+                .request().get(new GenericType<>() {});
+        RelationModel originalRelation = before.stream()
+                .filter(x -> (x.getSource().equals(firstNodeId) && x.getTarget().equals(secondNodeId))
+                        || (x.getSource().equals(secondNodeId) && x.getTarget().equals(firstNodeId)))
+                .findFirst().orElseThrow();
+        assertEquals("orthographic", originalRelation.getType());
+
+        // Duplicate the first reading for one of its two witnesses -- this exercises the
+        // colocated-relation copy loop in Reading.duplicate().
+        DuplicateModel jsonPayload = new DuplicateModel();
+        jsonPayload.setReadings(new ArrayList<>(List.of(firstNodeId)));
+        jsonPayload.setWitnesses(new ArrayList<>(List.of("C")));
+        try (Response response = jerseyTest
+                .target("/reading/" + firstNodeId + "/duplicate")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(jsonPayload))) {
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        }
+
+        List<RelationModel> after = jerseyTest.target("/tradition/" + tradId + "/relations")
+                .request().get(new GenericType<>() {});
+        // There should now be two relations touching the "B"-witness fruit reading: the
+        // original, and the fresh copy connecting the newly duplicated reading.
+        List<RelationModel> toSecond = after.stream()
+                .filter(x -> x.getSource().equals(secondNodeId) || x.getTarget().equals(secondNodeId))
+                .collect(Collectors.toList());
+        assertEquals(2, toSecond.size());
+        assertNotEquals(toSecond.get(0).getId(), toSecond.get(1).getId());
+        assertTrue(toSecond.stream().anyMatch(x -> x.getId().equals(originalRelation.getId())));
+        // Neither copy's id was clobbered/copied from the original -- both are distinct
+        // valid, fresh ids.
+        for (RelationModel rm : toSecond) {
+            Long.parseLong(rm.getId());
         }
     }
 

@@ -181,6 +181,12 @@ public class AnnotationLabel {
                     if (key.startsWith("__"))
                         return Response.status(Response.Status.BAD_REQUEST)
                                 .entity(jsonerror("Property names with prefix __ are reserved to the system")).build();
+                    // Reject the "id" property name specifically -- it is the system-assigned
+                    // entity id (see the entity ID system), and a client-declared property of
+                    // the same name would collide with it on every annotation of this type.
+                    if (key.equals("id"))
+                        return Response.status(Response.Status.BAD_REQUEST)
+                                .entity(jsonerror("Property name \"id\" is reserved to the system")).build();
                     // Validate the value - it needs to be a data type allowed by Neo4J.
                     String val = alm.getProperties().get(key);
                     if (allowedValues.contains(val) ||
