@@ -1,7 +1,6 @@
 package net.stemmaweb.services;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +22,7 @@ public class DatabaseService {
      * Maps the node labels that get an application-assigned, sequential "id"
      * property to the name of the ROOT-node counter property that feeds it.
      */
-    private static final Map<Label, String> COVERED_COUNTERS = Map.of(
+    private static final Map<Label, String> MANAGED_COUNTERS = Map.of(
             Nodes.READING, "next_reading_id",
             Nodes.SECTION, "next_section_id",
             Nodes.ANNOTATION, "next_annotation_id"
@@ -55,9 +54,8 @@ public class DatabaseService {
      */
     public static void ensureConstraints(Transaction tx) {
         Schema schema = tx.schema();
-        ensureNodePropertyUniqueness(schema, Nodes.READING, "id");
-        ensureNodePropertyUniqueness(schema, Nodes.SECTION, "id");
-        ensureNodePropertyUniqueness(schema, Nodes.ANNOTATION, "id");
+        for (Label l : MANAGED_COUNTERS.keySet())
+            ensureNodePropertyUniqueness(schema, l, "id");
         ensureRelationshipPropertyUniqueness(schema, ERelations.RELATED, "id");
     }
 
@@ -90,7 +88,7 @@ public class DatabaseService {
     public static long nextId(Transaction tx, String counterProperty) {
         Node root = tx.findNode(Nodes.ROOT, "name", "Root node");
         // Acquire a write lock on the ROOT node before reading the counter, so that two
-        // concurrent transactions creating entities of the same covered type cannot both
+        // concurrent transactions creating entities of the same managed type cannot both
         // read the same starting value and race to the same "next" value (which would
         // otherwise surface as an uncaught ConstraintViolationException / 500 at commit
         // time for whichever transaction commits second).
@@ -102,17 +100,17 @@ public class DatabaseService {
     }
 
     /**
-     * If the given node has one of the covered labels (READING, SECTION,
+     * If the given node has one of the managed labels (READING, SECTION,
      * ANNOTATION), assigns it the next value from that label's counter as its
      * "id" property. No-op for any other label. Safe to call once, right after
-     * a node's final covered label is in place, regardless of whether that was
+     * a node's final managed label is in place, regardless of whether that was
      * at creation time or via a later addLabel.
      *
      * @param tx the transaction within which we are working
-     * @param node the node to assign an id to, if covered
+     * @param node the node to assign an id to, if managed
      */
-    public static void assignIdIfCovered(Transaction tx, Node node) {
-        for (Map.Entry<Label, String> entry : COVERED_COUNTERS.entrySet()) {
+    public static void assignIdIfManaged(Transaction tx, Node node) {
+        for (Map.Entry<Label, String> entry : MANAGED_COUNTERS.entrySet()) {
             if (node.hasLabel(entry.getKey())) {
                 node.setProperty("id", nextId(tx, entry.getValue()));
                 return;
@@ -121,42 +119,42 @@ public class DatabaseService {
     }
 
     /**
-     * Returns whether the given label is one of the covered labels (READING, SECTION,
+     * Returns whether the given label is one of the managed labels (READING, SECTION,
      * ANNOTATION) that gets an application-assigned "id" property and uniqueness
      * constraint. Compares by label name, so this works equally for a label obtained
      * via the {@code Nodes} enum or via {@code Label.label(someString)}.
      *
      * @param label the label to check
-     * @return true if the label is covered
+     * @return true if the label is managed
      */
-    public static boolean isCoveredLabel(Label label) {
-        for (Label covered : COVERED_COUNTERS.keySet()) {
-            if (covered.name().equals(label.name())) return true;
+    public static boolean isManagedLabel(Label label) {
+        for (Label managed : MANAGED_COUNTERS.keySet()) {
+            if (managed.name().equals(label.name())) return true;
         }
         return false;
     }
 
     /**
-     * Returns the name of the covered label (READING, SECTION, or ANNOTATION) that the
+     * Returns the name of the managed label (READING, SECTION, or ANNOTATION) that the
      * given node carries, or null if it carries none of them. A node is expected to carry
      * at most one of these three -- e.g. an Emendation node also carries READING (but
-     * EMENDATION is not itself a covered label), and an Annotation node also carries its
-     * dynamic per-tradition type label (which is not itself a covered label either) -- so
+     * EMENDATION is not itself a managed label), and an Annotation node also carries its
+     * dynamic per-tradition type label (which is not itself a managed label either) -- so
      * there is no ambiguity to resolve here.
      *
      * @param node the node to check
-     * @return the covered label's name, or null
+     * @return the managed label's name, or null
      */
-    public static String coveredLabelOf(Node node) {
-        for (Label covered : COVERED_COUNTERS.keySet()) {
-            if (node.hasLabel(covered)) return covered.name();
+    public static String managedLabelOf(Node node) {
+        for (Label managed : MANAGED_COUNTERS.keySet()) {
+            if (node.hasLabel(managed)) return managed.name();
         }
         return null;
     }
 
     /**
      * Creates a node with the given labels, assigning it an application-level
-     * "id" property if one of the labels is covered (READING, SECTION,
+     * "id" property if one of the labels is managed (READING, SECTION,
      * ANNOTATION).
      *
      * @param tx the transaction within which we are working
@@ -165,7 +163,7 @@ public class DatabaseService {
      */
     public static Node createNode(Transaction tx, Label... labels) {
         Node node = tx.createNode(labels);
-        assignIdIfCovered(tx, node);
+        assignIdIfManaged(tx, node);
         return node;
     }
 
@@ -179,6 +177,7 @@ public class DatabaseService {
      * @param to the node the relationship points to
      * @return the newly-created relationship
      */
+    // TODO generalize this to all relationship creation
     public static Relationship createRelatedRelationship(Transaction tx, Node from, Node to) {
         Relationship rel = from.createRelationshipTo(to, ERelations.RELATED);
         rel.setProperty("id", nextId(tx, "next_relation_id"));
@@ -205,9 +204,7 @@ public class DatabaseService {
     }
 
     /**
-     * Finds the RELATED relationship with the given application-level "id"
-     * property. There is no tx.findRelationship-by-property convenience method,
-     * so this runs a Cypher query.
+     * Finds the RELATED relationship with the given application-level "id" property.
      *
      * @param tx the transaction within which we are working
      * @param idStr the "id" property value, as a string
@@ -217,15 +214,11 @@ public class DatabaseService {
      */
     public static Relationship findRelatedOrThrow(Transaction tx, String idStr) {
         long id = Long.parseLong(idStr);
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", id);
-        try (Result result = tx.execute(
-                "MATCH ()-[r:RELATED]-() WHERE r.id = $id RETURN r LIMIT 1", params)) {
-            if (result.hasNext()) {
-                return (Relationship) result.next().get("r");
-            }
+        Relationship rel = tx.findRelationship(ERelations.RELATED, "id", id);
+        if (rel == null) {
+            throw new NotFoundException("No RELATED relationship found with id " + idStr);
         }
-        throw new NotFoundException("No RELATED relationship found with id " + idStr);
+        return rel;
     }
 
     /**

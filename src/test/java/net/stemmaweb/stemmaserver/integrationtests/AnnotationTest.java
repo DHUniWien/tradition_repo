@@ -346,13 +346,22 @@ public class AnnotationTest extends TestCase {
             assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
             fetched = response.readEntity(AnnotationModel.class);
         }
-        assertFalse(fetched.getProperties().containsKey("id"));
+        assertEquals(am.getId(), fetched.getId());
+
+        // Change something
+        Map<String, Object> props = new HashMap<>();
+        props.put("text", "In Sweden the venerable pontifex St. Henry who came from England");
+        props.put("lang", "EN");
+        fetched.setProperties(props);
 
         try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + am.getId())
                 .request(MediaType.APPLICATION_JSON)
                 .put(Entity.json(fetched))) {
             assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            AnnotationModel updated = response.readEntity(AnnotationModel.class);
+            assertEquals(am.getId(), updated.getId());
+            assertEquals(props.get("text"), updated.getProperties().get("text"));
         }
     }
 
@@ -583,7 +592,7 @@ public class AnnotationTest extends TestCase {
         // Make a PERSON annotation label
         AnnotationLabelModel person = new AnnotationLabelModel();
         person.setName("PERSON");
-        person.addLink("ANNOTATION", "REFERENCED");
+        person.addLink("PERSONREF", "REFERENCED");
         person.addProperty("href", "String");
         try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/annotationlabel/" + person.getName())

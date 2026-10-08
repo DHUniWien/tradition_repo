@@ -76,9 +76,10 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLImportNonexistentFileTest() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/SapientiaFileNotExisting.xml", "stemmaweb");
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        try (Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/SapientiaFileNotExisting.xml", "stemmaweb")) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        }
         assertFalse(traditionNodeExists());
     }
 
@@ -90,8 +91,7 @@ public class StemmawebInputOutputTest {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaWithError.xml", "stemmaweb");
         assertNotNull(response);
-        assertEquals(Response.status(Response.Status.BAD_REQUEST).build().getStatus(),
-                    response.getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         assertFalse(traditionNodeExists());
     }
 
@@ -100,11 +100,10 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLImportSuccessTest() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                    "src/TestFiles/besoin.xml", "stemmaweb");
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
-                response.getStatus());
-
+        try (Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/besoin.xml", "stemmaweb")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
         assertTrue(traditionNodeExists());
     }
 
@@ -116,7 +115,6 @@ public class StemmawebInputOutputTest {
         try(Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.TRADITION, "name", "Tradition");
             answer = tradNodesIt.hasNext();
-            tx.close();
         }
         return answer;
     }
@@ -158,10 +156,10 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void unicodeSigilTest() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/john.xml", "stemmaweb");
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
-                response.getStatus());
+        try (Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/john.xml", "stemmaweb")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
 
         // Check that we have witness α
         Node alpha;
@@ -170,13 +168,11 @@ public class StemmawebInputOutputTest {
             assertNotNull(alpha);
             // Check that witness α is marked as needing quotes
             assertTrue((Boolean) alpha.getProperty("quotesigil"));
-            tx.close();
         }
     }
 
     /**
      * Ports of test suite from Perl Text::Tradition::Parser::Self.
-     *
      * #1: parse a file, check for the correct number of readings, paths, and witnesses
      */
 
@@ -186,15 +182,14 @@ public class StemmawebInputOutputTest {
                 "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
 
         // Check for success and get the tradition id
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
-                response.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         // Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest
                 .target("/tradition/" + traditionId + "/readings")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(319, readings.size()); // really 319
 
         // Check for the correct number of sequence paths. Do this with a traversal.
@@ -207,7 +202,6 @@ public class StemmawebInputOutputTest {
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
                     .relationships().forEach(x -> sequenceCount.getAndIncrement());
-            tx.close();
         }
         assertEquals(376, sequenceCount.get()); // should be 376
 
@@ -216,14 +210,14 @@ public class StemmawebInputOutputTest {
         List<WitnessModel> witnesses = jerseyTest
                 .target("/tradition/" + traditionId + "/witnesses")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(13, witnesses.size());  // should be 13
 
         // Check for the correct number of relationships
         List<RelationModel> relations = jerseyTest
                 .target("/tradition/" + traditionId + "/relations")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(7, relations.size());
 
         // Spot-check a correct relationship setup
@@ -233,7 +227,6 @@ public class StemmawebInputOutputTest {
             Result result = tx.execute("match (q:READING {text:'πνεύματος'})-->(bs:READING {text:'βλασφημίας'})-->(a:READING {text:'ἀπορία'}), " +
                     "(q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
             assertTrue(result.hasNext());
-            tx.close();
         }
 
     }
@@ -249,15 +242,14 @@ public class StemmawebInputOutputTest {
                 "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
 
         // Check for success and get the tradition id
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
-                response.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         // Check for the correct number of reading nodes
         List<ReadingModel> origReadings = jerseyTest
                 .target("/tradition/" + traditionId + "/readings")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(319, origReadings.size());
 
         // Set the language
@@ -271,49 +263,51 @@ public class StemmawebInputOutputTest {
 
         // Add a stemma
         StemmaModel newStemma = new StemmaModel();
-        newStemma.setDot("digraph Stemma {\n" +
-                "    \"α\" [ class=hypothetical ];\n" +
-                "    \"γ\" [ class=hypothetical ];\n" +
-                "    \"δ\" [ class=hypothetical ];\n" +
-                "    2 [ class=hypothetical,label=\"*\" ];\n" +
-                "    3 [ class=hypothetical,label=\"*\" ];\n" +
-                "    4 [ class=hypothetical,label=\"*\" ];\n" +
-                "    5 [ class=hypothetical,label=\"*\" ];\n" +
-                "    7 [ class=hypothetical,label=\"*\" ];\n" +
-                "    A [ class=extant ];\n" +
-                "    B [ class=extant ];\n" +
-                "    C [ class=extant ];\n" +
-                "    D [ class=extant ];\n" +
-                "    E [ class=extant ];\n" +
-                "    F [ class=extant ];\n" +
-                "    G [ class=extant ];\n" +
-                "    H [ class=extant ];\n" +
-                "    K [ class=extant ];\n" +
-                "    P [ class=extant ];\n" +
-                "    Q [ class=extant ];\n" +
-                "    S [ class=extant ];\n" +
-                "    T [ class=extant ];\n" +
-                "    \"α\" -> A;\n" +
-                "    \"α\" -> T;\n" +
-                "    \"α\" -> \"δ\";\n" +
-                "    \"δ\" -> 2;\n" +
-                "    2 -> C;\n" +
-                "    2 -> B;\n" +
-                "    B -> P;\n" +
-                "    B -> S;\n" +
-                "    \"δ\" -> \"γ\";\n" +
-                "    \"γ\" -> 3;\n" +
-                "    3 -> F;\n" +
-                "    3 -> H;\n" +
-                "    \"γ\" -> 4;\n" +
-                "    4 -> D;\n" +
-                "    4 -> 5;\n" +
-                "    5 -> Q;\n" +
-                "    5 -> K;\n" +
-                "    5 -> 7;\n" +
-                "    7 -> E;\n" +
-                "    7 -> G;\n" +
-                "}\n");
+        newStemma.setDot("""
+digraph Stemma {
+    "α" [ class=hypothetical ];
+    "γ" [ class=hypothetical ];
+    "δ" [ class=hypothetical ];
+    2 [ class=hypothetical,label="*" ];
+    3 [ class=hypothetical,label="*" ];
+    4 [ class=hypothetical,label="*" ];
+    5 [ class=hypothetical,label="*" ];
+    7 [ class=hypothetical,label="*" ];
+    A [ class=extant ];
+    B [ class=extant ];
+    C [ class=extant ];
+    D [ class=extant ];
+    E [ class=extant ];
+    F [ class=extant ];
+    G [ class=extant ];
+    H [ class=extant ];
+    K [ class=extant ];
+    P [ class=extant ];
+    Q [ class=extant ];
+    S [ class=extant ];
+    T [ class=extant ];
+    "α" -> A;
+    "α" -> T;
+    "α" -> "δ";
+    "δ" -> 2;
+    2 -> C;
+    2 -> B;
+    B -> P;
+    B -> S;
+    "δ" -> "γ";
+    "γ" -> 3;
+    3 -> F;
+    3 -> H;
+    "γ" -> 4;
+    4 -> D;
+    4 -> 5;
+    5 -> Q;
+    5 -> K;
+    5 -> 7;
+    7 -> E;
+    7 -> G;
+}
+""");
         jerseyResponse = jerseyTest
                 .target("/tradition/" + traditionId + "/stemma")
                 .request(MediaType.APPLICATION_JSON)
@@ -381,7 +375,7 @@ public class StemmawebInputOutputTest {
         List<ReadingModel> readings = jerseyTest
                 .target("/tradition/" + traditionId + "/readings")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(318, readings.size());
 
         // Check for the correct number of sequence paths. Do this with a traversal.
@@ -394,7 +388,6 @@ public class StemmawebInputOutputTest {
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
                     .relationships().forEach(x -> sequenceCount.getAndIncrement());
-            tx.close();
         }
         assertEquals(375, sequenceCount.get());
 
@@ -403,26 +396,24 @@ public class StemmawebInputOutputTest {
         List<WitnessModel> witnesses = jerseyTest
                 .target("/tradition/" + traditionId + "/witnesses")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(13, witnesses.size());
 
         // Check for the correct number of relationships
         List<RelationModel> relations = jerseyTest
                 .target("/tradition/" + traditionId + "/relations")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<RelationModel>>() {
-                });
+                .get(new GenericType<>() {});
         assertEquals(8, relations.size());
 
         // Check for the existence of the stemma
         List<StemmaModel> stemmata = jerseyTest
                 .target("/tradition/" + traditionId + "/stemmata")
                 .request()
-                .get(new GenericType<List<StemmaModel>>() {
-                });
+                .get(new GenericType<>() {});
         assertEquals(1, stemmata.size());
 
-        Util.assertStemmasEquivalent(newStemma.getDot(), stemmata.get(0).getDot());
+        Util.assertStemmasEquivalent(newStemma.getDot(), stemmata.getFirst().getDot());
 
         // Check for the correct language setting
     }

@@ -188,8 +188,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
         // If we are operating under normalization, we need to look at the NSEQUENCE links rather than
         // the SEQUENCE links, but in this case the SEQUENCE links will be redundant so there is no
         // harm in looking at them anyway.
-        DatabaseService.getRelationships(node, Direction.BOTH, ERelations.SEQUENCE).forEach(seq::add);
-        DatabaseService.getRelationships(node, Direction.BOTH, ERelations.NSEQUENCE).forEach(seq::add);
+        seq.addAll(DatabaseService.getRelationships(node, Direction.BOTH, ERelations.SEQUENCE));
+        seq.addAll(DatabaseService.getRelationships(node, Direction.BOTH, ERelations.NSEQUENCE));
         for (Relationship r : seq) {
             for (String prop : r.getPropertyKeys()) {
                 String[] sigla = (String[]) r.getProperty(prop);

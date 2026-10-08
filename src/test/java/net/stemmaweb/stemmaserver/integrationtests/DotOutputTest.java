@@ -83,7 +83,7 @@ public class DotOutputTest {
                 .request()
                 .get();
 
-        assertEquals(Response.status(Response.Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), resp.getStatus());
     }
 
     @Test
@@ -171,7 +171,7 @@ public class DotOutputTest {
     @Test
     public void testSectionDotOutput() {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
-        String florId = florIds.remove(0);
+        String florId = florIds.removeFirst();
         String targetSection = florIds.get(3);
 
         String getDot = "/tradition/" + florId + "/dot";
@@ -255,11 +255,10 @@ public class DotOutputTest {
         assertTrue(startNode.isPresent());
         String startId = getNodeFromDot(startNode.get());
         assertEquals(1, Arrays.stream(dotLines).filter(x -> x.contains("\t" + startId + "->")).count());
-        List<String> gars = Arrays.stream(dotLines).filter(x -> x.contains("γὰρ")).collect(Collectors.toList());
+        List<String> gars = Arrays.stream(dotLines).filter(x -> x.contains("γὰρ")).toList();
         assertEquals(1, gars.size());
-        String garId = getNodeFromDot(gars.get(0));
-        List<String> garLink = Arrays.stream(dotLines).filter(x -> x.contains("\t" + garId + "->"))
-                .collect(Collectors.toList());
+        String garId = getNodeFromDot(gars.getFirst());
+        List<String> garLink = Arrays.stream(dotLines).filter(x -> x.contains("\t" + garId + "->")).toList();
         assertEquals(2, garLink.size());
         for (String l : garLink) {
             assertFalse(l.contains("F"));
@@ -286,7 +285,7 @@ public class DotOutputTest {
                 .target("/tradition/" + msTradId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        String sectId = tradSections.get(0).getId();
+        String sectId = tradSections.getFirst().getId();
 
         // Get the reading hash (numeric ids, for REST calls, which are also the ids
         // DotExporter's output now uses directly).
@@ -298,26 +297,29 @@ public class DotOutputTest {
         pem.setText("alohomora");
         pem.setFromRank(4L);
         pem.setToRank(6L);
-        Response response = jerseyTest
+        GraphModel newEmendation;
+        try (Response response = jerseyTest
                 .target("/tradition/" + msTradId + "/section/" + sectId + "/emend")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(pem));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        GraphModel newEmendation = response.readEntity(GraphModel.class);
+                .post(Entity.json(pem))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            newEmendation = response.readEntity(GraphModel.class);
+        }
         assertEquals(1, newEmendation.getReadings().size());
         ReadingModel eReading = newEmendation.getReadings().iterator().next();
         // DotExporter now identifies nodes by their application-assigned Reading id directly.
         String eReadingDotId = eReading.getId();
 
         // Check that the dot contains the emendation and that it is connected in the graph
-        response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
+        Response response2 = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
                 .request().get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        String traditionDot = response.readEntity(String.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response2.getStatus());
+        String traditionDot = response2.readEntity(String.class);
 
         // Check that the node is in there and its ID is correct
         assertTrue(traditionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReadingDotId, eReadingDotId, eReading.getText())));
+        // Check that the emendation doesn't also appear as a regular reading
         assertFalse(traditionDot.contains("\"n" + eReadingDotId + "\""));
         // Check that the node has its anchoring links
         int anchoringLinks = 0;
@@ -337,19 +339,20 @@ public class DotOutputTest {
         MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
         lemmaParam.add("value", "true");
         for (String rstr : lemmata) {
-            response = jerseyTest.target("/reading/" + rstr + "/setlemma")
+            try (Response resp = jerseyTest.target("/reading/" + rstr + "/setlemma")
                     .request()
-                    .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
-            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                    .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED))) {
+                assertEquals(Response.Status.OK.getStatusCode(), resp.getStatus());
+            }
         }
 
         // Check that we can request the section dot
-        response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
+        Response response3 = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
                 .queryParam("show_normal", "true")
                 .request()
                 .get(Response.class);
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        String sectionDot = response.readEntity(String.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response3.getStatus());
+        String sectionDot = response3.readEntity(String.class);
         assertTrue(sectionDot.startsWith("digraph"));
 
         // Check that the emendation is there as before
@@ -368,19 +371,20 @@ public class DotOutputTest {
         assertTrue(sectionDot.contains(String.format("\t%s->%s ", readingLookup.get("venerabilis/3"), eReadingDotId)));
 
         // Now set the section lemma path
-        response = jerseyTest
+        try (Response response4 = jerseyTest
                 .target("/tradition/" + msTradId + "/section/" + sectId + "/setlemma")
                 .request(MediaType.APPLICATION_JSON)
-                .post(null);
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                .post(null)) {
+            assertEquals(Response.Status.OK.getStatusCode(), response4.getStatus());
+        }
 
         // Check that we can still request the section dot
-        response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
+        Response response5 = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
                 .queryParam("show_normal", "true")
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        sectionDot = response.readEntity(String.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response5.getStatus());
+        sectionDot = response5.readEntity(String.class);
         assertTrue(sectionDot.startsWith("digraph"));
 
         // Now the emendation should be linked via a lemma path
@@ -393,11 +397,11 @@ public class DotOutputTest {
                 "\t%s->%s [id=l", eReadingDotId, readingLookup.get("de/7"))));
 
         // Get a normalised version of the dot
-        response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
+        Response response6 = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
                 .queryParam("normalise", "spelling")
                 .request().get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        sectionDot = response.readEntity(String.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response6.getStatus());
+        sectionDot = response6.readEntity(String.class);
         assertTrue(sectionDot.startsWith("digraph"));
 
         // Check that the emendation is there

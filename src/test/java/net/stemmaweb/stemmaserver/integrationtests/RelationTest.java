@@ -831,7 +831,11 @@ public class RelationTest {
         }
         RelationModel created = (RelationModel) readingsAndRelationships.getRelations().toArray()[0];
         // Should parse cleanly as a Long (throws NumberFormatException, failing the test, if not)
-        Long.parseLong(created.getId());
+        try {
+            Long.parseLong(created.getId());
+        } catch (NumberFormatException e) {
+            fail("Relation id should be a valid number");
+        }
         assertEquals(source, created.getSource());
         assertEquals(target, created.getTarget());
     }
@@ -919,8 +923,9 @@ public class RelationTest {
         String gmlZip = Util.saveGraphMLTempfile(r);
         assertNotNull(gmlZip);
 
-        Response delResponse = jerseyTest.target("/tradition/" + tradId).request().delete();
-        assertEquals(Status.OK.getStatusCode(), delResponse.getStatus());
+        try (Response delResponse = jerseyTest.target("/tradition/" + tradId).request().delete()) {
+            assertEquals(Status.OK.getStatusCode(), delResponse.getStatus());
+        }
 
         Response reimport = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
                 "1", gmlZip, "graphml");
@@ -932,7 +937,11 @@ public class RelationTest {
         assertFalse(allRels.isEmpty());
         String relId = allRels.getFirst().getId();
         // Confirm it really is the new numeric scheme
-        Long.parseLong(relId);
+        try {
+            Long.parseLong(relId);
+        } catch (NumberFormatException e) {
+            fail("Relation id should be a valid number");
+        }
 
         try (Response removalResponse = jerseyTest
                 .target("/tradition/" + newTradId + "/relation/" + relId)
@@ -953,7 +962,11 @@ public class RelationTest {
                 .request().get(new GenericType<>() {});
         assertFalse(allRels.isEmpty());
         String relId = allRels.getFirst().getId();
-        Long.parseLong(relId);
+        try {
+            Long.parseLong(relId);
+        } catch (NumberFormatException e) {
+            fail("Relation id should be a valid number");
+        }
 
         try (Response removalResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation/" + relId)
@@ -970,18 +983,6 @@ public class RelationTest {
                 // expected
             }
         }
-    }
-
-    private Node getReading(String text, Comparator<Node> c) {
-        Node result;
-        try (Transaction tx = db.beginTx()) {
-            List<Node> available = tx.findNodes(Nodes.READING, "text", text).stream().collect(Collectors.toList());
-            if (c != null)
-                available.sort(c);
-            tx.close();
-            result = available.getFirst();
-        }
-        return result;
     }
 
     // Like getReading, but returns the reading's application-assigned numeric id (fetched

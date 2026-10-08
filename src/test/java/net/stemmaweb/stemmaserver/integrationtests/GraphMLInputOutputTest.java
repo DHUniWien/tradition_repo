@@ -413,17 +413,13 @@ public class GraphMLInputOutputTest extends TestCase {
         }
         assertFalse(startId.isBlank());
         assertFalse(endId.isBlank());
-        // Annotation link targets for a covered type (READING) report that type's own
-        // application-assigned numeric id directly -- comparable to ReadingModel.id as-is.
-        String startReadingId = startId;
-        String endReadingId = endId;
         List<ReadingModel> translated = new ArrayList<>();
         boolean in_translation = false;
         for (ReadingModel rm : sectionReadings) {
-            if (rm.getId().equals(startReadingId))
+            if (rm.getId().equals(startId))
                 in_translation = true;
             if (in_translation) translated.add(rm);
-            if (rm.getId().equals(endReadingId))
+            if (rm.getId().equals(endId))
                 in_translation = false;
         }
         String expected = "և զկնի հինկ ամին եկեալ մարախ յայնմ գաւառին որպէս զաւազ ծովու և ապականեաց զերկիր.";
@@ -458,7 +454,7 @@ public class GraphMLInputOutputTest extends TestCase {
         AnnotationLabelModel placeAlm = new AnnotationLabelModel();
         placeAlm.setName("PLACE");
         placeAlm.addProperty("name", "String");
-        placeAlm.addLink("ANNOTATION", "REFERENCED");
+        placeAlm.addLink("PLACEREF", "REFERENCED");
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotationlabel/PLACE")
                 .request().put(Entity.json(placeAlm));
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());

@@ -18,7 +18,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationModel;
@@ -113,11 +112,12 @@ public class TranspositionTest {
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
 
-        Response actualResponse = jerseyTest
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request()
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
+        }
     }
 
     /**
@@ -137,16 +137,18 @@ public class TranspositionTest {
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
 
-        Response actualResponse = jerseyTest
+        GraphModel readingsAndRelationships;
+        try (Response response1 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request()
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response1.getStatus());
+            readingsAndRelationships = response1.readEntity(GraphModel.class);
+        }
 
         // Make sure it is there
+        relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
-            relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = DatabaseService.findRelatedOrThrow(tx, relationshipId);
 
             assertEquals(theId, loadedRelationship.getStartNode().getProperty("id").toString());
@@ -156,7 +158,6 @@ public class TranspositionTest {
             assertEquals("yes", loadedRelationship.getProperty("is_significant"));
             assertEquals("the", loadedRelationship.getProperty("reading_a"));
             assertEquals("rood", loadedRelationship.getProperty("reading_b"));
-            tx.close();
         }
 
         // Now create the transposition, which should work this time
@@ -167,18 +168,18 @@ public class TranspositionTest {
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
 
-        actualResponse = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request()
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response2.getStatus());
+            readingsAndRelationships = response2.readEntity(GraphModel.class);
+        }
 
         // and make sure it is there.
+        relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
-            relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = DatabaseService.findRelatedOrThrow(tx, relationshipId);
-
             assertEquals(tehId, loadedRelationship.getStartNode().getProperty("id").toString());
             assertEquals(rootId, loadedRelationship.getEndNode().getProperty("id").toString());
             assertEquals("transposition", loadedRelationship.getProperty("type"));
@@ -186,7 +187,6 @@ public class TranspositionTest {
             assertEquals("yes", loadedRelationship.getProperty("is_significant"));
             assertEquals("teh", loadedRelationship.getProperty("reading_a"));
             assertEquals("root", loadedRelationship.getProperty("reading_b"));
-            tx.close();
         }
     }
 

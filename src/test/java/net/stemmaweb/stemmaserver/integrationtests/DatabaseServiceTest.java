@@ -1,10 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
@@ -31,6 +26,8 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -67,14 +64,12 @@ public class DatabaseServiceTest {
 
     @Test
     public void getRelatedTest() {
-        Response response;
         try (Transaction tx = db.beginTx()) {
         	Node tradition = VariantGraphService.getTraditionNode(tx, traditionId);
         	ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS);
         	assertEquals(3, witnesses.size());
-        	tx.close();
         } catch (Exception e) {
-        	e.printStackTrace();
+        	fail(e.getMessage());
         }
     }
 
@@ -82,7 +77,6 @@ public class DatabaseServiceTest {
     public void userExistsTest() {
     	try (Transaction tx = db.beginTx()) {
     		assertTrue(DatabaseService.userExists(tx, userId));
-    		tx.close();
     	}
     }
 
@@ -99,7 +93,7 @@ public class DatabaseServiceTest {
     }
 
     @Test
-    public void testAssignIdIfCoveredGivesUniqueSequentialIds() {
+    public void testAssignIdIfManagedGivesUniqueSequentialIds() {
         try (Transaction tx = db.beginTx()) {
             // setUp()'s own tradition import (via the stemmaweb parser and
             // Tradition.createNewSection, both now routed through DatabaseService.createNode)
@@ -120,7 +114,7 @@ public class DatabaseServiceTest {
     }
 
     @Test
-    public void testCreateNodeSkipsIdForUncoveredLabel() {
+    public void testCreateNodeSkipsIdForUnmanagedLabel() {
         try (Transaction tx = db.beginTx()) {
             Node w = DatabaseService.createNode(tx, Nodes.WITNESS);
             assertFalse(w.hasProperty("id"));
@@ -151,7 +145,7 @@ public class DatabaseServiceTest {
             // DatabaseService.createRelatedRelationship for its RELATED links) already minted
             // some number of relation ids, so the counter can't be assumed to start at 0 here --
             // capture the baseline first, then assert relative to it (same approach as
-            // testAssignIdIfCoveredGivesUniqueSequentialIds above).
+            // testAssignIdIfManagedGivesUniqueSequentialIds above).
             Node baseA = DatabaseService.createNode(tx, Nodes.READING);
             Node baseB = DatabaseService.createNode(tx, Nodes.READING);
             long baseRelation = (long) DatabaseService.createRelatedRelationship(tx, baseA, baseB).getProperty("id");

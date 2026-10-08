@@ -1461,7 +1461,7 @@ public class SectionTest extends TestCase {
         // Make a PLACE annotation label
         AnnotationLabelModel place = new AnnotationLabelModel();
         place.setName("PLACE");
-        place.addLink("ANNOTATION", "NAMED");
+        place.addLink("PLACEREF", "NAMED");
         place.addProperty("href", "String");
         place.addProperty("locatable", "Boolean");
 

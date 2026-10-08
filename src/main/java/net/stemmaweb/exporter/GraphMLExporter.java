@@ -71,10 +71,7 @@ public class GraphMLExporter {
             writer.writeStartElement("node");
             writer.writeAttribute("id", node.getElementId());
 
-            // Write out the labels. The stable ANNOTATION marker label is omitted here --
-            // it is internal plumbing (see Nodes.ANNOTATION), not part of the node's
-            // user-visible type, and GraphMLParser's reimport logic still expects exactly
-            // one label for an annotation-type node.
+            // Write out the labels. Skip ANNOTATION, as it is DB-internal
             ArrayList<String> labelNames = new ArrayList<>();
             for (Label l : node.getLabels()) {
                 if (!l.name().equals(Nodes.ANNOTATION.name()))
@@ -118,7 +115,7 @@ public class GraphMLExporter {
 
     /**
      * The application-assigned "id" property on Reading/Section/Annotation nodes (see
-     * DatabaseService.assignIdIfCovered), and likewise on RELATED relationships (see
+     * DatabaseService.assignIdIfManaged), and likewise on RELATED relationships (see
      * DatabaseService.createRelatedRelationship), is a global counter value (scoped to the
      * whole ROOT node, not per-tradition): meaningless outside the tradition that minted it,
      * and reassigned fresh on every reimport regardless of what a GraphML file says. It must
@@ -131,7 +128,7 @@ public class GraphMLExporter {
      * other. For RELATED relationships specifically, round-tripping the old id would also clobber
      * the fresh id assigned at reimport time and risk violating the id uniqueness constraint.
      */
-    private static boolean isSkippableCoveredId(Entity ent, String propName) {
+    private static boolean isManagedNumericId(Entity ent, String propName) {
         if (!propName.equals("id")) return false;
         if (ent instanceof Node node) {
             return node.hasLabel(Nodes.READING) || node.hasLabel(Nodes.SECTION) || node.hasLabel(Nodes.ANNOTATION);
@@ -144,7 +141,7 @@ public class GraphMLExporter {
             throws XMLStreamException {
         String prefix = collection.equals(nodeMap) ? "dn" : "de";
         for (String prop : ent.getPropertyKeys()) {
-            if (isSkippableCoveredId(ent, prop)) continue;
+            if (isManagedNumericId(ent, prop)) continue;
             if (collection.containsKey(prop)) {
                 writer.writeStartElement("data");
                 writer.writeAttribute("key", prefix + collection.get(prop)[0]);
@@ -165,7 +162,7 @@ public class GraphMLExporter {
     private void collectProperties (Entity ent, HashMap<String, String[]> collection) {
         int ctr = collection.size();
         for (String p : ent.getPropertyKeys()) {
-            if (isSkippableCoveredId(ent, p)) continue;
+            if (isManagedNumericId(ent, p)) continue;
             String type = "string";
             Object prop = ent.getProperty(p);
             if (prop instanceof Long) type = "long";

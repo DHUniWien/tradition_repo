@@ -79,7 +79,7 @@ public class StemmawebLegacyTest {
             fail();
         }
         String tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        assert(tradId.length() != 0);
+        assert(!tradId.isEmpty());
         return tradId;
     }
 
@@ -130,20 +130,19 @@ public class StemmawebLegacyTest {
                         .toString());
             }
             assertEquals(1, rel_count);
-            tx.close();
         }
         response = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
                 .get();
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        ArrayList<ReadingModel> readings = response.readEntity(new GenericType<ArrayList<ReadingModel>>() {});
+        ArrayList<ReadingModel> readings = response.readEntity(new GenericType<>() {});
         assertEquals(0, readings.size());
 
         response = jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
                 .get();
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        ArrayList<WitnessModel> witnesses = response.readEntity(new GenericType<ArrayList<WitnessModel>>() {});
+        ArrayList<WitnessModel> witnesses = response.readEntity(new GenericType<>() {});
         assertEquals(0, witnesses.size());
     }
 
@@ -179,7 +178,7 @@ public class StemmawebLegacyTest {
         List<WitnessModel> witnesses = jerseyTest
                 .target("/tradition/" + tradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assert (witnesses.size() == 3) : "Unexpected number of witnesses.";
 
 
@@ -244,7 +243,7 @@ public class StemmawebLegacyTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         /*
         determine ids of nodes that we are going to use in the following
@@ -286,7 +285,7 @@ public class StemmawebLegacyTest {
         // Get the existing number of relationships
         List<RelationModel> existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         int er = existingRels.size();
 
         /*
@@ -302,12 +301,14 @@ public class StemmawebLegacyTest {
         relationship.setType("lexical");
         relationship.setScope("local");
 
-        Response response = jerseyTest
+        GraphModel tmpGraphModel;
+        try (Response response1 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        GraphModel tmpGraphModel = response.readEntity(new GenericType<GraphModel>(){});
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), response1.getStatus());
+            tmpGraphModel = response1.readEntity(GraphModel.class);
+        }
         assertEquals(1, tmpGraphModel.getRelations().size());
         Optional<RelationModel> orm = tmpGraphModel.getRelations().stream().findAny();
         assertTrue(orm.isPresent());
@@ -316,7 +317,7 @@ public class StemmawebLegacyTest {
         assertEquals(n22, rm.getTarget());
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er + 1, existingRels.size());
 
         /*
@@ -331,15 +332,17 @@ public class StemmawebLegacyTest {
         relationship.setType("spelling");
         relationship.setScope("tradition");
 
-        response = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(2, response.readEntity(new GenericType<GraphModel>(){}).getRelations().size());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), response2.getStatus());
+            assertEquals(2, response2.readEntity(new GenericType<GraphModel>() {
+            }).getRelations().size());
+        }
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er + 3, existingRels.size());
 
 
@@ -355,16 +358,18 @@ public class StemmawebLegacyTest {
         
         jerseyTest.client().property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
 
-        response = jerseyTest
+        try (Response response3 = jerseyTest
                 .target("/tradition/" + tradId + "/relation/remove")
                 .request()
-                .post(Entity.json(relationship));
+                .post(Entity.json(relationship))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(1, response.readEntity(new GenericType<ArrayList<RelationModel>>(){}).size());
+            assertEquals(Status.OK.getStatusCode(), response3.getStatus());
+            assertEquals(1, response3.readEntity(new GenericType<ArrayList<RelationModel>>() {
+            }).size());
+        }
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er + 2, existingRels.size());
 
 
@@ -378,16 +383,18 @@ public class StemmawebLegacyTest {
         relationship.setTarget(n13);
         relationship.setScope("section");
 
-        response = jerseyTest
+        try (Response response4 = jerseyTest
                 .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
+                .post(Entity.json(relationship))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(2, response.readEntity(new GenericType<ArrayList<RelationModel>>(){}).size());
+            assertEquals(Status.OK.getStatusCode(), response4.getStatus());
+            assertEquals(2, response4.readEntity(new GenericType<ArrayList<RelationModel>>() {
+            }).size());
+        }
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er, existingRels.size());
 
 
@@ -401,15 +408,15 @@ public class StemmawebLegacyTest {
         relationship.setTarget(n2);
         relationship.setScope("local");
 
-        response = jerseyTest
+        try (Response response5 = jerseyTest
                 .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-
-        assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.NOT_FOUND.getStatusCode(), response5.getStatus());
+        }
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er, existingRels.size());
 
 
@@ -425,15 +432,17 @@ public class StemmawebLegacyTest {
         relationship.setType("spelling");
         relationship.setScope("tradition");
 
-        response = jerseyTest
+        try (Response response6 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(2, response.readEntity(new GenericType<GraphModel>(){}).getRelations().size());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), response6.getStatus());
+            assertEquals(2, response6.readEntity(new GenericType<GraphModel>() {
+            }).getRelations().size());
+        }
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er + 2, existingRels.size());
 
 
@@ -448,16 +457,17 @@ public class StemmawebLegacyTest {
         relationship.setTarget(n13);
         relationship.setScope("local");
 
-        response = jerseyTest
+        try (Response response7 = jerseyTest
                 .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
+                .post(Entity.json(relationship))) {
 
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.readEntity(new GenericType<ArrayList<RelationModel>>(){}).size(), 1);
+            assertEquals(Status.OK.getStatusCode(), response7.getStatus());
+            assertEquals(1, response7.readEntity(new GenericType<ArrayList<RelationModel>>() {}).size());
+        }
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(er + 1, existingRels.size());
 
         // we don't need this, because we are going to get all relationships
@@ -466,17 +476,18 @@ public class StemmawebLegacyTest {
          * queryParams.add("node2", n23);
          */
 
-        response = jerseyTest
+        Response response8 = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
                 .get();
-        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(Status.OK.getStatusCode(), response8.getStatus());
         boolean foundRelation = false;
-        ArrayList<RelationModel> relList = response.readEntity(new GenericType<ArrayList<RelationModel>>(){});
+        ArrayList<RelationModel> relList = response8.readEntity(new GenericType<>(){});
         for (RelationModel relItem : relList) {
             if ((relItem.getSource().equals(n23) && relItem.getTarget().equals(n24)) ||
                     (relItem.getSource().equals(n24) && relItem.getTarget().equals(n23))) {
                 foundRelation = true;
+                break;
             }
         }
         assertTrue(foundRelation);
@@ -514,7 +525,7 @@ public class StemmawebLegacyTest {
 */
         listOfReadings = jerseyTest.target("/tradition/" + tradId2 + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         String r8_1="", r9_2="";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -544,11 +555,12 @@ public class StemmawebLegacyTest {
         relationship.setType("collated");
         relationship.setScope("local");
 
-        response = jerseyTest
+        try (Response response9 = jerseyTest
                 .target("/tradition/" + tradId2 + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), response9.getStatus());
+        }
 
 
         /* SK: Tests if we are able to create a relationship from the 1st to the 2nd tradition */
@@ -559,11 +571,12 @@ public class StemmawebLegacyTest {
         relationship.setType("collated");
         relationship.setScope("local");
 
-        response = jerseyTest
+        try (Response response10 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), response10.getStatus());
+        }
     }
 
 
@@ -595,7 +608,7 @@ public class StemmawebLegacyTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {
+                .get(new GenericType<>() {
                 });
 
         String r8_6 = "", r9_2 = "", r9_3 = "", r10_3 = "";
@@ -618,11 +631,12 @@ public class StemmawebLegacyTest {
         relationship.setTarget(r9_3);
         relationship.setType("lexical");
 
-        Response response = jerseyTest
+        try (Response response1 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), response1.getStatus());
+        }
 
 
         /*
@@ -638,13 +652,12 @@ public class StemmawebLegacyTest {
          * queryParams.add("node2", r9_3);
          */
 
-        response = jerseyTest
+        Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
                 .get();
-        assertEquals(Status.OK.getStatusCode(), response.getStatus());
-
-        ArrayList<RelationModel> relList = response.readEntity(new GenericType<ArrayList<RelationModel>>(){});
+        assertEquals(Status.OK.getStatusCode(), response2.getStatus());
+        ArrayList<RelationModel> relList = response2.readEntity(new GenericType<>(){});
         found_expected_tradition: {
             for (RelationModel relItem : relList) {
                 if ((relItem.getSource().equals(r9_2) && relItem.getTarget().equals(r9_3)) ||
@@ -672,11 +685,12 @@ public class StemmawebLegacyTest {
         relationship.setTarget(r10_3);
         relationship.setType("orthographic");
 
-        response = jerseyTest
+        try (Response response3 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), response3.getStatus());
+        }
 
 
         /*
@@ -712,7 +726,7 @@ public class StemmawebLegacyTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         String r28_2 = "", r28_3 = "", r29_2 = "", r29_3 = "", r36_3 = "", r36_4 = "", r38_2 = "", r38_3 = "";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -766,11 +780,12 @@ public class StemmawebLegacyTest {
         relationship.setTarget(r38_3);
         relationship.setType("transposition");
 
-        Response response = jerseyTest
+        try (Response response1 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), response1.getStatus());
+        }
 
         /*
         try {
@@ -786,11 +801,12 @@ public class StemmawebLegacyTest {
         relationship2.setTarget(r38_2);
         relationship2.setType("transposition");
 
-        response = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship2));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship2))) {
+            assertEquals(Status.CREATED.getStatusCode(), response2.getStatus());
+        }
 
         /*
         # Test 3.2: try to make a transposition that could be a parallel.
@@ -808,11 +824,12 @@ public class StemmawebLegacyTest {
         relationship3.setTarget(r29_2);
         relationship3.setType("transposition");
 
-        response = jerseyTest
+        try (Response response3 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship3));
-        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship3))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), response3.getStatus());
+        }
 
         /*
         # Test 3.3: make the parallel, and then make the transposition again.
@@ -829,11 +846,12 @@ public class StemmawebLegacyTest {
         relationship4.setTarget(r29_3);
         relationship4.setType("orthographic");
 
-        response = jerseyTest
+        try (Response response4 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship4));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship4))) {
+            assertEquals(Status.CREATED.getStatusCode(), response4.getStatus());
+        }
 
         /*
         try {
@@ -849,11 +867,12 @@ public class StemmawebLegacyTest {
         relationship5.setTarget(r29_2);
         relationship5.setType("transposition");
 
-        response = jerseyTest
+        try (Response response5 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship5));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship5))) {
+            assertEquals(Status.CREATED.getStatusCode(), response5.getStatus());
+        }
     }
 
 
@@ -879,7 +898,7 @@ public class StemmawebLegacyTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         String r463_2 = "", r463_4 = "";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -915,11 +934,12 @@ public class StemmawebLegacyTest {
         relationship.setScope("tradition");
 //        relationship.setScope("local");
 
-        Response response = jerseyTest
+        try (Response response1 = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), response1.getStatus());
+        }
 
         /*
             $c4->calculate_ranks();
@@ -928,19 +948,19 @@ public class StemmawebLegacyTest {
                 "Expected readings now at same rank" );
         **/
 
-        response = jerseyTest
+        Response response2 = jerseyTest
                 .target("/reading/" + r463_2)
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        long rank_r463_2 = response.readEntity(ReadingModel.class).getRank();
+        assertEquals(Response.Status.OK.getStatusCode(), response2.getStatus());
+        long rank_r463_2 = response2.readEntity(ReadingModel.class).getRank();
 
-        response = jerseyTest
+        Response response3 = jerseyTest
                 .target("/reading/" + r463_4)
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        long rank_r463_4 = response.readEntity(ReadingModel.class).getRank();
+        assertEquals(Response.Status.OK.getStatusCode(), response3.getStatus());
+        long rank_r463_4 = response3.readEntity(ReadingModel.class).getRank();
         assertEquals(rank_r463_2, rank_r463_4);
     }
 
@@ -975,7 +995,7 @@ public class StemmawebLegacyTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         String n3="", n4="", n9="", n10="", n21 = "", n22 = "";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -1001,13 +1021,15 @@ public class StemmawebLegacyTest {
         // split reading
         ReadingBoundaryModel readingBoundaryModel_ = new ReadingBoundaryModel();
         readingBoundaryModel_.setCharacter("");
-        Response response = jerseyTest
-                    .target("/reading/" + n21 + "/split/2")
-                    .request(MediaType.APPLICATION_JSON)
-                    .post(Entity.json(readingBoundaryModel_));
+        GraphModel graphModel;
+        try (Response response1 = jerseyTest
+                .target("/reading/" + n21 + "/split/2")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(readingBoundaryModel_))) {
 
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        GraphModel graphModel = response.readEntity(GraphModel.class);
+            assertEquals(Status.OK.getStatusCode(), response1.getStatusInfo().getStatusCode());
+            graphModel = response1.readEntity(GraphModel.class);
+        }
         Object[] rspReadings = graphModel.getReadings().toArray();
         String n21a;
         if (((ReadingModel) rspReadings[0]).getId().equals(n21)) {
@@ -1022,33 +1044,32 @@ public class StemmawebLegacyTest {
          */
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-        response = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/reading/" + n3 + "/concatenate/" + n4)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
-
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+                .post(Entity.json(readingBoundaryModel))) {
+            assertEquals(Status.OK.getStatusCode(), response2.getStatusInfo().getStatusCode());
+        }
 
         /*
          *  ok( !$c->reading('n4'), "Reading n4 is gone" );
          */
-        response = jerseyTest
+        Response response3 = jerseyTest
                 .target("/reading/" + n4)
                 .request()
                 .get();
-
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response3.getStatusInfo().getStatusCode());
 
         /*
          *  is( $c->reading('n3')->text, 'with his', "Reading n3 has both words" );
          */
-        response = jerseyTest
+        Response response4 = jerseyTest
                 .target("/reading/" + n3)
                 .request()
                 .get();
 
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        ReadingModel reading = response.readEntity(ReadingModel.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response4.getStatusInfo().getStatusCode());
+        ReadingModel reading = response4.readEntity(ReadingModel.class);
         assertEquals("with his", reading.getText());
 
 
@@ -1057,35 +1078,33 @@ public class StemmawebLegacyTest {
          *  $c->merge_readings( 'n9', 'n10' );
          */
 
-        response = jerseyTest
+        try (Response response5 = jerseyTest
                 .target("/reading/" + n9 + "/merge/" + n10)
                 .request()
-                .post(Entity.json(readingBoundaryModel));
-
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+                .post(Entity.json(readingBoundaryModel))) {
+            assertEquals(Status.OK.getStatusCode(), response5.getStatusInfo().getStatusCode());
+        }
 
 
         /*
          *  ok( !$c->reading('n10'), "Reading n10 is gone" );
          */
-        response = jerseyTest
+        Response response6 = jerseyTest
                 .target("/reading/" + n10)
                 .request()
                 .get();
-
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response6.getStatusInfo().getStatusCode());
 
 
         /*
          *  is( $c->reading('n9')->text, 'rood', "Reading n9 has an unchanged word" );
          */
-        response = jerseyTest
+        Response response7 = jerseyTest
                 .target("/reading/" + n9)
                 .request()
                 .get();
-
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        reading = response.readEntity(ReadingModel.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response7.getStatusInfo().getStatusCode());
+        reading = response7.readEntity(ReadingModel.class);
         assertEquals("rood", reading.getText());
 
 
@@ -1107,18 +1126,20 @@ public class StemmawebLegacyTest {
 
         readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter("");
-        response = jerseyTest
+        try (Response response8 = jerseyTest
                 .target("/reading/" + n22 + "/merge/" + n21a)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+                .post(Entity.json(readingBoundaryModel))) {
+            assertEquals(Status.OK.getStatusCode(), response8.getStatusInfo().getStatusCode());
+        }
 
         readingBoundaryModel = new ReadingBoundaryModel();
-        response = jerseyTest
+        try (Response response9 = jerseyTest
                 .target("/reading/" + n21 + "/concatenate/" + n22)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
-        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatusInfo().getStatusCode());
+                .post(Entity.json(readingBoundaryModel))) {
+            assertEquals(Status.CONFLICT.getStatusCode(), response9.getStatusInfo().getStatusCode());
+        }
 
         /*
          ## and then make sure that the graph is not broken.
@@ -1157,7 +1178,7 @@ public class StemmawebLegacyTest {
 
         listOfReadings = jerseyTest.target("/tradition/" + tradId2 + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         String r8_1="", r9_1="";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -1177,25 +1198,24 @@ public class StemmawebLegacyTest {
         listOfReadings = jerseyTest
                 .target("/tradition/" + tradId2 + "/witness/A/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {
+                .get(new GenericType<>() {
                 });
         int patLength = listOfReadings.size();
 
         readingBoundaryModel = new ReadingBoundaryModel();
-        response = jerseyTest
+        try (Response response10 = jerseyTest
                 .target("/reading/" + r8_1 + "/concatenate/" + r9_1)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(readingBoundaryModel));
+                .post(Entity.json(readingBoundaryModel))) {
+            assertEquals(Status.OK.getStatusCode(), response10.getStatusInfo().getStatusCode());
+        }
 
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-
-        response = jerseyTest
+        Response response11 = jerseyTest
                 .target("/reading/" + r8_1)
                 .request()
                 .get();
-
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        reading = response.readEntity(ReadingModel.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response11.getStatusInfo().getStatusCode());
+        reading = response11.readEntity(ReadingModel.class);
         assertEquals("سبب صلاح", reading.getText());
 
         String returnedText = jerseyTest
@@ -1206,8 +1226,7 @@ public class StemmawebLegacyTest {
         listOfReadings = jerseyTest
                 .target("/tradition/" + tradId2 + "/witness/A/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {
-                });
+                .get(new GenericType<>() {});
         assertEquals(patLength-1, listOfReadings.size());
     }
 
@@ -1238,7 +1257,7 @@ public class StemmawebLegacyTest {
         List<ReadingModel> listOfReadings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(17, listOfReadings.size());
 
 

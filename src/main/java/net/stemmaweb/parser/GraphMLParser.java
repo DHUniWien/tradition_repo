@@ -263,11 +263,10 @@ public class GraphMLParser {
                     idMap.put(xmlId, entity.getElementId());
                     // and, if the node didn't already exist, update its labels and properties.
                     if (!exists) {
-                        // A hand-crafted (not self-exported) GraphML file could carry its own
-                        // "id" property on a covered (Reading/Section) node; our own exports
-                        // already omit it, but strip it here too, before it gets applied below,
-                        // so a foreign file can't collide with (or be clobbered by) the fresh id
-                        // assignIdIfCovered mints further down.
+                        // A legacy GraphML file could carry its own "id" property on a managed (Reading/Section)
+                        // node; our own exports already omit it, but strip it here too, before it gets applied
+                        // below, so a foreign file can't collide with (or be clobbered by) the fresh id
+                        // assignIdIfManaged mints further down.
                         if (neolabel.contains("READING") || neolabel.contains("SECTION")
                                 || neolabel.contains("ANNOTATION"))
                             nodeProperties.remove("id");
@@ -285,17 +284,13 @@ public class GraphMLParser {
                                 deletedAsAnnotation = true;
                             }
                         }
-                        // Assign an application-level id to a brand new Section or Reading node, now
+                        // Assign an application-level id to a new node of a managed type, now
                         // that its final label(s) are in place. Don't do this for the parentNode-reuse
                         // case (isSingleSection section node) -- that node already has its id from
                         // Tradition.createNewSection -- nor for a node that turned out to be an
-                        // annotation and was just deleted above. Now safe for READING too (Task 3):
-                        // ReadingService.copyReadingProperties excludes "id" from the properties it
-                        // blindly copies onto a duplicated/split reading, and the reading-duplication/
-                        // split call sites assign the new reading its own fresh id afterwards instead
-                        // of inheriting this one, so no two reading nodes end up sharing an id.
+                        // annotation and was just deleted above.
                         if (isNewNode && !deletedAsAnnotation)
-                            DatabaseService.assignIdIfCovered(tx, entity);
+                            DatabaseService.assignIdIfManaged(tx, entity);
                     }
                 }
                 // Notice if it is a section node
@@ -361,10 +356,9 @@ public class GraphMLParser {
                 	newRel = neolabel.equals("RELATED")
                 	        ? DatabaseService.createRelatedRelationship(tx, source, target)
                 	        : source.createRelationshipTo(target, ERelations.valueOf(neolabel));
-                    // A hand-crafted (not self-exported) GraphML file could carry its own "id"
-                    // property on a RELATED edge; our own exports already omit it, but strip it
-                    // here too so a foreign file can't silently clobber the fresh id
-                    // createRelatedRelationship just minted above.
+                    // A legacy GraphML file could carry its own "id" property on a RELATED edge; our own
+                    // exports already omit it, but strip it here too so a foreign file can't silently
+                    // clobber the fresh id createRelatedRelationship just minted above.
                     if (neolabel.equals("RELATED"))
                         edgeProperties.remove("id");
                     edgeProperties.forEach(newRel::setProperty);
@@ -459,15 +453,15 @@ public class GraphMLParser {
                     // We can update the links with the "real" nodes and create the annotation.
                     for (AnnotationLinkModel alm : am.getLinks()) {
                         Node nodeTarget = tx.getNodeByElementId(idMap.get(alm.getTarget()));
-                        String covered = DatabaseService.coveredLabelOf(nodeTarget);
-                        if (covered != null) {
-                            // Always the covered label itself (e.g. "ANNOTATION" for an
+                        String managed = DatabaseService.managedLabelOf(nodeTarget);
+                        if (managed != null) {
+                            // Always the managed label itself (e.g. "ANNOTATION" for an
                             // Annotation-kind target, never its dynamic per-tradition type
                             // label) -- this must match what AnnotationService.addAnnotationLink
                             // resolves the target *by* (via the id property), not just what it
                             // validates against; see that method's own backward-compatibility
                             // fallback for schemas that key their links map by the dynamic label.
-                            alm.setTargetLabel(covered);
+                            alm.setTargetLabel(managed);
                             alm.setTarget(nodeTarget.getProperty("id").toString());
                         } else {
                             String singleLabel = null;

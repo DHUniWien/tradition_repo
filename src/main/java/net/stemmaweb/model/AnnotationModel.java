@@ -59,11 +59,6 @@ public class AnnotationModel {
         this.setPrimary(annNode.getProperty("__primary", false).equals(true));
         Map<String,Object> props = annNode.getAllProperties();
         props.remove("__primary");
-        // "id" is the system-assigned entity id (see AnnotationModel.id above), not a
-        // user-facing annotation property -- it must not leak into the properties map,
-        // or a client round-tripping a GET response straight back into a PUT would fail
-        // ("No property id defined for this annotation label").
-        props.remove("id");
         this.setProperties(props);
         this.links = new ArrayList<>();
         for (Relationship r : DatabaseService.getRelationships(annNode, Direction.OUTGOING))

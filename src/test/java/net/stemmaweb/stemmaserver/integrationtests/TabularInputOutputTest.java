@@ -67,7 +67,6 @@ public class TabularInputOutputTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
-//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
     	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     	new GraphDatabaseServiceProvider(dbbuilder, db);
@@ -137,7 +136,7 @@ public class TabularInputOutputTest extends TestCase {
 
         // Get the first (only) section and check its length
         ArrayList<SectionModel> allSections = (ArrayList<SectionModel>) tradition.getAllSections().getEntity();
-        SectionModel ourSect = allSections.get(0);
+        SectionModel ourSect = allSections.getFirst();
         assertEquals(Optional.of(11L), Optional.of(ourSect.getEndRank()));
 
         ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) tradition.getAllWitnesses().getEntity();
@@ -222,13 +221,14 @@ public class TabularInputOutputTest extends TestCase {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setScope("tradition");
-        Response actualResponse = jerseyTest
+        GraphModel readingsAndRelationships;
+        try (Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
                 .request()
-                .post(Entity.json(relationship));
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-
-        GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<>(){});
+                .post(Entity.json(relationship))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+            readingsAndRelationships = actualResponse.readEntity(new GenericType<>() {});
+        }
         assertEquals(0, readingsAndRelationships.getReadings().size());
         assertEquals(1, readingsAndRelationships.getRelations().size());
     }
@@ -348,7 +348,7 @@ public class TabularInputOutputTest extends TestCase {
         // Get the existing single section ID
         SectionModel firstSection = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {}).get(0);
+                .get(new GenericType<List<SectionModel>>() {}).getFirst();
         assertNotNull(firstSection);
         tradSections.add(firstSection.getId());
 
@@ -491,7 +491,7 @@ public class TabularInputOutputTest extends TestCase {
         // There should be three readings at rank 7
         assertEquals(3, am.getAlignment().stream().map(x -> x.getTokens().get(6).getId()).distinct().count());
         // The reading at rank 7 of witness A should look right
-        ReadingModel testRdg = am.getAlignment().get(0).getTokens().get(6);
+        ReadingModel testRdg = am.getAlignment().getFirst().getTokens().get(6);
         assertEquals("Läckämme", testRdg.getText());
         assertEquals(Long.valueOf(7), testRdg.getRank());
         // It should contain *all* the witnesses of all the normalized readings too
@@ -529,19 +529,19 @@ public class TabularInputOutputTest extends TestCase {
         spellingrel.setTarget(pz);
         spellingrel.setType("spelling");
         spellingrel.setScope("local");
-        Response result = jerseyTest.target("/tradition/" + traditionId + "/relation/")
+        try (Response result = jerseyTest.target("/tradition/" + traditionId + "/relation/")
                 .request()
-                .post(Entity.json(spellingrel));
-        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
-
+                .post(Entity.json(spellingrel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+        }
 
         // Get CSV without conflation
-        result = jerseyTest.target("/tradition/" + traditionId + "/csv")
+        Response result2 = jerseyTest.target("/tradition/" + traditionId + "/csv")
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        assertEquals("text/plain;charset=utf-8", result.getMediaType().toString());
-        CSVReader rdr = new CSVReader(new StringReader(result.readEntity(String.class)));
+        assertEquals(Response.Status.OK.getStatusCode(), result2.getStatus());
+        assertEquals("text/plain;charset=utf-8", result2.getMediaType().toString());
+        CSVReader rdr = new CSVReader(new StringReader(result2.readEntity(String.class)));
         // See that we have our witnesses
         String[] wits = rdr.readNext();
         assertEquals(3, wits.length);
@@ -557,26 +557,27 @@ public class TabularInputOutputTest extends TestCase {
 
 
         // Now with conflation, and exercise the tab-sep functionality at the same time
-        result = jerseyTest
+        Response result3 = jerseyTest
                 .target("/tradition/" + traditionId + "/tsv")
                 .queryParam("conflate", "spelling")
                 .request()
                 .get();
-        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        assertEquals("text/plain;charset=utf-8", result.getMediaType().toString());
-        String tsvText = result.readEntity(String.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result3.getStatus());
+        assertEquals("text/plain;charset=utf-8", result3.getMediaType().toString());
+        String tsvText = result3.readEntity(String.class);
         // Make sure we are not quoting the TSV values
         assertFalse(tsvText.contains("\""));
         final CSVParser parser = new CSVParserBuilder().withSeparator('\t').build();
-        rdr = new CSVReaderBuilder(new StringReader(tsvText))
+        try (CSVReader rdr2 = new CSVReaderBuilder(new StringReader(tsvText))
                 .withCSVParser(parser)
-                .build();
+                .build()) {
+             wits = rdr2.readNext();
+             rows = rdr2.readAll();
+        }
         // See that we have our witnesses
-        wits = rdr.readNext();
         assertEquals(3, wits.length);
         assertEquals("W2", wits[1]);
         // See that we have our rows
-        rows = rdr.readAll();
         assertEquals(5, rows.size());
         // See that the last row has two separate readings
         rank5 = new HashSet<>(Arrays.asList(rows.get(4)));
@@ -602,8 +603,10 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals("B", wits[1]);
 
         // Add the second section
-        Util.addSectionToTradition(jerseyTest, traditionId, "src/TestFiles/legendfrag.xml",
-                "stemmaweb", "section 2");
+        try (Response r = Util.addSectionToTradition(jerseyTest, traditionId, "src/TestFiles/legendfrag.xml",
+                "stemmaweb", "section 2")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
 
         // Export the whole thing to JSON and check the readings
         response = jerseyTest.target("/tradition/" + traditionId + "/json")
@@ -642,8 +645,10 @@ public class TabularInputOutputTest extends TestCase {
         assertNotNull(traditionId);
 
         // Now add the section with corrections
-        Util.addSectionToTradition(jerseyTest, traditionId, "src/TestFiles/Matthew-407.json",
-                "cxjson", "AM 407");
+        try (Response r = Util.addSectionToTradition(jerseyTest, traditionId, "src/TestFiles/Matthew-407.json",
+                "cxjson", "AM 407")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
 
         // Export it to JSON
         response = jerseyTest.target("/tradition/" + traditionId + "/json")
@@ -708,7 +713,7 @@ public class TabularInputOutputTest extends TestCase {
         List<SectionModel> allSections = jerseyTest.target("/tradition/" + tradId + "/sections/")
                 .request()
                 .get(new GenericType<>() {});
-        String section1 = allSections.get(0).getId();
+        String section1 = allSections.getFirst().getId();
         Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/228")
                 .request()
                 .post(Entity.json(null));
@@ -824,7 +829,7 @@ public class TabularInputOutputTest extends TestCase {
             // Make a copy of the tableReadings since we will mutate it
             List<ReadingModel> tableReadings = new ArrayList<>(wtm.getTokens());
             // Check that the first reading is at the correct rank
-            Long firstRank = witReadings.get(0).getRank();
+            Long firstRank = witReadings.getFirst().getRank();
             // Account for section splits, above
             if (wtm.getWitness().equals("B") || wtm.getWitness().equals("G"))
                 firstRank += 37;

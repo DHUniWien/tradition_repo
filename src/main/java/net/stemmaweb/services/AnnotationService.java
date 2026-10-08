@@ -24,7 +24,7 @@ public class AnnotationService {
             throws IllegalArgumentException {
         Node newAnno = tx.createNode();
         newAnno.addLabel(Nodes.ANNOTATION);
-        DatabaseService.assignIdIfCovered(tx, newAnno);
+        DatabaseService.assignIdIfManaged(tx, newAnno);
         traditionNode.createRelationshipTo(newAnno, ERelations.HAS_ANNOTATION);
         return updateAnnotation(tx, traditionNode, newAnno, spec);
     }
@@ -38,17 +38,14 @@ public class AnnotationService {
             throw new IllegalArgumentException("No annotation label " + spec.getLabel() + " defined for this tradition");
         AnnotationLabelModel alm = new AnnotationLabelModel(al.get());
 
-        // Remove any old label (other than the stable ANNOTATION marker label)
-        // and set the new dynamic label
+        // Remove any old dynamic label and set the new one
         for (Label l : annoNode.getLabels()) {
             if (!l.name().equals(Nodes.ANNOTATION.name()))
                 annoNode.removeLabel(l);
         }
         annoNode.addLabel(Label.label(alm.getName()));
 
-        // Now check and replace its properties (preserving the stable "id" property,
-        // which is assigned once at creation time and is not part of the annotation's
-        // user-facing spec)
+        // Now check and replace its properties apart from the ID.
         for (String pkey : annoNode.getPropertyKeys()) {
             if (!pkey.equals("id"))
                 annoNode.removeProperty(pkey);
@@ -110,14 +107,14 @@ public class AnnotationService {
         if (findExistingLink(annoNode, linkModel) != null)
             return null;
 
-        // Resolve the target node. For a covered label (READING, SECTION, ANNOTATION),
-        // look it up by its application-assigned id, exactly as any other covered-entity
-        // lookup. Otherwise, fall back to the permanent elementId exception for uncovered
+        // Resolve the target node. For a managed label (READING, SECTION, ANNOTATION),
+        // look it up by its application-assigned id, exactly as any other managed-entity
+        // lookup. Otherwise, fall back to the permanent elementId exception for unmanaged
         // target types, but verify the resolved node actually carries the claimed label --
         // the client is now asserting the label, rather than it being read off the node.
         Label targetLabel = Label.label(targetLabelName);
         Node target;
-        if (DatabaseService.isCoveredLabel(targetLabel)) {
+        if (DatabaseService.isManagedLabel(targetLabel)) {
             target = DatabaseService.findNodeOrThrow(tx, targetLabel, linkModel.getTarget());
         } else {
             target = tx.getNodeByElementId(linkModel.getTarget());
@@ -139,7 +136,7 @@ public class AnnotationService {
             // ANNOTATION marker label existed keys its links map by the target's dynamic
             // per-tradition type label (e.g. "PERSONREF") instead of "ANNOTATION". This is
             // a validation-only fallback -- target resolution above always goes through
-            // the covered "ANNOTATION" label and id, regardless of which key matches here.
+            // the managed "ANNOTATION" label and id, regardless of which key matches here.
             String dynamicLabel = null;
             for (Label l : target.getLabels()) {
                 if (!l.name().equals(Nodes.ANNOTATION.name())) {
@@ -161,10 +158,10 @@ public class AnnotationService {
     }
 
     public static String findExistingLink(Node aNode, AnnotationLinkModel linkModel) {
-        boolean covered = linkModel.getTargetLabel() != null
-                && DatabaseService.isCoveredLabel(Label.label(linkModel.getTargetLabel()));
+        boolean managed = linkModel.getTargetLabel() != null
+                && DatabaseService.isManagedLabel(Label.label(linkModel.getTargetLabel()));
         for (Relationship r : DatabaseService.getRelationships(aNode, Direction.OUTGOING)) {
-            boolean targetMatches = covered
+            boolean targetMatches = managed
                     ? r.getEndNode().getProperty("id", "").toString().equals(linkModel.getTarget())
                     : r.getEndNode().getElementId().equals(linkModel.getTarget());
             if (r.getType().name().equals(linkModel.getType()) && targetMatches) {

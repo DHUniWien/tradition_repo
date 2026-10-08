@@ -104,7 +104,7 @@ public class VariantGraphService {
         } catch (NotFoundException | IllegalArgumentException e) {
             return null;
         }
-		if (currentNode != null && currentNode.hasLabel(Nodes.SECTION))
+		if (currentNode.hasLabel(Nodes.SECTION))
 			boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
 
 		return boundNode;

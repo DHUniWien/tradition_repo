@@ -768,7 +768,7 @@ public class Reading {
             throws Exception {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
-        DatabaseService.assignIdIfCovered(tx, addedReading);
+        DatabaseService.assignIdIfManaged(tx, addedReading);
 
         // add witnesses to the correct sequence links
         HashSet<Relationship> newSequences = new HashSet<>();
@@ -1067,7 +1067,7 @@ public class Reading {
             Node newReading = tx.createNode();
 
             ReadingService.copyReadingProperties(lastReading, newReading);
-            DatabaseService.assignIdIfCovered(tx, newReading);
+            DatabaseService.assignIdIfManaged(tx, newReading);
             newReading.setProperty("text", splitWords[i]);
             // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
             Long previousRank = (Long) lastReading.getProperty("rank");

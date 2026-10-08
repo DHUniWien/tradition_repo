@@ -21,15 +21,15 @@ public class AnnotationLinkModel {
      */
     private String follow;
     /**
-     * The ID of the target node for this annotation link. For a covered target type
+     * The ID of the target node for this annotation link. For a managed target type
      * (READING, SECTION, ANNOTATION) this is the target's application-assigned numeric
-     * id; for any other (uncovered) target type this is the target node's elementId, as
+     * id; for any other (unmanaged) target type this is the target node's elementId, as
      * a permanent, deliberate exception (see the entity ID system design spec).
      */
     private String target;
     /**
      * The Neo4j label of the target node (e.g. "READING", "SECTION", "ANNOTATION", or
-     * an uncovered type like "WITNESS"). Required because ids are only unique per label,
+     * an unmanaged type like "WITNESS"). Required because ids are only unique per label,
      * not globally, and a link type can be validly declared for more than one target
      * label in an AnnotationLabel's links schema -- so the label cannot be safely
      * inferred and must be supplied explicitly.
@@ -41,12 +41,12 @@ public class AnnotationLinkModel {
     public AnnotationLinkModel(Relationship r) {
         setType(r.getType().name());
         Node end = r.getEndNode();
-        String covered = DatabaseService.coveredLabelOf(end);
-        if (covered != null) {
-            setTargetLabel(covered);
+        String managed = DatabaseService.managedLabelOf(end);
+        if (managed != null) {
+            setTargetLabel(managed);
             setTarget(end.getProperty("id").toString());
         } else {
-            // Uncovered type: assume, as elsewhere in this codebase, that the node
+            // Unmanaged type: assume, as elsewhere in this codebase, that the node
             // carries exactly one label.
             for (Label l : end.getLabels()) {
                 setTargetLabel(l.name());
@@ -87,6 +87,7 @@ public class AnnotationLinkModel {
     }
 
     public void setTargetLabel(String targetLabel) {
+        // LATER handle annotation labels properly instead of requiring ANNOTATION here
         this.targetLabel = targetLabel;
     }
 }

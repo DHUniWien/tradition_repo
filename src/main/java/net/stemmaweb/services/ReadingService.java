@@ -52,9 +52,6 @@ public class ReadingService {
      */
     public static void copyReadingProperties(Node oldReading, Node newReading) {
         for (String key : oldReading.getPropertyKeys()) {
-            // "id" is excluded: the new reading gets its own fresh id assigned by the
-            // caller (via DatabaseService.assignIdIfCovered) rather than inheriting the
-            // old reading's, which would violate the READING.id uniqueness constraint.
             if (oldReading.hasProperty(key) && !key.equals("is_lemma") && !key.equals("id")) {
                 newReading.setProperty(key, oldReading.getProperty(key));
             }
@@ -448,7 +445,7 @@ public class ReadingService {
             // Returns a value if the parents of this node, and of all its colocated nodes,
             // already have a rank. Returns null otherwise.
             Set<Node> toCheck;
-            Long maxRankFound = -1L;
+            long maxRankFound = -1L;
             if (colocatedNodes.containsKey(candidate.getElementId())) {
                 toCheck = colocatedNodes.get(candidate.getElementId());
             } else {
@@ -466,7 +463,7 @@ public class ReadingService {
                     if (!p.hasProperty(rankprop))
                         return null;
                     Long thisRank = (Long) p.getProperty(rankprop);
-                    maxRankFound = thisRank > maxRankFound ? thisRank : maxRankFound;
+                    maxRankFound = Math.max(thisRank, maxRankFound);
                 }
             }
             return maxRankFound;

@@ -126,18 +126,13 @@ public class TraditionTest {
                 .target("/traditions/" + 2342)
                 .request()
                 .get();
-        assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), resp.getStatus());
     }
 
     /* TODO: This test needs to be fixed - it expects the relationships to be returned in
        an order that is not guaranteed. */
     @Test(expected = org.junit.ComparisonFailure.class)
     public void getAllRelationshipsTest() {
-        String jsonPayload = "{\"role\":\"user\",\"id\":1}";
-        jerseyTest.target("/user/1")
-                .request(MediaType.APPLICATION_JSON)
-                .put(Entity.json(jsonPayload));
-
         RelationModel rel = new RelationModel();
         rel.setSource("27");
         rel.setTarget("16");
@@ -163,11 +158,9 @@ public class TraditionTest {
 
     @Test
     public void getAllRelationshipsCorrectAmountTest() {
-
         List<RelationModel> relationships = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
                 .get(new GenericType<>() {});
-
         assertEquals(3, relationships.size());
     }
 
@@ -187,7 +180,10 @@ public class TraditionTest {
     public void getWitnessesMultiSectionTest () {
         Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
         // Add the same data as a second section
-        Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml", "stemmaweb", "section 2");
+        try (Response r = Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml",
+                "stemmaweb", "section 2")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
         List<WitnessModel> witnesses = jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
                 .get(new GenericType<>() {});
@@ -202,8 +198,7 @@ public class TraditionTest {
         Response resp = jerseyTest.target("/tradition/10000/witnesses")
                 .request()
                 .get();
-
-        assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), resp.getStatus());
     }
 
     /**
@@ -239,7 +234,7 @@ public class TraditionTest {
             Node origUser = tx.findNode(Nodes.USER, "id", "1");
             List<Relationship> ownership = DatabaseService.getRelationships(origUser, ERelations.OWNS_TRADITION);
             assertEquals(1, ownership.size());
-            Node tradNode = ownership.get(0).getEndNode();
+            Node tradNode = ownership.getFirst().getEndNode();
             TraditionModel tradition = new TraditionModel(tradNode);
 
             assertEquals(tradId, tradition.getId());
@@ -259,11 +254,12 @@ public class TraditionTest {
         textInfo.setOwner("42");
         textInfo.setStemweb_jobid(3);
 
-        Response ownerChangeResponse = jerseyTest
+        try (Response ownerChangeResponse = jerseyTest
                 .target("/tradition/" + tradId)
                 .request()
-                .put(Entity.json(textInfo));
-        assertEquals(Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
+                .put(Entity.json(textInfo))) {
+            assertEquals(Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
+        }
 
         try (Transaction tx = db.beginTx()) {
             /*
@@ -292,12 +288,14 @@ public class TraditionTest {
          */
         TraditionModel sjDel = new TraditionModel();
         sjDel.setStemweb_jobid(0);
-        Response jobIdDelResponse = jerseyTest
+        TraditionModel sjResult;
+        try (Response jobIdDelResponse = jerseyTest
                 .target("/tradition/" + tradId)
                 .request()
-                .put(Entity.json(sjDel));
-        assertEquals(Status.OK.getStatusCode(), jobIdDelResponse.getStatus());
-        TraditionModel sjResult = jobIdDelResponse.readEntity(TraditionModel.class);
+                .put(Entity.json(sjDel))) {
+            assertEquals(Status.OK.getStatusCode(), jobIdDelResponse.getStatus());
+            sjResult = jobIdDelResponse.readEntity(TraditionModel.class);
+        }
         assertEquals("RenamedTraditionName", sjResult.getName());
         assertEquals("RL", sjResult.getDirection());
         assertEquals(tradId, sjResult.getId());
@@ -319,7 +317,7 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         List<TraditionModel> tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
-        assertEquals(tradId, tradList.get(0).getId());
+        assertEquals(tradId, tradList.getFirst().getId());
 
         /*
          * Change the owner of the tradition
@@ -343,8 +341,8 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
-        assertEquals(tradId, tradList.get(0).getId());
-        assertEquals("Tradition", tradList.get(0).getName());
+        assertEquals(tradId, tradList.getFirst().getId());
+        assertEquals("Tradition", tradList.getFirst().getName());
 
     }
 
@@ -414,8 +412,8 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
-        assertEquals(tradId, tradList.get(0).getId());
-        assertEquals("Tradition", tradList.get(0).getName());
+        assertEquals(tradId, tradList.getFirst().getId());
+        assertEquals("Tradition", tradList.getFirst().getName());
 
         /*
          * The user with id 42 has still no tradition
@@ -453,16 +451,16 @@ public class TraditionTest {
         UserModel userModel = new UserModel();
         userModel.setId("user@example.org");
         userModel.setRole("user");
-        Response jerseyResponse = jerseyTest.target("/user/user@example.org")
+        try (Response response1 = jerseyTest.target("/user/user@example.org")
                 .request()
-                .put(Entity.json(userModel));
-        assertEquals(Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
+                .put(Entity.json(userModel))) {
+            assertEquals(Status.CREATED.getStatusCode(), response1.getStatus());
+        }
 
         // count the total number of nodes
         AtomicInteger numNodes = new AtomicInteger(0);
         try (Transaction tx = db.beginTx()) {
             tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.close();
         }
         int originalNodeCount = numNodes.get();
 
@@ -478,18 +476,20 @@ public class TraditionTest {
         } catch (IOException e) {
             fail();
         }
-        jerseyResponse = jerseyTest
+        try (Response response2 = jerseyTest
                 .target("/tradition/" + florId + "/stemma")
                 .request()
-                .post(Entity.json(newStemma));
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+                .post(Entity.json(newStemma))) {
+            assertEquals(Status.CREATED.getStatusCode(), response2.getStatus());
+        }
 
         // re-root the stemma
-        jerseyResponse = jerseyTest
+        try (Response response3 = jerseyTest
                 .target("/tradition/" + florId + "/stemma/Stemma/reorient/2")
                 .request()
-                .post(null);
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+                .post(null)) {
+            assertEquals(Status.OK.getStatusCode(), response3.getStatus());
+        }
 
         // give it some relationships - rank 37, rank 13, ranks 217/219
         try (Transaction tx = db.beginTx()) {
@@ -504,10 +504,11 @@ public class TraditionTest {
                 rel.setScope("local");
                 rel.setSource(rdg1.getId());
                 rel.setTarget(rdg2.getId());
-                jerseyResponse = jerseyTest.target("/tradition/" + florId + "/relation")
+                try (Response response = jerseyTest.target("/tradition/" + florId + "/relation")
                         .request()
-                        .post(Entity.json(rel));
-                assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+                        .post(Entity.json(rel))) {
+                    assertEquals(Status.CREATED.getStatusCode(), response.getStatusInfo().getStatusCode());
+                }
             }
 
             // and a transposition, for kicks
@@ -518,33 +519,32 @@ public class TraditionTest {
             txrel.setScope("local");
             txrel.setSource(String.valueOf(tx1.getProperty("id")));
             txrel.setTarget(String.valueOf(tx2.getProperty("id")));
-            jerseyResponse = jerseyTest.target("/tradition/" + florId + "/relation")
+            try (Response response4 = jerseyTest.target("/tradition/" + florId + "/relation")
                     .request()
-                    .post(Entity.json(txrel));
-            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
-            tx.close();
+                    .post(Entity.json(txrel))) {
+                assertEquals(Status.CREATED.getStatusCode(), response4.getStatusInfo().getStatusCode());
+            }
         }
 
         // now count the nodes
         numNodes.set(0);
         try (Transaction tx = db.beginTx()) {
             tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.close();
         }
         assertTrue(numNodes.get() > originalNodeCount + 200);
 
         // delete the florilegium
-        jerseyResponse = jerseyTest
+        try (Response response5 = jerseyTest
                 .target("/tradition/" + florId)
                 .request()
-                .delete();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+                .delete()) {
+            assertEquals(Status.OK.getStatusCode(), response5.getStatus());
+        }
 
         // nodes should be back to original number
         numNodes.set(0);
         try (Transaction tx = db.beginTx()) {
             tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.close();
         }
         assertEquals(originalNodeCount, numNodes.get());
     }
@@ -558,11 +558,12 @@ public class TraditionTest {
             /*
              * Try to remove a tradition with invalid id
              */
-            Response removalResponse = jerseyTest
+            try (Response removalResponse = jerseyTest
                     .target("/tradition/1337")
                     .request()
-                    .delete();
-            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+                    .delete()) {
+                assertEquals(Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+            }
 
             /*
              * Test if user 1 still exists
@@ -577,7 +578,6 @@ public class TraditionTest {
             result = tx.execute("match (t:TRADITION {id:'" + tradId + "'}) return t");
             nodes = result.columnAs("t");
             assertTrue(nodes.hasNext());
-            tx.close();
         }
     }
 

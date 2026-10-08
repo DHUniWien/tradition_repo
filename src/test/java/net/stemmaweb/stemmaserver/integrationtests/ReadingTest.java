@@ -410,7 +410,11 @@ public class ReadingTest {
                 .target("/reading/" + readingLookup.get("showers/5"))
                 .request(MediaType.APPLICATION_JSON).get(ReadingModel.class);
         // Should parse cleanly as a Long, with no NumberFormatException
-        Long.parseLong(rm.getId());
+        try {
+            Long.parseLong(rm.getId());
+        } catch (NumberFormatException e) {
+            fail("Reading id " + rm.getId() + " is not numeric");
+        }
     }
 
     @Test
@@ -428,7 +432,11 @@ public class ReadingTest {
 
         // The emendation reading's id should be reachable the same way a normal
         // reading's is, and should parse as a Long.
-        Long.parseLong(emended.getId());
+        try {
+            Long.parseLong(emended.getId());
+        } catch (NumberFormatException e) {
+            fail("Reading id " + emended.getId() + " is not numeric");
+        }
         ReadingModel fetched = jerseyTest
                 .target("/reading/" + emended.getId())
                 .request(MediaType.APPLICATION_JSON).get(ReadingModel.class);
@@ -743,6 +751,7 @@ public class ReadingTest {
         try (Response resp = jerseyTest.target("/reading/" + emended.getId()).request().delete()) {
             assertEquals(Status.OK.getStatusCode(), resp.getStatus());
         }
+        // TODO the annotation didn't get deleted...
     }
 
     @Test
@@ -1043,8 +1052,7 @@ public class ReadingTest {
             assertFalse(duplicatedSweet.hasProperty("orig_reading"));
             assertFalse(duplicatedSweet.hasProperty("is_lemma"));
 
-            // compare original and duplicated. "id" is expected to differ, since each reading
-            // gets its own fresh application-assigned id.
+            // compare original and duplicated
             Iterable<String> keys = firstNode.getPropertyKeys();
             for (String key : keys) {
                 if (key.equals("is_lemma") || key.equals("id")) continue;
@@ -1115,14 +1123,18 @@ public class ReadingTest {
         // original, and the fresh copy connecting the newly duplicated reading.
         List<RelationModel> toSecond = after.stream()
                 .filter(x -> x.getSource().equals(secondNodeId) || x.getTarget().equals(secondNodeId))
-                .collect(Collectors.toList());
+                .toList();
         assertEquals(2, toSecond.size());
         assertNotEquals(toSecond.get(0).getId(), toSecond.get(1).getId());
         assertTrue(toSecond.stream().anyMatch(x -> x.getId().equals(originalRelation.getId())));
         // Neither copy's id was clobbered/copied from the original -- both are distinct
         // valid, fresh ids.
         for (RelationModel rm : toSecond) {
-            Long.parseLong(rm.getId());
+            try {
+                Long.parseLong(rm.getId());
+            } catch (NumberFormatException e) {
+                fail("Relation ID is not a valid number: " + rm.getId());
+            }
         }
     }
 
@@ -1224,8 +1236,7 @@ public class ReadingTest {
             }
             assertEquals(1, numberOfPaths);
 
-            // compare original and duplicated. "id" is expected to differ, since each reading
-            // gets its own fresh application-assigned id.
+            // compare original and duplicated
             Iterable<String> keys = node.getPropertyKeys();
             for (String key : keys) {
                 if (key.equals("id")) continue;
@@ -1314,8 +1325,7 @@ public class ReadingTest {
             }
             assertEquals(1, numberOfPaths);
 
-            // compare original and duplicated. "id" is expected to differ, since each reading
-            // gets its own fresh application-assigned id.
+            // compare original and duplicated
             Iterable<String> keys = originalOf.getPropertyKeys();
             for (String key : keys) {
                 if (key.equals("id")) continue;
@@ -1934,14 +1944,12 @@ public class ReadingTest {
 
     @Test
     public void splitReadingTest() {
-        Node node;
-        Node endNode;
         String nodeId;
         String endNodeId;
         try (Transaction tx = db.beginTx()) {
-            node = tx.findNode(Nodes.READING, "text", "the root");
+            Node node = tx.findNode(Nodes.READING, "text", "the root");
             assertTrue(node.hasRelationship(ERelations.RELATED));
-            endNode = tx.findNode(Nodes.READING, "is_end", true);
+            Node endNode = tx.findNode(Nodes.READING, "is_end", true);
 
             // delete relationship, so that splitting is possible
             node.getSingleRelationship(ERelations.RELATED,
