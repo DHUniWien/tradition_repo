@@ -161,9 +161,11 @@ public class AnnotationService {
         boolean managed = linkModel.getTargetLabel() != null
                 && DatabaseService.isManagedLabel(Label.label(linkModel.getTargetLabel()));
         for (Relationship r : DatabaseService.getRelationships(aNode, Direction.OUTGOING)) {
+            Node tNode = r.getEndNode();
             boolean targetMatches = managed
-                    ? r.getEndNode().getProperty("id", "").toString().equals(linkModel.getTarget())
-                    : r.getEndNode().getElementId().equals(linkModel.getTarget());
+                    ? tNode.getProperty("id", "").toString().equals(linkModel.getTarget())
+                      && tNode.hasLabel(Label.label(linkModel.getTargetLabel()))
+                    : tNode.getElementId().equals(linkModel.getTarget());
             if (r.getType().name().equals(linkModel.getType()) && targetMatches) {
                 return r.getElementId();
             }
