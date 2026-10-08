@@ -241,11 +241,16 @@ public class Reading {
             // Get all its relationships for deletion
             boolean onLemmaPath = false;
             List<SequenceModel> deletedSeqs = new ArrayList<>();
+            List<RelationModel> deletedRels = new ArrayList<>();
             for (Relationship r : DatabaseService.getRelationships(reading)) {
+                // Possible relationships are HAS_EMENDATION, RELATED, LEMMA_TEXT, SEQUENCE, EMENDED,
+                // or an annotation link. TODO clean up dangling annotations!
                 if (r.isType(ERelations.LEMMA_TEXT)) {
-                    onLemmaPath = true;
+                    onLemmaPath = true; // this will get deleted below.
                 } else {
-                    if (!r.isType(ERelations.HAS_EMENDATION))
+                    if (r.isType(ERelations.RELATED))
+                        deletedRels.add(new RelationModel(r));
+                    else if (r.isType(ERelations.SEQUENCE) || r.isType(ERelations.EMENDED))
                         deletedSeqs.add(new SequenceModel(r));
                     r.delete();
                 }
@@ -257,6 +262,7 @@ public class Reading {
             }
             deletedElements.setSequences(deletedSeqs);
             deletedElements.setReadings(Collections.singletonList(new ReadingModel(reading)));
+            deletedElements.setRelations(deletedRels);
             reading.delete();
             tx.commit();
         } catch (NotFoundException e) {

@@ -494,6 +494,20 @@ public class ReadingTest {
                 .post(Entity.json(pem), GraphModel.class);
         ReadingModel emended = emendation.getReadings().iterator().next();
 
+        // Add a relation to a parallel reading
+        RelationModel rel = new RelationModel();
+        rel.setType("lexical");
+        rel.setSource(emended.getId());
+        rel.setTarget(readingLookup.get("fruit/8"));
+        GraphModel relResult;
+        try (Response resp = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(rel))) {
+            assertEquals(Status.CREATED.getStatusCode(), resp.getStatus());
+            relResult = resp.readEntity(GraphModel.class);
+        }
+
         // Now try deleting it
         GraphModel deleted;
         try (Response resp = jerseyTest.target("/reading/" + emended.getId()).request().delete()) {
@@ -501,7 +515,7 @@ public class ReadingTest {
             deleted = resp.readEntity(GraphModel.class);
         }
 
-        // What was emended should now equal what was deleted.
+        // What was added with the emendation and the relation should now equal what was deleted.
         for (ReadingModel rm : emendation.getReadings()) {
             assertTrue(deleted.getReadings().stream().anyMatch(x -> rm.getId().equals(x.getId())));
         }
@@ -515,6 +529,14 @@ public class ReadingTest {
         for (SequenceModel sm : deleted.getSequences()) {
             assertTrue(emendation.getSequences().stream().anyMatch(x -> sm.getId().equals(x.getId())));
         }
+
+        for (RelationModel rm : deleted.getRelations()) {
+            assertTrue(relResult.getRelations().stream().anyMatch(x -> rm.getId().equals(x.getId())));
+        }
+        for (RelationModel rm : relResult.getRelations()) {
+            assertTrue(deleted.getRelations().stream().anyMatch(x -> rm.getId().equals(x.getId())));
+        }
+
         // Everything else should be as before.
         try (Transaction tx = db.beginTx()) {
             for (Node n : VariantGraphService.returnEntireTradition(tx, tradId).nodes())
