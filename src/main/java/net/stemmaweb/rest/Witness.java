@@ -214,29 +214,36 @@ public class Witness {
             // Strip the witness' old ID to avoid constraint violation errors
             witnessNode.removeProperty("id");
             // Look through any stemmata and either delete the witness (if it is a leaf node) or
-            // turn it hypothetical (if it isn't_
+            // turn it hypothetical (if it isn't).
             for (Relationship r : DatabaseService.getRelationships(witnessNode, ERelations.HAS_WITNESS)) {
                 Node owner = r.getStartNode();
                 if (owner.hasLabel(Nodes.STEMMA)) {
-                    // TODO check for leaf status
+                    if (owner.hasRelationship(ERelations.HAS_ARCHETYPE) && witnessIsLeaf(witnessNode))
+                        continue;
+                    // If we got here, the witness needs to be substituted with a hypothetical one.
                     Node newHypothetical = tx.createNode(Nodes.WITNESS);
-                    DatabaseService.copyProperties(witnessNode, newHypothetical);
                     DatabaseService.assignIdIfManaged(tx, newHypothetical);
                     newHypothetical.setProperty("hypothetical", true);
+                    // Use the witness's sigil but don't copy any other properties.
+                    newHypothetical.setProperty("sigil", witnessNode.getProperty("sigil"));
+                    // Copy over the TRANSMITTED links that belong to this stemma.
                     for (Relationship link : DatabaseService.getRelationships(witnessNode, ERelations.TRANSMITTED)) {
+                        if (!link.getProperty("hypothesis", "").equals(owner.getProperty("name")))
+                            continue;
                         Relationship copy;
                         if (link.getStartNode().equals(witnessNode))
                             copy = newHypothetical.createRelationshipTo(link.getEndNode(), ERelations.TRANSMITTED);
                         else
                             copy = link.getStartNode().createRelationshipTo(newHypothetical, ERelations.TRANSMITTED);
-                        DatabaseService.copyProperties(link, copy);
+                        copy.setProperty("hypothesis", owner.getProperty("name"));
                         link.delete();
                     }
                     owner.createRelationshipTo(newHypothetical, ERelations.HAS_WITNESS);
                 } // otherwise it is the link to the TRADITION node.
                 r.delete();
             }
-            // Delete the node
+            // Delete all remaining relationships and the node itself.
+            witnessNode.getRelationships().forEach(Relationship::delete);
             witnessNode.delete();
             tx.commit();
         } catch (NotFoundException e) {
@@ -248,6 +255,12 @@ public class Witness {
             return Response.serverError().build();
         }
         return Response.ok(removed).build();
+    }
+
+    // The witness is a leaf if it has no outgoing TRANSMITTED relationships.
+    private static boolean witnessIsLeaf(Node witnessNode) {
+        return witnessNode.getRelationships(Direction.OUTGOING).stream()
+                .noneMatch(r -> r.getType().equals(ERelations.TRANSMITTED));
     }
 
     /**

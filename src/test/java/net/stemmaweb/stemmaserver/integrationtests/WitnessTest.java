@@ -1,14 +1,10 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Stream;
 
+import net.stemmaweb.model.*;
 import net.stemmaweb.services.DatabaseService;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
@@ -28,10 +24,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
@@ -39,6 +31,9 @@ import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
+
+import static net.stemmaweb.stemmaserver.Util.assertStemmasEquivalent;
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -269,7 +264,7 @@ public class WitnessTest {
     public void deleteAWitness() {
         // Get all the readings we have
         HashSet<String> remaining = new HashSet<>();
-        remaining.addAll(jerseyTest.target("/tradition/" + tradId + "/witness/B/readings")
+        remaining.addAll(jerseyTest.target("/tradition/" + tradId + "/witness/A/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {})
                 .stream().map(ReadingModel::getId).toList());
@@ -277,8 +272,8 @@ public class WitnessTest {
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {})
                 .stream().map(ReadingModel::getId).toList());
-        // Try deleting witness A
-        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+        // Try deleting witness B
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/B")
                 .request()
                 .delete()) {
             assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
@@ -286,13 +281,38 @@ public class WitnessTest {
         // Check that it is no longer in the witness list
         assertTrue(jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>(){}).stream().noneMatch(x -> x.getSigil().equals("A")));
+                .get(new GenericType<List<WitnessModel>>(){}).stream()
+                .noneMatch(x -> x.getSigil().equals("B")));
         // Check that all the remaining readings are in our pre-collected set
         for (ReadingModel rm : jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {}))
             if (!rm.getIs_end() && !rm.getIs_start())
                 assertTrue(remaining.contains(rm.getId()));
+        // Check that the stemmata have been altered as we expect
+        String expectedDigraph = """
+digraph "stemma" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];
+  C [ class=extant ];
+  0 -> A;
+  A -> C;}""";
+        String expectedGraph = """
+graph "Semstem 1402333041_0" {
+  0 [ class=hypothetical ];
+  A [ class=extant ];
+  B [ class=hypothetical ];
+  C [ class=extant ];
+  0 -- A;
+  A -- B;
+  B -- C;}""";
+        for (StemmaModel sm : jerseyTest.target("/tradition/" + tradId + "/stemmata")
+                .request().get(new GenericType<List<StemmaModel>>(){})) {
+            if (sm.getName().equals("stemma"))
+                assertStemmasEquivalent(expectedDigraph, sm.getDot());
+            else
+                assertStemmasEquivalent(expectedGraph, sm.getDot());
+        }
 
         // Now add a witness out-of-band, that doesn't have any particular data, to make sure we can
         // delete errant witnesses
@@ -331,48 +351,6 @@ public class WitnessTest {
     }
 
     @Test
-    public void deleteWitnessFromStemma() {
-        // Capture witness A's original (managed) id. Witness A is extant in both of the
-        // stemmata that come pre-loaded with testTradition.xml.
-        WitnessModel witnessA = jerseyTest.target("/tradition/" + tradId + "/witness/A")
-                .request()
-                .get(WitnessModel.class);
-        String originalId = witnessA.getId();
-        assertNotNull(originalId);
-
-        // Delete witness A tradition-wide.
-        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
-                .request()
-                .delete()) {
-            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        }
-
-        // Each stemma that used to carry A as extant should now carry a hypothetical
-        // replacement witness with its own, distinct, managed id (not null, and not a
-        // leftover copy of the deleted witness's id).
-        try (Transaction tx = db.beginTx()) {
-            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
-            List<Node> stemmaNodes = DatabaseService.getRelated(tradNode, ERelations.HAS_STEMMA);
-            assertTrue(stemmaNodes.size() > 0);
-            for (Node stemmaNode : stemmaNodes) {
-                Node replacement = null;
-                for (Node wit : DatabaseService.getRelated(stemmaNode, ERelations.HAS_WITNESS)) {
-                    if (wit.getProperty("sigil", "").equals("A")) {
-                        replacement = wit;
-                        break;
-                    }
-                }
-                assertNotNull(replacement);
-                assertTrue((Boolean) replacement.getProperty("hypothetical"));
-                assertTrue(replacement.hasProperty("id"));
-                String newId = replacement.getProperty("id").toString();
-                assertNotNull(newId);
-                assertNotEquals(originalId, newId);
-            }
-        }
-    }
-
-    @Test
     public void createWitnessInvalidSigil() {
         Response r = Util.createTraditionFromFileOrString(jerseyTest, "592th", "LR", "1",
                 "src/TestFiles/592th.xml", "graphmlsingle");
@@ -387,23 +365,27 @@ public class WitnessTest {
     @Test
     public void sigilNcNameValidationTest() {
         // Reject a numeric sigil.
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("123").getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), singleWitnessImportResult("123"));
         // Reject a sigil starting with a digit.
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("1a").getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), singleWitnessImportResult("1a"));
         // Reject a sigil containing a space.
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("my witness").getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), singleWitnessImportResult("my witness"));
         // Reject a sigil containing an apostrophe.
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("Q1'").getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), singleWitnessImportResult("Q1'"));
         // Accept a sigil starting with a letter.
-        assertEquals(Response.Status.CREATED.getStatusCode(), importSingleWitnessTradition("Q1").getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), singleWitnessImportResult("Q1"));
         // Accept a non-ASCII (Greek) sigil.
-        assertEquals(Response.Status.CREATED.getStatusCode(), importSingleWitnessTradition("α").getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), singleWitnessImportResult("α"));
     }
 
     // Minimal single-witness, single-reading CollateX JSON import, used to test sigil validation
-    private Response importSingleWitnessTradition(String sigil) {
+    private int singleWitnessImportResult(String sigil) {
         String cxjson = String.format("{\"witnesses\": [\"%s\"], \"table\": [[[{\"t\": \"word\"}]]]}", sigil);
-        return Util.createTraditionFromFileOrString(jerseyTest, "SigilTest", "LR", "1", cxjson, "cxjson");
+        try (Response r = Util.createTraditionFromFileOrString(jerseyTest, "SigilTest", "LR", "1", cxjson, "cxjson")) {
+            return r.getStatus();
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     @Test
@@ -471,7 +453,7 @@ public class WitnessTest {
         // sense tradition-wide).
         List<SectionModel> ourSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         String sectId = ourSections.getFirst().getId();
         WitnessModel sectionRename = new WitnessModel();
         sectionRename.setSigil("Q");
@@ -562,7 +544,7 @@ public class WitnessTest {
                 if (!r.isType(ERelations.SEQUENCE) && !r.isType(ERelations.NSEQUENCE)) continue;
                 for (Object v : r.getAllProperties().values())
                     if (v instanceof String[] sigla)
-                        assertTrue(List.of(sigla).stream().noneMatch("A"::equals));
+                        assertTrue(Stream.of(sigla).noneMatch("A"::equals));
             }
         }
     }
@@ -586,7 +568,6 @@ public class WitnessTest {
                 net.stemmaweb.services.VariantGraphService.normalizeGraph(tx, section, "normtest");
             tx.commit();
         } catch (Exception e) {
-            e.printStackTrace();
             fail();
         }
 
@@ -610,7 +591,7 @@ public class WitnessTest {
                 if (r.isType(ERelations.NSEQUENCE)) sawNsequence = true;
                 for (Object v : r.getAllProperties().values())
                     if (v instanceof String[] sigla)
-                        assertTrue(List.of(sigla).stream().noneMatch("Q"::equals));
+                        assertTrue(Stream.of(sigla).noneMatch("Q"::equals));
             }
         }
         assertTrue("fixture should have produced NSEQUENCE links", sawNsequence);
