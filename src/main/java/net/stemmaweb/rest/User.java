@@ -52,11 +52,7 @@ public class User {
     /**
      * Gets the information for the given user ID.
      *
-     * @title Get user
-     *
      * @return A JSON UserModel or a JSON error message
-     * @statuscode 200 on success
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -95,13 +91,8 @@ public class User {
     /**
      * Creates or updates a user according to the specification given.
      *
-     * @title Create / update user
-     *
      * @param userModel - a user specification
      * @return A JSON UserModel or a JSON error message
-     * @statuscode 200 on success, if an existing user was updated
-     * @statuscode 201 on success, if a new user was created
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -173,12 +164,6 @@ public class User {
     /**
      * Removes a user. This may only be used when the user's traditions have already been deleted.
      *
-     * @title Delete user
-     *
-     * @statuscode 200 on success
-     * @statuscode 404 if the requested user doesn't exist
-     * @statuscode 412 if the user still owns traditions
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -231,8 +216,6 @@ public class User {
 
     /**
      * Get a list of the traditions belong to the user.
-     *
-     * @title List user traditions
      *
      * @return A JSON list of tradition metadata objects
      */

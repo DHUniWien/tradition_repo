@@ -57,11 +57,7 @@ public class AnnotationLabel {
     /**
      * Gets the information for the given annotation type name.
      *
-     * @title Get annotation label spec
      * @return A JSON AnnotationLabelModel or a JSON error message
-     * @statuscode 200 on success
-     * @statuscode 404 if the annotation label doesn't exist
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Produces("application/json; charset=utf-8")
@@ -100,15 +96,9 @@ public class AnnotationLabel {
     /**
      * Creates or updates an annotation type specification
      *
-     * @title Put annotation label spec
      * @param alm - The AnnotationLabelModel specification to use
      * @return The AnnotationLabelModel specification created / updated
-     * @statuscode 200 on update of existing label
-     * @statuscode 201 on creation of new label
-     * @statuscode 400 if there is an error in the annotation type specification
-     * @statuscode 409 if the requested name is already in use, or if a rename was requested for
      *             a label that is still in use by an annotation or another label's links
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -269,12 +259,6 @@ public class AnnotationLabel {
      * Deletes the specified annotation label specification from the tradition. Returns an error
      * if there are any annotations still using this type.
      *
-     * @title Delete annotation label
-     *
-     * @statuscode 200 on success
-     * @statuscode 404 if the annotation label doesn't exist
-     * @statuscode 409 if the annotation label is still in use
-     * @statuscode 500 on failure, with an error report in JSON format
      * @return the label model that was deleted
      */
     @DELETE

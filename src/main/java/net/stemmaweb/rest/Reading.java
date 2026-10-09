@@ -98,11 +98,7 @@ public class Reading {
     /**
      * Returns the metadata for a single reading.
      *
-     * @title Get a reading
      * @return The reading information as a JSON structure.
-     * @statuscode 200 - on success
-     * @statuscode 204 - if the reading doesn't exist
-     * @statuscode 500 - on error, with an error message
     */
     @GET
     @Produces("application/json; charset=utf-8")
@@ -135,15 +131,11 @@ public class Reading {
      * potential knock-on effects on other readings, such as "is_lemma", cannot be
      * set using this method.
      *
-     * @title Update an existing reading
      * @param changeModels
      *            an array of named key/value property pairs. For example, a request to
      *            change the reading's language to German will look like this:
      *            {@code {"properties": [{"key":"language","newProperty":"German"}]}}
      * @return The metadata of the updated reading
-     * @statuscode 200 - on success
-     * @statuscode 400 - on an invalid property key, or an invalid property value type
-     * @statuscode 500 - on error, with an error message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -208,12 +200,7 @@ public class Reading {
      * Deletes a reading. This only makes sense if it is a user-addable reading, i.e. an emendation.
      * If the lemma path goes through the emendation, the lemma path will also be removed.
      *
-     * @title Delete a user-addable reading
      * @return  A GraphModel containing the deleted content (readings and sequences)
-     * @statuscode 200 - on success
-     * @statuscode 403 - if deletion of a non-user reading is requested
-     * @statuscode 404 - if the reading doesn't exist
-     * @statuscode 500 - on error
      */
     @DELETE
     @Produces("application/json; charset=utf-8")
@@ -282,8 +269,6 @@ public class Reading {
      *
      * @param value - "true" if the reading should be a lemma
      * @return a list of changed ReadingModels
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("setlemma")
@@ -339,12 +324,8 @@ public class Reading {
      * reading(s) in the sequence for that witness / those witnesses. Intended to indicate that
      * empty ranks are not a simple omission.
      *
-     * @title Insert a lacuna
      * @param forWitnesses - one or more witnesses that should have the lacuna marked.
      * @return a GraphModel containing the lacuna and its associated SEQUENCE links.
-     * @statuscode 200 - on success
-     * @statuscode 400 - if a specified witness does not pass through the given reading
-     * @statuscode 500 - on error
      */
     @POST
     @Path("/lacunaAfter")
@@ -427,12 +408,9 @@ public class Reading {
 
     /**
      * Gets all readings related to the given reading.
-     * @title Get related readings
      *
      * @param filterTypes - a list of relation types to filter by
      * @return a list of readings related via the given relation types.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      *
      */
     @GET
@@ -469,12 +447,8 @@ public class Reading {
     /**
      * Propagates this reading's normal form to all other readings related by the given type.
      *
-     * @title Propagate normal form along relations
      * @param onRelationType - the relation type to propagate along
      * @return a list of changed readings
-     * @statuscode 200 - on success
-     * @statuscode 400 - if the reading has neither normal form nor text
-     * @statuscode 500 - on failure
      */
     @POST
     @Path("normaliseRelated/{reltype}")
@@ -544,11 +518,8 @@ public class Reading {
 
     /**
      * Deletes all relations associated with the given reading.
-     * @title Delete all reading relations
      *
      * @return a list of the relations that were deleted.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @DELETE
     @Path("relations")
@@ -586,11 +557,8 @@ public class Reading {
 
     /**
      * Gets the list of witnesses that carry the given reading.
-     * @title Get reading witnesses
      *
      * @return the metadata of the witnesses to this reading.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("witnesses")
@@ -624,15 +592,11 @@ public class Reading {
      * identical readings in different witnesses are distinct. This is the opposite of the
      * {@code merge} call.
      *
-     * @title Duplicate a reading
-     *
      * @param duplicateModel
      *            specifies the reading(s) to be duplicated, as well as the witnesses to which
      *            the duplicated new reading(s) should now belong.
      * @return a GraphModel in JSON containing all the created readings and the
      *         deleted relations.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("duplicate")
@@ -826,15 +790,10 @@ public class Reading {
      * when a collation has missed that a pair of readings is identical. This is the opposite
      * of the {@code duplicate} call.
      *
-     * @title Merge readings
-     *
      * @param secondReadId - the id of the second reading to be merged
      * @return a GraphModel describing the newly-merged reading, and all sequences and relations
      *         that were altered as a result
-     * @statuscode 200 - on success
-     * @statuscode 409 - if merging the readings would invalidate the graph.
      *                   This usually means that they are not in the same variant location.
-     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("merge/{secondReadId}")
@@ -915,8 +874,6 @@ public class Reading {
      * operation should not change the text sequence for any witness! This is the opposite of the
      * {@code compress} call.
      *
-     * @title Split a reading
-     *
      * @param splitIndex - the index of the first letter of the second word, indicating where
      *            the reading is to be split. For example, "unto" with index 2 produces "un"
      *            and "to". If the index is zero the reading is split on all occurrences
@@ -929,8 +886,6 @@ public class Reading {
      *            removed from the reading text.
      * @return a JSON description of all the readings that were created or modified, as well
      *         as the new sequence links necessary to construct the bath.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with a descriptive error message
      */
     @POST
     @Path("split/{splitIndex}")
@@ -1103,15 +1058,10 @@ public class Reading {
     /**
      * Gets the reading that follows the requested reading in the given witness.
      *
-     * @title Next reading
-     *
      * @param witnessId - the id (sigil) of the witness
      * @param layer - the witness layer to follow
      *
      * @return the following reading
-     * @statuscode 200 - on success
-     * @statuscode 404 - if there is no subsequent reading
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("next/{witnessId}")
@@ -1122,7 +1072,7 @@ public class Reading {
             description = "Gets the reading that follows the requested reading in the given witness.",
             parameters = {
                     @Parameter(name = "witnessId", description = "The sigil of the witness.", required = true, in = ParameterIn.PATH, schema = @Schema(type = "string")),
-                    @Parameter(name = "layer", description = "The witness layer to follow. Defaults to 'witnesses'.", required = false, in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "witnesses"))
+                    @Parameter(name = "layer", description = "The witness layer to follow. Defaults to 'witnesses'.", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "witnesses"))
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = ReadingModel.class))),
@@ -1149,15 +1099,10 @@ public class Reading {
     /**
      * Gets the reading that precedes the requested reading in the given witness.
      *
-     * @title Prior reading
-     *
      * @param witnessId - the id (sigil) of the witness
      * @param layer - the witness layer to follow
      *
      * @return the prior reading
-     * @statuscode 200 - on success
-     * @statuscode 404 - if there is no prior reading
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("prior/{witnessId}")
@@ -1168,7 +1113,7 @@ public class Reading {
             description = "Gets the reading that precedes the requested reading in the given witness.",
             parameters = {
                     @Parameter(name = "witnessId", description = "The sigil of the witness.", required = true, in = ParameterIn.PATH, schema = @Schema(type = "string")),
-                    @Parameter(name = "layer", description = "The witness layer to follow. Defaults to 'witnesses'.", required = false, in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "witnesses"))
+                    @Parameter(name = "layer", description = "The witness layer to follow. Defaults to 'witnesses'.", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "witnesses"))
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = ReadingModel.class))),
@@ -1213,17 +1158,12 @@ public class Reading {
      * comes first in the text) must be given first in the URL. This is the opposite of
      * the {@code split} call.
      *
-     * @title Concatenate readings
-     *
      * @param readId2 - the id of the second reading
      * @param boundary
      *            The specification of whether the reading text will be separated with a string,
      *            and if so, what string it will be. If the readings have {@code join_next} or
      *            {@code join_prior} set, this will be respected in preference to the boundary specification.
      * @return a GraphModel describing the newly compressed reading, and all sequences that were altered as a result
-     * @statuscode 200 - on success
-     * @statuscode 409 - if the readings cannot legally be concatenated
-     * @statuscode 500 - on error, with an error message
      */
     // LATER: consider whether we should actually return all modified / deleted readings...
     @POST

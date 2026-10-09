@@ -88,11 +88,7 @@ public class Stemma {
     /**
      * Fetches the information for the specified stemma.
      *
-     * @title Get stemma
      * @return The stemma information, including its dot specification.
-     * @statuscode 200 - on success
-     * @statuscode 404 - if no such tradition exists
-     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Produces("application/json; charset=utf-8")
@@ -145,14 +141,8 @@ public class Stemma {
     /**
      * Stores a new or updated stemma under the given name.
      *
-     * @title Replace or add new stemma
      * @param stemmaSpec - A StemmaModel containing the new or replacement stemma.
      * @return The stemma information, including its dot specification.
-     * @statuscode 200 - on success, if stemma is updated
-     * @statuscode 201 - on success, if stemma is new
-     * @statuscode 400 - if the stemma name in the URL doesn't match the name in the JSON information
-     * @statuscode 404 - if no such tradition exists
-     * @statuscode 500 - on failure, with an error message
      */
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
@@ -302,10 +292,7 @@ public class Stemma {
     /**
      * Deletes the stemma that is identified by the given name.
      *
-     * @title Delete stemma
      * @return The stemma information, including its dot specification.
-     * @statuscode 200 - on success, if stemma is updated
-     * @statuscode 500 - on failure, with an error message
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -393,10 +380,6 @@ public class Stemma {
      *
      * @param nodeId - archetype node
      * @return The updated stemma model
-     * @statuscode 200 - on success, if stemma is updated
-     * @statuscode 404 - if the witness does not occur in this stemma
-     * @statuscode 412 - if the stemma is contaminated
-     * @statuscode 500 - on failure, with an error message
      */
     @POST
     @Path("reorient/{nodeId}")

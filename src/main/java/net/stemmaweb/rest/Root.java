@@ -121,8 +121,6 @@ public class Root {
      * Imports a new tradition from file data of various forms, and creates at least one section
      * in doing so. Returns the ID of the given tradition, in the form {@code {"tradId": <ID>}}.
      *
-     * @title Upload new tradition
-     *
      * @param name      the name of the tradition. Default is the empty string.
      * @param language  the language of the tradition text (e.g. Latin, Syriac).
      * @param direction the direction in which the text should be read. Possible values
@@ -139,10 +137,6 @@ public class Root {
      * @param uploadedInputStream The file data to upload.
      * @param fileDetail The file data to upload.
      *
-     * @statuscode 201 - The tradition was created successfully.
-     * @statuscode 400 - No file was specified, and the 'empty' flag was not set.
-     * @statuscode 409 - The requested owner does not exist in the database.
-     * @statuscode 500 - Something went wrong. An error message will be returned.
      *
      */
     @POST
@@ -251,13 +245,10 @@ public class Root {
     /**
      * Gets a list of all the complete traditions in the database.
      *
-     * @title List traditions
      * @param publiconly    Returns only the traditions marked as being public.
      *                      Default is false.
      *
      * @return A list, one item per tradition, of tradition metadata.
-     * @statuscode 200 on success
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Path("/traditions")
@@ -295,11 +286,7 @@ public class Root {
     /**
      * Gets a list of all the users in the database.
      *
-     * @title List users
-     *
      * @return A list, one item per user, of user metadata.
-     * @statuscode 200 on success
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Path("/users")

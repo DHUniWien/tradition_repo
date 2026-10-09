@@ -65,15 +65,9 @@ public class Relation {
     /**
      * Creates a new relation between the specified reading nodes.
      *
-     * @title Create relation
      * @param relationModel - JSON structure of the relation to create
      * @return The relation(s) created, as well as any other readings in the graph that
      * had a relation set between them.
-     * @statuscode 201 - on success
-     * @statuscode 304 - if the specified relation type/scope already exists
-     * @statuscode 400 - if the request has an invalid scope
-     * @statuscode 409 - if the relationship cannot legally be created
-     * @statuscode 500 - on failure, with JSON error message
      */
     // TODO make this an idempotent PUT call
     @POST
@@ -211,13 +205,8 @@ public class Relation {
     /**
      * Remove the relation specified. There should be only one.
      *
-     * @title Delete a relation specifed by JSON data.
      * @param relationModel - the JSON specification of the relationship(s) to delete
      * @return A list of all relationships that were removed.
-     * @statuscode 200 - on success
-     * @statuscode 400 - if an invalid scope was specified
-     * @statuscode 404 - if no matching relationship was found
-     * @statuscode 500 - on failure, with JSON error message
      */
     @POST
     @Path("/remove")
@@ -293,11 +282,8 @@ public class Relation {
     /**
      * Removes a relation by internal ID.
      *
-     * @title Delete relation by ID
      * @param relationId - the ID of the relation to delete
      * @return The deleted relation
-     * @statuscode 200 - on success
-     * @statuscode 500 - on failure (e.g. the given ID does not belong to a RELATED relationship), with JSON error message
      */
     @DELETE
     @Path("{relationId}")

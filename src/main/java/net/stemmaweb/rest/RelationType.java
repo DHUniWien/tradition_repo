@@ -89,13 +89,7 @@ public class RelationType {
     /**
      * Gets the information for the given relation type name.
      *
-     * @title Get relation type
-     *
      * @return A JSON RelationTypeModel or a JSON error message
-     * @statuscode 200 on success
-     * @statuscode 400 if the relation type reference is a name shared by multiple types (legacy data only)
-     * @statuscode 404 if the tradition or the relation type does not exist
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -127,20 +121,11 @@ public class RelationType {
     /**
      * Creates or updates a relation type according to the specification given.
      *
-     * @title Create / update relation type specification
-     *
      * @param rtModel - a user specification
      * @return A JSON RelationTypeModel or a JSON error message
-     * @statuscode 200 on success, if an existing type was updated
-     * @statuscode 201 on success, if a new type was created
-     * @statuscode 304 if a default type was requested but could not be generated
-     * @statuscode 400 if the specification is invalid, or the relation type reference is a name
      *             shared by multiple types (legacy data only)
-     * @statuscode 404 if no such tradition exists
-     * @statuscode 409 if a default type was requested but a type of that name already exists,
      *             the new name conflicts with another existing relation type, or a rename was
      *             requested for a type that is still in use by relations
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -233,13 +218,7 @@ public class RelationType {
     /**
      * Deletes the named relation type.
      *
-     * @title Delete a relation type
      * @return A JSON RelationTypeModel of the deleted type
-     * @statuscode 200 on success
-     * @statuscode 400 if the relation type reference is a name shared by multiple types (legacy data only)
-     * @statuscode 404 if the tradition or the specified type doesn't exist
-     * @statuscode 409 if relations of the type still exist in the tradition
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")

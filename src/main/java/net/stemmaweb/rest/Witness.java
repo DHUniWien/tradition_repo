@@ -90,11 +90,7 @@ public class Witness {
 
     /**
      * Returns a WitnessModel corresponding to the requested witness.
-     * @title Get witness information
      * @return  A WitnessModel containing information about the witness
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -139,10 +135,6 @@ public class Witness {
     /**
      * Deletes the requested witness.
      *
-     * @title Delete a witness
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 500 - on error, with an error message
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -266,17 +258,10 @@ public class Witness {
      * given, must match it); otherwise, the resolved witness is renamed to the sigil given in
      * the request body, and the rename is carried through to the witness's text.
      *
-     * @title Create or rename a witness
      * @param wm - A WitnessModel containing the desired sigil
      * @return The resulting WitnessModel.
-     * @statuscode 200 - on success, if an existing witness was renamed
-     * @statuscode 201 - on success, if a new witness was created
-     * @statuscode 400 - if called within a single section, if the new sigil is invalid, if a
      *                    new witness's body sigil doesn't match the URL reference, or if the
      *                    witness reference is a sigil shared by multiple witnesses (legacy data only)
-     * @statuscode 404 - if no such tradition exists
-     * @statuscode 409 - if another witness already has the requested sigil
-     * @statuscode 500 - on error, with an error message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -402,16 +387,10 @@ public class Witness {
      * / from the start of the witness. If one or more witness layers are specified, return
      * the text composed of those layers.
      *
-     * @title Get witness text
      * @param layer - the text layer(s) to return, e.g. "a.c." or "s.l.". These layers must not conflict with each other!
      * @param start - the starting rank
      * @param end   - the end rank
      * @return The witness text as a string.
-     * @statuscode 200 - on success
-     * @statuscode 400 - if a start or end rank is specified on the tradition-wide call, or if the start rank and end rank match
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 409 - if a section's end node cannot be reached while assembling the witness text
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("/text")
@@ -506,13 +485,8 @@ public class Witness {
     /**
      * Returns the sequence of readings for a given witness.
      *
-     * @title Get readings
      * @param witnessClass - the text layer to return, e.g. "a.c."
      * @return The witness text as a list of readings.
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 409 - if a section's end node cannot be reached while assembling the witness text
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("/readings")

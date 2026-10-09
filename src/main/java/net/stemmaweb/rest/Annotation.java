@@ -60,9 +60,6 @@ public class Annotation {
      * Look up an existing annotation by ID.
      *
      * @return the {@link net.stemmaweb.model.AnnotationModel AnnotationModel} corresponding to the specified ID
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
-     * @statuscode 500 - on error
      */
     @GET
     @Produces("application/json; charset=utf-8")
@@ -96,10 +93,6 @@ public class Annotation {
      *
      * @param spec - an {@link net.stemmaweb.model.AnnotationModel AnnotationModel} representing how the annotation should look
      * @return the updated AnnotationModel
-     * @statuscode 200 - on success
-     * @statuscode 400 - if the AnnotationModel is invalid
-     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
-     * @statuscode 500 - on error
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -138,9 +131,6 @@ public class Annotation {
      * that are effectively orphaned (i.e. have no outbound links) by this deletion.
      *
      * @return A list of annotations that were deleted
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
-     * @statuscode 500 - on error
      */
     @DELETE
     @Produces("application/json; charset=utf-8")
@@ -201,11 +191,6 @@ public class Annotation {
      * including the new link.
      *
      * @param linkModel - the AnnotationLinkModel representing the link that should be added
-     * @statuscode 200 - on success
-     * @statuscode 304 - if the specified link already exists
-     * @statuscode 400 - if the AnnotationLinkModel is invalid
-     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
-     * @statuscode 500 - on error
      * @return an AnnotationModel for the annotation with its new link
      */
 
@@ -254,11 +239,7 @@ public class Annotation {
      * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}. Returns the annotation
      * with the link deleted.
      *
-     * @title Delete an outbound link on this annotation
      * @param linkModel - the AnnotationLinkModel representing the link that should be deleted
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
-     * @statuscode 500 - on error
      * @return an AnnotationModel for the annotation whose link was deleted
      */
 
@@ -301,12 +282,8 @@ public class Annotation {
      * set to 'true', then the call will return all ancestor annotations; otherwise it will
      * be limited to direct parents.
      *
-     * @title Return annotation's referents (parents)
      * @param recurse - Include all ancestors in response
      * @return a list of parent / ancestor AnnotationModels
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
-     * @statuscode 500 - on error
      */
 
     @GET
