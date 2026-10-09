@@ -18,6 +18,7 @@ import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.NameConflictException;
 import net.stemmaweb.services.VariantGraphService;
 
 public class NewickParser {
@@ -40,22 +41,30 @@ public class NewickParser {
         if (traditionNode == null)
             throw new StemmarestImportException(Response.Status.NOT_FOUND, "Tradition not found");
 
+        // Reject names that look like object IDs
+        if (DatabaseService.nameIsNumeric(stemmaSpec.getName()))
+            throw new StemmarestImportException(Response.Status.BAD_REQUEST,
+                    "Stemma name may not be numeric: " + stemmaSpec.getName());
+
         // Do we already have a stemma by this name? If so, abort.
-        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
-        	if (priorStemma.getProperty("name").equals(stemmaSpec.getIdentifier()))
-                throw new StemmarestImportException(Response.Status.CONFLICT, "A stemma by this name already exists for this tradition.");
+        try {
+            DatabaseService.ensureNameUnique(tx, traditionNode, ERelations.HAS_STEMMA, Nodes.STEMMA,
+                    "name", stemmaSpec.getName(), null);
+        } catch (NameConflictException e) {
+            throw new StemmarestImportException(Response.Status.CONFLICT, e.getMessage());
+        }
 
         // Parse the tree
         BufferedReader stringReader = new BufferedReader(new StringReader(stemmaSpec.getNewick()));
         TreeParser tp = new TreeParser(stringReader);
-        Tree nTree = tp.tokenize(stemmaSpec.getIdentifier());
+        Tree nTree = tp.tokenize(stemmaSpec.getName());
 
         // All end nodes are extant, and all intermediate nodes are hypothetical.
         // First ensure that the extant nodes exist as witnesses, then walk the tree making the stemma.
         HashMap<Integer,Node> stemmaWits = new HashMap<>();
         // Create the new stemma node
-        Node stemmaNode = tx.createNode(Nodes.STEMMA);
-        stemmaNode.setProperty("name", stemmaSpec.getIdentifier());
+        Node stemmaNode = DatabaseService.createNode(tx, Nodes.STEMMA);
+        stemmaNode.setProperty("name", stemmaSpec.getName());
         stemmaNode.setProperty("directed", false);
         if (stemmaSpec.cameFromJobid()) stemmaNode.setProperty("from_jobid", stemmaSpec.getJobid());
 
@@ -80,7 +89,7 @@ public class NewickParser {
         	for (int i = 0; i < n.numberChildren(); i++) {
         		Node target = stemmaWits.get(n.getChild(i).getKey());
         		Relationship r = source.createRelationshipTo(target, ERelations.TRANSMITTED);
-        		r.setProperty("hypothesis", stemmaSpec.getIdentifier());
+        		r.setProperty("hypothesis", stemmaSpec.getName());
         	}
         }
         // Set an "archetype" even though it's unrooted

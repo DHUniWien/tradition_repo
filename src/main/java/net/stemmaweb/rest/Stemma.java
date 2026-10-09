@@ -3,6 +3,7 @@ package net.stemmaweb.rest;
 import static net.stemmaweb.Util.jsonerror;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -10,9 +11,8 @@ import net.stemmaweb.parser.StemmarestImportException;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +39,8 @@ import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.parser.NewickParser;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.NameConflictException;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Comprises all the api calls related to a stemma.
@@ -49,7 +51,7 @@ public class Stemma {
 
     private final GraphDatabaseService db;
     private final String tradId;
-    private final String name;
+    private final String ref;
     private final Boolean newCreated;
 
     public Stemma (String traditionId, String requestedName) {
@@ -60,8 +62,27 @@ public class Stemma {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
-        name = requestedName;
+        // The ref might be the stemma's numeric id, or it might be its name.
+        ref = requestedName;
         newCreated = created;
+    }
+
+    /**
+     * Resolves this stemma's path-segment reference (numeric id or name) to its node, among
+     * the stemmata belonging to the tradition.
+     *
+     * @param tx the transaction within which we are working
+     * @return the matching stemma node
+     * @throws NotFoundException if no such tradition exists, or no stemma matches the reference
+     * @throws IllegalArgumentException if the reference is a name shared by 2+ stemmata
+     *         (only reachable for legacy data created before name uniqueness was enforced)
+     */
+    private Node resolveStemmaNode(Transaction tx) {
+        Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+        if (tradNode == null)
+            throw new NotFoundException(String.format("No tradition found with id %s", tradId));
+        List<Node> candidates = DatabaseService.getRelated(tradNode, ERelations.HAS_STEMMA);
+        return DatabaseService.resolveManagedRef(tx, Nodes.STEMMA, candidates, ref, "name");
     }
 
     /**
@@ -92,7 +113,7 @@ public class Stemma {
                     ),
                     @ApiResponse(
                             responseCode = "400",
-                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            description = "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
@@ -109,14 +130,15 @@ public class Stemma {
     )
     public Response getStemma() {
         try (Transaction tx = db.beginTx()) {
-            Node stemmaNode = getStemmaNode(tx);
-            if (stemmaNode == null) {
-                return Response.status(Status.NOT_FOUND)
-                        .entity(jsonerror(String.format("No stemma %s found for tradition %s", name, tradId))).build();
-            }
+            Node stemmaNode = resolveStemmaNode(tx);
             StemmaModel result = new StemmaModel(tx, stemmaNode);
             Status returncode = newCreated ? Status.CREATED : Status.OK;
             return Response.status(returncode).entity(result).build();
+        } catch (NotFoundException e) {
+            return Response.status(Status.NOT_FOUND)
+                    .entity(jsonerror(String.format("No stemma %s found for tradition %s", ref, tradId))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         }
     }
 
@@ -157,7 +179,7 @@ public class Stemma {
                     ),
                     @ApiResponse(
                             responseCode = "400",
-                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            description = "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
@@ -183,14 +205,60 @@ public class Stemma {
             }
     )
     public Response replaceStemma(StemmaModel stemmaSpec) {
-        // In case the stemma spec doesn't have a name, assume it wants the name in the URL just called
-        if (stemmaSpec.getIdentifier() == null)
-            stemmaSpec.setIdentifier(this.name);
-        // Wrap this entire thing in a transaction so that we can roll back
-        // the deletion if the replacement import fails.
+        if (stemmaSpec.getDot() == null && stemmaSpec.getNewick() == null) {
+            // Metadata-only change - don't recreate the stemma contents
+            try (Transaction tx = db.beginTx()) {
+                Node stemmaNode = resolveStemmaNode(tx);
+                Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+                String currentName = stemmaNode.getProperty("name").toString();
+                String targetName = stemmaSpec.getName() != null ? stemmaSpec.getName() : currentName;
+                if (DatabaseService.nameIsNumeric(targetName))
+                    return Response.status(Status.BAD_REQUEST)
+                            .entity(jsonerror("Stemma name may not be numeric: " + targetName)).build();
+                DatabaseService.ensureNameUnique(tx, tradNode, ERelations.HAS_STEMMA, Nodes.STEMMA,
+                        "name", targetName, stemmaNode);
+                if (!targetName.equals(currentName)) {
+                    // The "hypothesis" property on this stemma's TRANSMITTED relationships tags
+                    // them as belonging to this stemma by name (see DotExporter); keep them in
+                    // sync with the rename, or the stemma's own edges become unreachable.
+                    Set<Relationship> transmitted = new HashSet<>();
+                    for (Node witness : DatabaseService.getRelated(stemmaNode, ERelations.HAS_WITNESS))
+                        transmitted.addAll(DatabaseService.getRelationships(
+                                witness, Direction.BOTH, ERelations.TRANSMITTED));
+                    for (Relationship r : transmitted)
+                        if (currentName.equals(r.getProperty("hypothesis", null)))
+                            r.setProperty("hypothesis", targetName);
+                }
+                stemmaNode.setProperty("name", targetName);
+                StemmaModel result = new StemmaModel(tx, stemmaNode);
+                tx.commit();
+                return Response.ok(result).build();
+            } catch (NotFoundException e) {
+                return Response.status(Status.NOT_FOUND).build();
+            } catch (NameConflictException e) {
+                return Response.status(Status.CONFLICT).entity(jsonerror(e.getMessage())).build();
+            } catch (IllegalArgumentException e) {
+                return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+            }
+        }
+
+        // The stemma shape is changing. Wrap this entire thing in a transaction so that we can
+        // roll back the deletion if the replacement import fails.
         try (Transaction tx = db.beginTx()) {
-            if (!this.newCreated)
+            Object preservedId = null;
+            if (!this.newCreated) {
+                Node existing = resolveStemmaNode(tx);
+                // The replacement is a brand-new node, but it is still the same stemma as far
+                // as the caller is concerned, so it keeps the existing stemma's id.
+                preservedId = existing.getProperty("id", null);
+                // In case the stemma spec doesn't have a name, assume it wants to keep the
+                // name of the existing stemma being replaced -- not the raw ref, which may be
+                // its numeric id rather than its name.
+                if (stemmaSpec.getName() == null)
+                    stemmaSpec.setName(existing.getProperty("name").toString());
                 doStemmaDeletion(tx);
+            } else if (stemmaSpec.getName() == null)
+                stemmaSpec.setName(this.ref);
 
             if (stemmaSpec.getNewick() != null) {
                 // We are importing a Newick tree; roleplay accordingly.
@@ -201,9 +269,26 @@ public class Stemma {
                 parser.importStemmaFromDot(tradId, stemmaSpec);
             }
 
+            // Find the stemma we just imported. Both parsers enforce name uniqueness within
+            // the tradition, and fill in stemmaSpec's name if it was missing, so the name
+            // identifies it. Don't re-resolve this.ref - if it was the replaced stemma's
+            // numeric id, it no longer exists until we restore it below.
+            Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+            Node imported = DatabaseService.getRelated(tradNode, ERelations.HAS_STEMMA).stream()
+                    .filter(x -> stemmaSpec.getName().equals(x.getProperty("name", null)))
+                    .findFirst().orElseThrow(() -> new IllegalStateException(
+                            "Imported stemma " + stemmaSpec.getName() + " not found"));
+            // The replaced node has already been deleted within this transaction, so its id is
+            // free to reuse without colliding with the STEMMA id uniqueness constraint.
+            if (preservedId != null)
+                imported.setProperty("id", preservedId);
+            StemmaModel result = new StemmaModel(tx, imported);
             tx.commit();
-        }  catch (IllegalStateException e) {
+            return Response.status(this.newCreated ? Status.CREATED : Status.OK).entity(result).build();
+        } catch (NotFoundException e) {
             return Response.status(Status.NOT_FOUND).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (StemmarestImportException e) {
             e.printStackTrace();
             return Response.status(e.getStatus()).entity(jsonerror(e.getMessage())).build();
@@ -211,8 +296,6 @@ public class Stemma {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        // Return the stemma that has been PUT under this name.
-        return this.getStemma();
     }
 
 
@@ -238,7 +321,7 @@ public class Stemma {
                     ),
                     @ApiResponse(
                             responseCode = "400",
-                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            description = "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
@@ -257,17 +340,20 @@ public class Stemma {
             StemmaModel removed = doStemmaDeletion(tx);
             tx.commit();
             return Response.ok(removed).build();
-        } catch (IllegalStateException e) {
+        } catch (NotFoundException e) {
             return Response.status(Status.NOT_FOUND).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
         }
     }
 
     private StemmaModel doStemmaDeletion(Transaction tx) {
-        Node stemmaNode = getStemmaNode(tx);
-        if (stemmaNode == null)
-            throw new IllegalStateException("No such stemma");
+        Node stemmaNode = resolveStemmaNode(tx);
+        // The actual name, used to match TRANSMITTED relationships' "hypothesis" property
+        // below -- not the raw ref, which may be the stemma's numeric id rather than its name.
+        String stemmaName = stemmaNode.getProperty("name").toString();
 
         StemmaModel removed = new StemmaModel(tx, stemmaNode);
         Set<Relationship> removableRelations = new HashSet<>();
@@ -290,7 +376,7 @@ public class Stemma {
         removableNodes
                 .forEach(n -> DatabaseService.getRelationships(n, Direction.BOTH, ERelations.TRANSMITTED)
                         .forEach(r -> {
-                                    if (r.getProperty("hypothesis").equals(name))
+                                    if (r.getProperty("hypothesis").equals(stemmaName))
                                         removableRelations.add(r);
                                 }
                         ));
@@ -330,7 +416,7 @@ public class Stemma {
                     ),
                     @ApiResponse(
                             responseCode = "400",
-                            description = "if the stemma reference is a name shared by multiple stemmata",
+                            description = "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
@@ -353,22 +439,31 @@ public class Stemma {
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx()) {
-            // Get the stemma and the witness
-            Result foundStemma = tx.execute("match (:TRADITION {id:'" + tradId
-                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
-                    + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
-            if(!foundStemma.hasNext())
+            // Get the stemma
+            Node stemma;
+            try {
+                stemma = resolveStemmaNode(tx);
+            } catch (NotFoundException e) {
                 return Response.status(Status.NOT_FOUND).entity(jsonerror("No such witness found in stemma")).build();
-
-            // Fish the stemma and requested archetype out of the query
-            Map<String, Object> queryRow = foundStemma.next();
-            Node stemma    = (Node) queryRow.get("s");
-            Node archetype = (Node) queryRow.get("w");
+            } catch (IllegalArgumentException e) {
+                return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+            }
 
             // Check if the stemma has contamination. If so it can't be reoriented!
             if (stemma.hasProperty("is_contaminated"))
                 return Response.status(Status.PRECONDITION_FAILED)
                         .entity(jsonerror("Contaminated stemma cannot be reoriented")).build();
+
+            // Find the requested archetype witness among the stemma's witnesses
+            Node archetype = null;
+            for (Node witness : DatabaseService.getRelated(stemma, ERelations.HAS_WITNESS)) {
+                if (nodeId.equals(witness.getProperty("sigil", null))) {
+                    archetype = witness;
+                    break;
+                }
+            }
+            if (archetype == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("No such witness found in stemma")).build();
 
             // Delete its current HAS_ARCHETYPE, if any
             Relationship currentArchetype = stemma.getSingleRelationship(ERelations.HAS_ARCHETYPE, Direction.OUTGOING);
@@ -383,15 +478,6 @@ public class Stemma {
             tx.commit();
             return Response.ok(result).build();
         }
-    }
-
-    private Node getStemmaNode (Transaction tx) {
-        Result query = tx.execute("match (:TRADITION {id:'" + tradId
-                + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
-        ResourceIterator<Node> foundStemma = query.columnAs("s");
-        if (!foundStemma.hasNext())
-            return null;
-        return foundStemma.next();
     }
 
 }

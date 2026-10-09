@@ -13,7 +13,6 @@ import net.stemmaweb.services.DatabaseService;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
@@ -25,7 +24,9 @@ import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
+import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
@@ -111,7 +112,7 @@ public class WitnessTest {
                 .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
-        assertEquals("No witness path found for this sigil", Util.getValueFromJson(response, "error"));
+        assertEquals("No witness found with sigil D", Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -199,7 +200,7 @@ public class WitnessTest {
                 .request()
                 .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertEquals("No witness path found for this sigil", Util.getValueFromJson(response, "error"));
+        assertEquals("No witness found with sigil D", Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -262,16 +263,6 @@ public class WitnessTest {
                 .request()
                 .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-
-        // Now try it with a numeric ID of a node that is not a witness node
-        List<SectionModel> ourSections = jerseyTest.target("/tradition/" + tradId + "/sections")
-                .request()
-                .get(new GenericType<>() {});
-        String sectId = ourSections.getFirst().getId();
-        response = jerseyTest.target("/tradition/" + tradId + "/witness/" + sectId)
-                .request()
-                .get();
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
     }
 
     @Test
@@ -308,8 +299,8 @@ public class WitnessTest {
         String bogusId;
         try (Transaction tx = db.beginTx()) {
             Node traditionNode = tx.findNode(Nodes.TRADITION, "id", tradId);
-            Node bogus = tx.createNode(Nodes.WITNESS);
-            bogusId = bogus.getElementId();
+            Node bogus = DatabaseService.createNode(tx, Nodes.WITNESS);
+            bogusId = bogus.getProperty("id").toString();
             bogus.setProperty("hypothetical", false);
             bogus.setProperty("sigil", "n\":\"RJKYRSKZ");
             traditionNode.createRelationshipTo(bogus, ERelations.HAS_WITNESS);
@@ -339,10 +330,46 @@ public class WitnessTest {
         }
     }
 
-    @Ignore
     @Test
     public void deleteWitnessFromStemma() {
+        // Capture witness A's original (managed) id. Witness A is extant in both of the
+        // stemmata that come pre-loaded with testTradition.xml.
+        WitnessModel witnessA = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
+                .get(WitnessModel.class);
+        String originalId = witnessA.getId();
+        assertNotNull(originalId);
 
+        // Delete witness A tradition-wide.
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
+
+        // Each stemma that used to carry A as extant should now carry a hypothetical
+        // replacement witness with its own, distinct, managed id (not null, and not a
+        // leftover copy of the deleted witness's id).
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
+            List<Node> stemmaNodes = DatabaseService.getRelated(tradNode, ERelations.HAS_STEMMA);
+            assertTrue(stemmaNodes.size() > 0);
+            for (Node stemmaNode : stemmaNodes) {
+                Node replacement = null;
+                for (Node wit : DatabaseService.getRelated(stemmaNode, ERelations.HAS_WITNESS)) {
+                    if (wit.getProperty("sigil", "").equals("A")) {
+                        replacement = wit;
+                        break;
+                    }
+                }
+                assertNotNull(replacement);
+                assertTrue((Boolean) replacement.getProperty("hypothetical"));
+                assertTrue(replacement.hasProperty("id"));
+                String newId = replacement.getProperty("id").toString();
+                assertNotNull(newId);
+                assertNotEquals(originalId, newId);
+            }
+        }
     }
 
     @Test
@@ -351,7 +378,273 @@ public class WitnessTest {
                 "src/TestFiles/592th.xml", "graphmlsingle");
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
         String error = Util.getValueFromJson(r, "error");
-        assertEquals("The character \" may not appear in a sigil name.", error);
+        assertTrue(error.startsWith("The sigil \""));
+        // ...it might be one of a few sigla. We just care that we get the error
+        assertTrue(error.endsWith("is not a valid name: it must start with a letter or underscore and "
+                + "contain only letters, digits, underscores, hyphens, or periods thereafter"));
+    }
+
+    @Test
+    public void sigilNcNameValidationTest() {
+        // Reject a numeric sigil.
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("123").getStatus());
+        // Reject a sigil starting with a digit.
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("1a").getStatus());
+        // Reject a sigil containing a space.
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("my witness").getStatus());
+        // Reject a sigil containing an apostrophe.
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), importSingleWitnessTradition("Q1'").getStatus());
+        // Accept a sigil starting with a letter.
+        assertEquals(Response.Status.CREATED.getStatusCode(), importSingleWitnessTradition("Q1").getStatus());
+        // Accept a non-ASCII (Greek) sigil.
+        assertEquals(Response.Status.CREATED.getStatusCode(), importSingleWitnessTradition("α").getStatus());
+    }
+
+    // Minimal single-witness, single-reading CollateX JSON import, used to test sigil validation
+    private Response importSingleWitnessTradition(String sigil) {
+        String cxjson = String.format("{\"witnesses\": [\"%s\"], \"table\": [[[{\"t\": \"word\"}]]]}", sigil);
+        return Util.createTraditionFromFileOrString(jerseyTest, "SigilTest", "LR", "1", cxjson, "cxjson");
+    }
+
+    @Test
+    public void putWitnessRenameTest() {
+        WitnessModel witnessA = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
+                .get(WitnessModel.class);
+        String originalId = witnessA.getId();
+
+        // Rename A -> Z: 200, sigil changed, same id.
+        WitnessModel renameRequest = new WitnessModel();
+        renameRequest.setSigil("Z");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(renameRequest))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+            WitnessModel renamed = result.readEntity(WitnessModel.class);
+            assertEquals("Z", renamed.getSigil());
+            assertEquals(originalId, renamed.getId());
+        }
+
+        // Renaming a witness to its own current sigil succeeds (200), not 409.
+        WitnessModel noopRename = new WitnessModel();
+        noopRename.setSigil("Z");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Z")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(noopRename))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+            WitnessModel renamed = result.readEntity(WitnessModel.class);
+            assertEquals(originalId, renamed.getId());
+        }
+
+        // Renaming to a sigil already in use by another witness conflicts: 409.
+        WitnessModel conflictRename = new WitnessModel();
+        conflictRename.setSigil("B");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Z")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(conflictRename))) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), result.getStatus());
+        }
+
+        // An invalid (numeric-only) sigil is rejected: 400.
+        WitnessModel invalidRename = new WitnessModel();
+        invalidRename.setSigil("123");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Z")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(invalidRename))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), result.getStatus());
+        }
+
+        // A ref that resolves to nothing, with a body sigil matching the ref, creates a
+        // brand-new extant witness under that sigil: 201.
+        WitnessModel createRequest = new WitnessModel();
+        createRequest.setSigil("NEWWIT");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/NEWWIT")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(createRequest))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+            WitnessModel created = result.readEntity(WitnessModel.class);
+            assertEquals("NEWWIT", created.getSigil());
+            assertNotNull(created.getId());
+        }
+
+        // PUT within a section-scoped path is rejected: 400 (rename/create only makes
+        // sense tradition-wide).
+        List<SectionModel> ourSections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request()
+                .get(new GenericType<List<SectionModel>>() {});
+        String sectId = ourSections.getFirst().getId();
+        WitnessModel sectionRename = new WitnessModel();
+        sectionRename.setSigil("Q");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/witness/B")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(sectionRename))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), result.getStatus());
+        }
+    }
+
+    @Test
+    public void putWitnessCreateUsesUrlRefTest() {
+        // A body sigil that differs from a URL ref which resolves to nothing must not silently
+        // create a witness under the body's sigil (e.g. a typo'd rename): 400.
+        WitnessModel mismatched = new WitnessModel();
+        mismatched.setSigil("B2");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Aa")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(mismatched))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), result.getStatus());
+        }
+        // ...nor for a numeric ref that resolves to nothing.
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/99999")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(mismatched))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), result.getStatus());
+        }
+        // Nothing was created by either attempt.
+        List<WitnessModel> witnesses = jerseyTest.target("/tradition/" + tradId + "/witnesses")
+                .request()
+                .get(new GenericType<>() {});
+        assertEquals(3, witnesses.size());
+        assertTrue(witnesses.stream().noneMatch(x -> x.getSigil().equals("B2") || x.getSigil().equals("Aa")));
+
+        // No body sigil at all: created under the URL ref.
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Dnew")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(new WitnessModel()))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+            assertEquals("Dnew", result.readEntity(WitnessModel.class).getSigil());
+        }
+        // Body sigil equal to the URL ref: created under that sigil.
+        WitnessModel matching = new WitnessModel();
+        matching.setSigil("Enew");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Enew")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(matching))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+            assertEquals("Enew", result.readEntity(WitnessModel.class).getSigil());
+        }
+    }
+
+    @Test
+    public void renameWitnessKeepsTextTest() {
+        String expectedText = "when april with his showers sweet with "
+                + "fruit the drought of march has pierced unto the root";
+        List<String> expectedReadings = jerseyTest.target("/tradition/" + tradId + "/witness/A/readings")
+                .request()
+                .get(new GenericType<List<ReadingModel>>() {})
+                .stream().map(ReadingModel::getId).toList();
+
+        WitnessModel renameRequest = new WitnessModel();
+        renameRequest.setSigil("Arenamed");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(renameRequest))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
+
+        // The witness's text is still reachable under its new sigil...
+        Response textResp = jerseyTest.target("/tradition/" + tradId + "/witness/Arenamed/text")
+                .request()
+                .get();
+        assertEquals(Response.Status.OK.getStatusCode(), textResp.getStatus());
+        assertEquals(expectedText, textResp.readEntity(TextSequenceModel.class).getText());
+        assertEquals(expectedReadings, jerseyTest.target("/tradition/" + tradId + "/witness/Arenamed/readings")
+                .request()
+                .get(new GenericType<List<ReadingModel>>() {})
+                .stream().map(ReadingModel::getId).toList());
+        // ...and the old sigil no longer identifies anything.
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+                jerseyTest.target("/tradition/" + tradId + "/witness/A/text").request().get().getStatus());
+
+        // No sequence link anywhere in the tradition still carries the old sigil.
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship r : net.stemmaweb.services.VariantGraphService
+                    .returnEntireTradition(tx, tradId).relationships()) {
+                if (!r.isType(ERelations.SEQUENCE) && !r.isType(ERelations.NSEQUENCE)) continue;
+                for (Object v : r.getAllProperties().values())
+                    if (v instanceof String[] sigla)
+                        assertTrue(List.of(sigla).stream().noneMatch("A"::equals));
+            }
+        }
+    }
+
+    @Test
+    public void renameWitnessWithLayerAndNormalizationTest() {
+        // Florilegium has a.c. layer witnesses; normalize it too, so that NSEQUENCE links exist.
+        String florId = createTraditionFromFile("Florilegium", "src/TestFiles/florilegium_graphml.xml");
+        String qText = jerseyTest.target("/tradition/" + florId + "/witness/Q/text")
+                .request().get(TextSequenceModel.class).getText();
+        String qacText = jerseyTest.target("/tradition/" + florId + "/witness/Q/text")
+                .queryParam("layer", "a.c.")
+                .request().get(TextSequenceModel.class).getText();
+        boolean sawNsequence = false;
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = tx.findNode(Nodes.TRADITION, "id", florId);
+            // Any relation type will do: with no relations of that type, every reading simply
+            // represents itself, and the NSEQUENCE shadow graph mirrors the SEQUENCE graph.
+            new net.stemmaweb.model.RelationTypeModel("normtest").instantiate(tradNode, tx);
+            for (Node section : DatabaseService.getRelated(tradNode, ERelations.PART))
+                net.stemmaweb.services.VariantGraphService.normalizeGraph(tx, section, "normtest");
+            tx.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail();
+        }
+
+        WitnessModel renameRequest = new WitnessModel();
+        renameRequest.setSigil("Qnew");
+        try (Response result = jerseyTest.target("/tradition/" + florId + "/witness/Q")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(renameRequest))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
+        assertEquals(qText, jerseyTest.target("/tradition/" + florId + "/witness/Qnew/text")
+                .request().get(TextSequenceModel.class).getText());
+        assertEquals(qacText, jerseyTest.target("/tradition/" + florId + "/witness/Qnew/text")
+                .queryParam("layer", "a.c.")
+                .request().get(TextSequenceModel.class).getText());
+
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship r : net.stemmaweb.services.VariantGraphService
+                    .returnEntireTradition(tx, florId).relationships()) {
+                if (!r.isType(ERelations.SEQUENCE) && !r.isType(ERelations.NSEQUENCE)) continue;
+                if (r.isType(ERelations.NSEQUENCE)) sawNsequence = true;
+                for (Object v : r.getAllProperties().values())
+                    if (v instanceof String[] sigla)
+                        assertTrue(List.of(sigla).stream().noneMatch("Q"::equals));
+            }
+        }
+        assertTrue("fixture should have produced NSEQUENCE links", sawNsequence);
+    }
+
+    @Test
+    public void witnessCrossTraditionIdTest() {
+        // A numeric witness id belonging to another tradition must not resolve within this one.
+        String otherTradId = createTraditionFromFile("Chaucer", "src/TestFiles/Collatex-16.xml");
+        WitnessModel otherB = jerseyTest.target("/tradition/" + otherTradId + "/witness/B")
+                .request().get(WitnessModel.class);
+        String otherId = otherB.getId();
+
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+                jerseyTest.target("/tradition/" + tradId + "/witness/" + otherId).request().get().getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+                jerseyTest.target("/tradition/" + tradId + "/witness/" + otherId + "/text").request().get().getStatus());
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/witness/" + otherId).request().delete()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        }
+        WitnessModel renameRequest = new WitnessModel();
+        renameRequest.setSigil("Hijacked");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/witness/" + otherId)
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(renameRequest))) {
+            assertNotEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        }
+
+        // The other tradition's witness is untouched.
+        WitnessModel stillB = jerseyTest.target("/tradition/" + otherTradId + "/witness/" + otherId)
+                .request().get(WitnessModel.class);
+        assertEquals("B", stillB.getSigil());
+        assertEquals(Response.Status.OK.getStatusCode(),
+                jerseyTest.target("/tradition/" + otherTradId + "/witness/B/text").request().get().getStatus());
     }
 
     /**
@@ -474,6 +767,31 @@ public class WitnessTest {
 
     private String constructResult (String text) {
         return String.format("{\"text\":\"%s\"}", text);
+    }
+
+    @Test
+    public void witnessNonexistentTraditionTest() {
+        // GET/PUT/DELETE against a tradition id that doesn't exist returns 404
+        String badTradId = "10000";
+
+        Response getResponse = jerseyTest.target("/tradition/" + badTradId + "/witness/A")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getResponse.getStatus());
+
+        WitnessModel putBody = new WitnessModel();
+        putBody.setSigil("Z");
+        try (Response putResponse = jerseyTest.target("/tradition/" + badTradId + "/witness/A")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(putBody))) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), putResponse.getStatus());
+        }
+
+        try (Response deleteResponse = jerseyTest.target("/tradition/" + badTradId + "/witness/A")
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), deleteResponse.getStatus());
+        }
     }
 
     /*

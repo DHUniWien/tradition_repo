@@ -1782,6 +1782,12 @@
               }
             }
           },
+          "400" : {
+            "description" : "if the annotation label reference is a name shared by multiple labels (legacy data only)",
+            "content" : {
+              "application/json" : { }
+            }
+          },
           "404" : {
             "description" : "Annotation label not found",
             "content" : {
@@ -1849,13 +1855,13 @@
             }
           },
           "400" : {
-            "description" : "Error in the annotation type specification",
+            "description" : "if the annotation label reference is a name shared by multiple labels (legacy data only)",
             "content" : {
               "application/json" : { }
             }
           },
           "409" : {
-            "description" : "Requested name is already in use",
+            "description" : "Requested name is already in use, or a rename was requested for a label that is still in use by an annotation or another label's links",
             "content" : {
               "application/json" : { }
             }
@@ -1897,6 +1903,12 @@
                   "$ref" : "#/components/schemas/AnnotationLabelModel"
                 }
               }
+            }
+          },
+          "400" : {
+            "description" : "if the annotation label reference is a name shared by multiple labels (legacy data only)",
+            "content" : {
+              "application/json" : { }
             }
           },
           "404" : {
@@ -3547,6 +3559,16 @@
               }
             }
           },
+          "400" : {
+            "description" : "if the relation type reference is a name shared by multiple types (legacy data only)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
             "description" : "Not found, if the relation type does not exist",
             "content" : {
@@ -3564,7 +3586,7 @@
       "put" : {
         "tags" : [ "Relation Type" ],
         "summary" : "Create / update relation type specification",
-        "description" : "Creates or updates a relation type according to the specification given.",
+        "description" : "Creates or updates a relation type according to the specification given. If the specification has no name, a new type takes the name in the URL and an existing type keeps its current name. A type that is in use by any relation cannot be renamed.",
         "operationId" : "create_1",
         "parameters" : [ {
           "name" : "name",
@@ -3617,13 +3639,23 @@
             "description" : "A default type was requested, but could not be generated"
           },
           "400" : {
-            "description" : "Bad request, if the specification is invalid, with an error report in JSON format",
+            "description" : "if the relation type reference is a name shared by multiple types (legacy data only)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not found, if no such tradition exists",
             "content" : {
               "application/json" : { }
             }
           },
           "409" : {
-            "description" : "A default type was requested, but a type of that name already exists",
+            "description" : "A default type was requested, but a type of that name already exists; the new name conflicts with another existing relation type; or a rename was requested for a type that is still in use by relations",
             "content" : {
               "application/json" : { }
             }
@@ -3663,6 +3695,16 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/RelationTypeModel"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "if the relation type reference is a name shared by multiple types (legacy data only)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
                 }
               }
             }
@@ -6639,6 +6681,16 @@
               }
             }
           },
+          "400" : {
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
             "description" : "Witness not found"
           },
@@ -6651,6 +6703,93 @@
                 }
               }
             }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Witness" ],
+        "summary" : "Create or rename a witness",
+        "description" : "Creates a new extant witness, with the URL reference as its sigil, if that reference doesn't resolve to an existing witness (a sigil in the request body must then match the URL reference); otherwise renames the resolved witness to the sigil given in the request body, carrying the rename through to the witness's text. Only valid tradition-wide, not within a single section.",
+        "operationId" : "putWitness",
+        "parameters" : [ {
+          "name" : "sigil",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sectionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tradId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "description" : "A WitnessModel containing the desired sigil",
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WitnessModel"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successfully renamed the existing witness",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WitnessModel"
+                }
+              }
+            }
+          },
+          "201" : {
+            "description" : "Successfully created a new witness",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WitnessModel"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "if called within a single section, if the new sigil is not a valid name, if a new witness's body sigil doesn't match the URL reference, or if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Tradition not found"
+          },
+          "409" : {
+            "description" : "Another witness already has the requested sigil",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Server error during creation or rename"
           }
         }
       },
@@ -6693,7 +6832,7 @@
             }
           },
           "400" : {
-            "description" : "Cannot delete witness from a single section",
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -6759,6 +6898,16 @@
                   "items" : {
                     "$ref" : "#/components/schemas/ReadingModel"
                   }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
                 }
               }
             }
@@ -6860,7 +7009,7 @@
             }
           },
           "400" : {
-            "description" : "Invalid rank parameters",
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7170,7 +7319,7 @@
             }
           },
           "400" : {
-            "description" : "if the stemma reference is a name shared by multiple stemmata",
+            "description" : "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7327,7 +7476,7 @@
             }
           },
           "400" : {
-            "description" : "if the stemma reference is a name shared by multiple stemmata",
+            "description" : "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7396,7 +7545,7 @@
             }
           },
           "400" : {
-            "description" : "if the stemma reference is a name shared by multiple stemmata",
+            "description" : "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7692,6 +7841,16 @@
               }
             }
           },
+          "400" : {
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
             "description" : "Witness not found"
           },
@@ -7704,6 +7863,86 @@
                 }
               }
             }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Witness" ],
+        "summary" : "Create or rename a witness",
+        "description" : "Creates a new extant witness, with the URL reference as its sigil, if that reference doesn't resolve to an existing witness (a sigil in the request body must then match the URL reference); otherwise renames the resolved witness to the sigil given in the request body, carrying the rename through to the witness's text. Only valid tradition-wide, not within a single section.",
+        "operationId" : "putWitness_1",
+        "parameters" : [ {
+          "name" : "sigil",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "tradId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "description" : "A WitnessModel containing the desired sigil",
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WitnessModel"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successfully renamed the existing witness",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WitnessModel"
+                }
+              }
+            }
+          },
+          "201" : {
+            "description" : "Successfully created a new witness",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WitnessModel"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "if called within a single section, if the new sigil is not a valid name, if a new witness's body sigil doesn't match the URL reference, or if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Tradition not found"
+          },
+          "409" : {
+            "description" : "Another witness already has the requested sigil",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Server error during creation or rename"
           }
         }
       },
@@ -7739,7 +7978,7 @@
             }
           },
           "400" : {
-            "description" : "Cannot delete witness from a single section",
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7798,6 +8037,16 @@
                   "items" : {
                     "$ref" : "#/components/schemas/ReadingModel"
                   }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
                 }
               }
             }
@@ -7892,7 +8141,7 @@
             }
           },
           "400" : {
-            "description" : "Invalid rank parameters",
+            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -8690,6 +8939,9 @@
       "RelationTypeModel" : {
         "type" : "object",
         "properties" : {
+          "id" : {
+            "type" : "string"
+          },
           "defaultsettings" : {
             "type" : "boolean"
           },
@@ -8751,9 +9003,13 @@
       "StemmaModel" : {
         "type" : "object",
         "properties" : {
-          "identifier" : {
+          "id" : {
             "type" : "string",
-            "description" : "The name (identifier) of the stemma. Must be unique within a tradition."
+            "description" : "The internal (application-managed, numeric) ID of the stemma."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "The name of the stemma. Must be unique within a tradition."
           },
           "is_undirected" : {
             "type" : "boolean",
@@ -8791,6 +9047,9 @@
       "AnnotationLabelModel" : {
         "type" : "object",
         "properties" : {
+          "id" : {
+            "type" : "string"
+          },
           "name" : {
             "type" : "string"
           },

@@ -20,6 +20,7 @@ import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.NameConflictException;
 import net.stemmaweb.services.UnionFind;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -52,14 +53,19 @@ public class DotParser {
                 throw new StemmarestImportException(Status.BAD_REQUEST, "More than one graph was found in this DOT specification.");
             stemma = parsedgraphs.getFirst();
             // Get its name, in case we still don't have one
-            if (stemmaSpec.getIdentifier() == null)
-                stemmaSpec.setIdentifier(getDotGraphName(stemma));
+            if (stemmaSpec.getName() == null)
+                stemmaSpec.setName(getDotGraphName(stemma));
         } catch (ParseException e) {
             throw new StemmarestImportException(Status.BAD_REQUEST, "DOT parsing error: " + e.getMessage());
         }
 
-        // Save the graph into Neo4J.
-        return saveToNeo(stemma, tradId, stemmaSpec.getIdentifier(), stemmaSpec.getJobid());
+        // Save the graph into Neo4J. A sigil that fails validation is a problem with this
+        // stemma specification, so report it as such.
+        try {
+            return saveToNeo(stemma, tradId, stemmaSpec.getName(), stemmaSpec.getJobid());
+        } catch (IllegalArgumentException e) {
+            throw new StemmarestImportException(Status.BAD_REQUEST, e.getMessage());
+        }
     }
 
     private String saveToNeo(Graph stemma, String tradId, String stemmaName, Integer jobid) throws StemmarestImportException {
@@ -68,17 +74,35 @@ public class DotParser {
         if (traditionNode == null)
             throw new StemmarestImportException(Status.NOT_FOUND, "Tradition not found");
 
-        // First check that no stemma with this name already exists for this tradition,
-        // unless we intend to replace it.
-        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
-            if (priorStemma.getProperty("name").equals(stemmaName))
-                throw new StemmarestImportException(Status.CONFLICT,
-                        "A stemma by this name already exists for this tradition.");
+        // Reject names that look like object IDs
+        if (DatabaseService.nameIsNumeric(stemmaName))
+            throw new StemmarestImportException(Status.BAD_REQUEST,
+                    "Stemma name may not be numeric: " + stemmaName);
+
+        // Check that no stemma with this name already exists for this tradition.
+        try {
+            DatabaseService.ensureNameUnique(tx, traditionNode, ERelations.HAS_STEMMA, Nodes.STEMMA,
+                    "name", stemmaName, null);
+        } catch (NameConflictException e) {
+            throw new StemmarestImportException(Status.CONFLICT, e.getMessage());
+        }
 
         // Get a list of the existing (extant) tradition witnesses
         Map<String, Node> traditionWitnesses = new HashMap<>();
         DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
         .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
+
+        // Check every node's class and (for new witnesses) sigil before writing anything, so
+        // that a bad node doesn't leave a partially-created stemma behind (relevant where an
+        // importer skips a failed stemma rather than rolling back)
+        for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
+            String sigil = getNodeSigil(witness);
+            if (witness.getAttribute("class") == null)
+                throw new StemmarestImportException(Status.BAD_REQUEST,
+                        String.format("Witness %s not marked as either hypothetical or extant", sigil));
+            if (!traditionWitnesses.containsKey(sigil))
+                Util.validateWitnessSigil(sigil, witness.getAttribute("class").equals("hypothetical"));
+        }
 
         Node stemmaNode;
         Map<Node, Boolean> witnessesVisited = new HashMap<>();
@@ -86,7 +110,7 @@ public class DotParser {
         Boolean isDirected = stemma.getType() == 2;
         // Create the stemma in a separate transaction, so we can query it with unionFind to check its shape.
         // Create the new stemma node
-        stemmaNode = tx.createNode(Nodes.STEMMA);
+        stemmaNode = DatabaseService.createNode(tx, Nodes.STEMMA);
         stemmaNode.setProperty("name", stemmaName);
 
         stemmaNode.setProperty("directed", isDirected);

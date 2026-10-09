@@ -218,6 +218,29 @@ public class ReadingService {
         }
     }
 
+    /**
+     * Replaces one witness sigil with another on the given SEQUENCE / NSEQUENCE link, in
+     * every witness class (the main "witnesses" list and any layer such as "a.c.") in which
+     * it appears. Used to keep the text in sync when a witness is renamed.
+     * For use in a transaction.
+     *
+     * @param link     - the SEQUENCE or NSEQUENCE relationship to update
+     * @param oldSigil - the sigil to replace
+     * @param newSigil - the sigil to replace it with
+     */
+    public static void renameWitnessOnLink (Relationship link, String oldSigil, String newSigil) {
+        List<String> witClasses = new ArrayList<>();
+        link.getPropertyKeys().forEach(witClasses::add);
+        for (String witClass : witClasses) {
+            if (!(link.getProperty(witClass) instanceof String[] witList)) continue;
+            List<String> currentWits = new ArrayList<>(Arrays.asList(witList));
+            if (!currentWits.remove(oldSigil)) continue;
+            if (!currentWits.contains(newSigil))
+                currentWits.add(newSigil);
+            link.setProperty(witClass, currentWits.toArray(new String[0]));
+        }
+    }
+
     private static ArrayList<String> findWitLayers (Relationship r, String sigil) {
         ArrayList<String> sigLayers = new ArrayList<>();
         for (String layer : r.getPropertyKeys()) {

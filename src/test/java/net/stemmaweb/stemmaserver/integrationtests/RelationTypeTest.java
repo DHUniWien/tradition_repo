@@ -605,6 +605,344 @@ public class RelationTypeTest {
         }
     }
 
+    @Test
+    public void testPutRenameUsesUrlNotBody() {
+        // Create a relation type under "accents"
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("accents");
+        rtm.setDescription("Readings are the same but for diacriticals");
+        rtm.setIs_colocation(true);
+        String reltypeId;
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            reltypeId = r.readEntity(RelationTypeModel.class).getId();
+        }
+
+        // PUT again to the same URL, with a new name in the body
+        rtm.setName("diacriticals");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rtm))) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            // The ID should not have changed
+            RelationTypeModel result = r.readEntity(RelationTypeModel.class);
+            assertEquals(reltypeId, result.getId());
+            assertEquals("diacriticals", result.getName());
+        }
+
+        // Fetching by the new name succeeds
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/diacriticals")
+                .request(MediaType.APPLICATION_JSON).get()) {
+            RelationTypeModel result = r.readEntity(RelationTypeModel.class);
+            assertEquals(reltypeId, result.getId());
+            assertEquals("diacriticals", result.getName());
+        }
+
+        // Fetching by the old name now 404s
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON).get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        }
+
+        // There is only one relation type of the new name
+        List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
+                .request().get(new GenericType<>() {});
+        long matching = allRelTypes.stream().filter(t -> t.getName().equals("diacriticals")).count();
+        assertEquals(1, matching);
+        assertTrue(allRelTypes.stream().noneMatch(t -> t.getName().equals("accents")));
+    }
+
+    @Test
+    public void testRelationTypeIdAndDualAddressing() {
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("testtype");
+        rtm.setDescription("A test type");
+        RelationTypeModel created;
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/testtype")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            created = r.readEntity(RelationTypeModel.class);
+        }
+        assertNotNull(created.getId());
+        assertTrue(DatabaseService.nameIsNumeric(created.getId()));
+        String id = created.getId();
+
+        // GET by numeric id works identically to GET by name
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + id)
+                .request(MediaType.APPLICATION_JSON).get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            assertEquals("testtype", r.readEntity(RelationTypeModel.class).getName());
+        }
+
+        // PUT (rename) by numeric id
+        rtm.setName("renamedtype");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + id)
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            assertEquals("renamedtype", r.readEntity(RelationTypeModel.class).getName());
+        }
+
+        // DELETE by numeric id
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + id)
+                .request().delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        }
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + id)
+                .request(MediaType.APPLICATION_JSON).get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        }
+    }
+
+    @Test
+    public void testRelationTypeNumericNameRejected() {
+        // A numeric-only name is rejected on create...
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("12345");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/12345")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        }
+
+        // ...and on rename.
+        RelationTypeModel legit = new RelationTypeModel();
+        legit.setName("legit");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/legit")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(legit))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
+        legit.setName("98765");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/legit")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(legit))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        }
+    }
+
+    @Test
+    public void testRelationTypeRenameCollisionAndSelfRename() {
+        RelationTypeModel a = new RelationTypeModel();
+        a.setName("typea");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/typea")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(a))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
+        RelationTypeModel b = new RelationTypeModel();
+        b.setName("typeb");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/typeb")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(b))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
+
+        // Renaming typeb to a name already used by typea is rejected with 409
+        b.setName("typea");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/typeb")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(b))) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), r.getStatus());
+        }
+
+        // Renaming typea to its own current name succeeds (200, not 409)
+        a.setName("typea");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/typea")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(a))) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        }
+    }
+
+    @Test
+    public void relationTypeNonexistentTraditionTest() {
+        // GET/PUT/DELETE against a tradition id that doesn't exist returns 404
+        String badTradId = "10000";
+
+        Response getResponse = jerseyTest.target("/tradition/" + badTradId + "/relationtype/foo")
+                .request(MediaType.APPLICATION_JSON)
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getResponse.getStatus());
+
+        RelationTypeModel putBody = new RelationTypeModel();
+        putBody.setName("foo");
+        try (Response putResponse = jerseyTest.target("/tradition/" + badTradId + "/relationtype/foo")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(putBody))) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), putResponse.getStatus());
+        }
+
+        try (Response deleteResponse = jerseyTest.target("/tradition/" + badTradId + "/relationtype/foo")
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), deleteResponse.getStatus());
+        }
+    }
+
+    @Test
+    public void testRelTypeDeleteByIdBlockedByExistingRelations() {
+        // Make sure deletion guard checks relations by type name, not type ID
+        String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
+        String legei = readingLookup.getOrDefault("λεγει/1", "17");
+
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("accents");
+        rtm.setDescription("Readings are the same but for diacriticals");
+        rtm.setIs_colocation(true);
+        RelationTypeModel created;
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+            created = jerseyResult.readEntity(RelationTypeModel.class);
+        }
+        String id = created.getId();
+        assertNotNull(id);
+
+        // Make a RELATED relationship of this type, so its "type" property carries the name
+        // "accents".
+        RelationModel newRel = new RelationModel();
+        newRel.setSource(legeiAcute);
+        newRel.setTarget(legei);
+        newRel.setScope("tradition");
+        newRel.setDisplayform("λέγει");
+        newRel.setType("accents");
+        newRel.setIs_significant("no");
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+            GraphModel result = jerseyResult.readEntity(new GenericType<>() {});
+            assertEquals(2, result.getRelations().size());
+        }
+
+        // Deleting the type by its numeric id must still be blocked by the existing relations.
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + id)
+                .request().delete()) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
+        }
+
+        // Sanity check: it's still there and still addressable by id.
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + id)
+                .request(MediaType.APPLICATION_JSON).get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+            assertEquals("accents", jerseyResult.readEntity(RelationTypeModel.class).getName());
+        }
+    }
+
+    @Test
+    public void testRelTypeRenameBlockedWhileInUse() {
+        String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
+        String legei = readingLookup.getOrDefault("λεγει/1", "17");
+
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("accents");
+        rtm.setDescription("Readings are the same but for diacriticals");
+        rtm.setIs_colocation(true);
+        RelationTypeModel created;
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            created = r.readEntity(RelationTypeModel.class);
+        }
+        RelationModel newRel = new RelationModel();
+        newRel.setSource(legeiAcute);
+        newRel.setTarget(legei);
+        newRel.setScope("local");
+        newRel.setType("accents");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON).post(Entity.json(newRel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
+
+        // Renaming the in-use type (by name or by id) is refused, and nothing changes.
+        rtm.setName("diacriticals");
+        for (String ref : new String[] {"accents", created.getId()}) {
+            try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + ref)
+                    .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+                assertEquals(Response.Status.CONFLICT.getStatusCode(), r.getStatus());
+            }
+        }
+        RelationTypeModel unchanged = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + created.getId())
+                .request().get(RelationTypeModel.class);
+        assertEquals("accents", unchanged.getName());
+        assertEquals("Readings are the same but for diacriticals", unchanged.getDescription());
+
+        // Updating other properties under the same name, while in use, still works.
+        rtm.setName("accents");
+        rtm.setDescription("Differences of accent only");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            RelationTypeModel updated = r.readEntity(RelationTypeModel.class);
+            assertEquals("accents", updated.getName());
+            assertEquals("Differences of accent only", updated.getDescription());
+        }
+    }
+
+    @Test
+    public void testRelTypePutWithoutName() {
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("accents");
+        rtm.setDescription("Readings are the same but for diacriticals");
+        RelationTypeModel created;
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            created = r.readEntity(RelationTypeModel.class);
+        }
+
+        // A body with no "name" key at all updates the other fields and leaves the name alone,
+        // whether addressed by name or by id.
+        String noName = "{\"description\": \"Accent differences only\", \"bindlevel\": 3}";
+        for (String ref : new String[] {"accents", created.getId()}) {
+            try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/" + ref)
+                    .request(MediaType.APPLICATION_JSON).put(Entity.json(noName))) {
+                assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+                RelationTypeModel updated = r.readEntity(RelationTypeModel.class);
+                assertEquals("accents", updated.getName());
+                assertEquals(created.getId(), updated.getId());
+                assertEquals("Accent differences only", updated.getDescription());
+                assertEquals(3, updated.getBindlevel());
+            }
+        }
+        // Same with an explicit null name.
+        String nullName = "{\"name\": null, \"description\": \"Accents\"}";
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(nullName))) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            assertEquals("accents", r.readEntity(RelationTypeModel.class).getName());
+        }
+        List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
+                .request().get(new GenericType<>() {});
+        assertEquals(2, allRelTypes.size());
+
+        // Creating a new type with no name in the body takes its name from the URL.
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/grammatical")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json("{\"description\": \"Grammar\"}"))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            assertEquals("grammatical", r.readEntity(RelationTypeModel.class).getName());
+        }
+    }
+
+    @Test
+    public void testRelTypeCrossTraditionId() {
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("accents");
+        RelationTypeModel created;
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            created = r.readEntity(RelationTypeModel.class);
+        }
+        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Other", "LR", "1",
+                "src/TestFiles/john.csv", "csv");
+        String otherId = Util.getValueFromJson(jerseyResult, "tradId");
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), jerseyTest
+                .target("/tradition/" + otherId + "/relationtype/" + created.getId()).request().get().getStatus());
+        try (Response r = jerseyTest.target("/tradition/" + otherId + "/relationtype/" + created.getId())
+                .request().delete()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        }
+        assertEquals("accents", jerseyTest.target("/tradition/" + tradId + "/relationtype/" + created.getId())
+                .request().get(RelationTypeModel.class).getName());
+    }
+
     @After
     public void tearDown() throws Exception {
 //        db.shutdown();

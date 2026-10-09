@@ -14,6 +14,7 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.NameConflictException;
 
 /**
  * This model describes the properties of a particular relationship type.
@@ -28,6 +29,10 @@ import net.stemmaweb.services.DatabaseService;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
+    /**
+     * The internal (application-managed, numeric) ID of the relation type.
+     */
+    private String id;
     /**
      * The name of the relationship type (e.g. "grammatical")
      */
@@ -78,7 +83,9 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     private Boolean use_regular;
 
     public RelationTypeModel () {
-        this("noname");
+        // No name by default, so that a request body which omits the name can be told apart
+        // from one that supplies it (see RelationType.create and update() below).
+        this((String) null);
     }
 
     public RelationTypeModel (String name) {
@@ -97,6 +104,8 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
     public RelationTypeModel (Node n) {
         this();
+        if (n.hasProperty("id"))
+            this.setId(n.getProperty("id").toString());
         if (n.hasProperty("name"))
         	this.setName(n.getProperty("name").toString());
         if (n.hasProperty("description"))
@@ -115,6 +124,14 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         	this.setIs_generalizable((Boolean) n.getProperty("is_generalizable"));
         if (n.hasProperty("use_regular"))
         	this.setUse_regular((Boolean) n.getProperty("use_regular"));
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    private void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -190,21 +207,61 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     }
 
     /**
-     * Create the Neo4J node corresponding to this relation type model.
+     * Create the Neo4J node corresponding to this relation type model. The caller is
+     * responsible for having already established (e.g. via a dual-addressing resolve
+     * against the URL reference) that no existing node is being renamed/updated here --
+     * this always creates a brand-new node.
+     *
      * @param traditionNode - The tradition to which this model belongs
-     * @return the created RelationType node
+     * @return the newly-created RelationType node
+     * @throws NameConflictException if a relation type with this name already exists on the tradition
+     * @throws IllegalArgumentException if this model has no name, its name is numeric,
+     *         or the display string fails JSON validation
      */
     public Node instantiate (Node traditionNode, Transaction tx) throws Exception {
-        return match_relation_node(traditionNode, false, tx);
+        if (this.thename == null)
+            throw new IllegalArgumentException("Relation type name is required");
+        Node conflict = this.lookup(traditionNode);
+        if (conflict != null)
+            throw new NameConflictException(
+                    String.format("A relation type with name '%s' already exists", this.thename));
+        if (DatabaseService.nameIsNumeric(this.thename))
+            throw new IllegalArgumentException("Relation type name may not be numeric: " + this.thename);
+        Node relType = DatabaseService.createNode(tx, Nodes.RELATION_TYPE);
+        traditionNode.createRelationshipTo(relType, ERelations.HAS_RELATION_TYPE);
+        this.update_reltype(relType);
+        return relType;
     }
 
     /**
-     * Update the Neo4J node corresponding to this relation type model.
+     * Update the Neo4J node corresponding to this relation type model -- that is, the node
+     * resolved by the caller from the URL reference, not whatever node (if any) happens to
+     * share this model's {@code name}. Always writes this model's values onto {@code existingNode},
+     * including a rename if {@code this.thename} differs from its current name. If this model
+     * has no name (e.g. the request body omitted it), the node's current name is kept.
+     *
      * @param traditionNode - The tradition to which this model belongs
-     * @return the updated RelationType node
+     * @param existingNode - The already-resolved RelationType node to update
+     * @return the updated RelationType node (same as existingNode)
+     * @throws NameConflictException if this model's name is already used by a *different*
+     *         relation type on the tradition
+     * @throws IllegalArgumentException if this model's name is numeric, or the display
+     *         string fails JSON validation
      */
-    public Node update (Node traditionNode, Transaction tx) throws Exception {
-        return match_relation_node(traditionNode, true, tx);
+    public Node update (Node traditionNode, Node existingNode, Transaction tx) throws Exception {
+        String currentName = existingNode.getProperty("name").toString();
+        if (this.thename == null)
+            this.thename = currentName;
+        if (!this.thename.equals(currentName)) {
+            Node conflict = this.lookup(traditionNode);
+            if (conflict != null && !conflict.equals(existingNode))
+                throw new NameConflictException(
+                        String.format("A relation type with name '%s' already exists", this.thename));
+        }
+        if (DatabaseService.nameIsNumeric(this.thename))
+            throw new IllegalArgumentException("Relation type name may not be numeric: " + this.thename);
+        this.update_reltype(existingNode);
+        return existingNode;
     }
 
     /**
@@ -224,31 +281,6 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         }
 
         return relTypeNode;
-    }
-
-    private Node match_relation_node(Node traditionNode, Boolean allow_update, Transaction tx)
-            throws IllegalArgumentException {
-    	Node relType = this.lookup(traditionNode);
-        if (relType == null) {
-            // Create the node if it doesn't exist
-            relType = tx.createNode(Nodes.RELATION_TYPE);
-            this.update_reltype(relType);
-            traditionNode.createRelationshipTo(relType, ERelations.HAS_RELATION_TYPE);
-        } else {
-            // Check that the node matches our values, if it does exist
-            if (!(this.description.equals(relType.getProperty("description"))
-                    && this.display.equals(relType.getProperty("display"))
-                    && this.bindlevel == (int) relType.getProperty("bindlevel")
-                    && this.is_colocation == relType.getProperty("is_colocation")
-                    && this.is_weak == relType.getProperty("is_weak")
-                    && this.is_transitive == relType.getProperty("is_transitive")
-                    && this.is_generalizable == relType.getProperty("is_generalizable")
-                    && this.use_regular == relType.getProperty("use_regular"))) {
-                if (allow_update) this.update_reltype(relType);
-                else throw new IllegalArgumentException("Another relation type by this name already exists");
-            }
-        }
-        return relType;
     }
 
     private void update_reltype (Node relType) throws IllegalArgumentException {

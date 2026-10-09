@@ -25,7 +25,11 @@ public class DatabaseService {
     private static final Map<Label, String> MANAGED_COUNTERS = Map.of(
             Nodes.READING, "next_reading_id",
             Nodes.SECTION, "next_section_id",
-            Nodes.ANNOTATION, "next_annotation_id"
+            Nodes.ANNOTATION, "next_annotation_id",
+            Nodes.WITNESS, "next_witness_id",
+            Nodes.STEMMA, "next_stemma_id",
+            Nodes.RELATION_TYPE, "next_relationtype_id",
+            Nodes.ANNOTATIONLABEL, "next_annotationlabel_id"
     );
 
     /**
@@ -198,7 +202,7 @@ public class DatabaseService {
         long id = Long.parseLong(idStr);
         Node node = tx.findNode(label, "id", id);
         if (node == null) {
-            throw new NotFoundException(String.format("No %s node found with id %s", label.name(), idStr));
+            throw new NotFoundException(String.format("No %s found with id %s", label.name().toLowerCase(), idStr));
         }
         return node;
     }
@@ -216,9 +220,102 @@ public class DatabaseService {
         long id = Long.parseLong(idStr);
         Relationship rel = tx.findRelationship(ERelations.RELATED, "id", id);
         if (rel == null) {
-            throw new NotFoundException("No RELATED relationship found with id " + idStr);
+            throw new NotFoundException("No relation found with id " + idStr);
         }
         return rel;
+    }
+
+    /**
+     * Resolves a REST path-segment reference to a node of the given managed label, trying
+     * the application-assigned numeric "id" first and falling back to a name/sigil match
+     * among the given candidates. This is the "dual addressing" lookup used by
+     * Witness/Stemma/RelationType/AnnotationLabel endpoints (and any other managed label)
+     * so a resource can be addressed by its stable id as well as its mutable name.
+     *
+     * @param tx the transaction within which we are working
+     * @param label the managed label of the node to find
+     * @param candidates the pool of nodes in scope -- typically all nodes of this label
+     *                   belonging to a particular tradition. Both an id match and a name/sigil
+     *                   match must be among these candidates.
+     * @param ref the path-segment string: either the numeric id or the name/sigil
+     * @param nameProperty the name of the property to match ref against when it isn't numeric
+     * @return the matching node
+     * @throws NotFoundException if ref is numeric and no candidate has that id (including when
+     *         the id belongs to a node outside the candidates, e.g. in another tradition), or if
+     *         ref is a name/sigil and no candidate has it
+     * @throws AmbiguousReferenceException if ref is a name/sigil matched by 2+ candidates
+     */
+    public static Node resolveManagedRef(Transaction tx, Label label, List<Node> candidates, String ref, String nameProperty) {
+        if (nameIsNumeric(ref)) {
+            long id = Long.parseLong(ref);
+            Node node = tx.findNode(label, "id", id);
+            // The id lookup is database-wide; a node that exists but isn't among the given
+            // candidates (e.g. belongs to a different tradition) doesn't exist in this scope.
+            if (node == null || !candidates.contains(node)) {
+                throw new NotFoundException(String.format("No %s found with id %s", label.name().toLowerCase(), ref));
+            }
+            return node;
+        }
+        List<Node> matches = new ArrayList<>();
+        for (Node candidate : candidates) {
+            if (ref.equals(candidate.getProperty(nameProperty, null))) {
+                matches.add(candidate);
+            }
+        }
+        if (matches.isEmpty()) {
+            throw new NotFoundException(String.format("No %s found with %s %s", label.name().toLowerCase(), nameProperty, ref));
+        }
+        if (matches.size() > 1) {
+            throw new AmbiguousReferenceException(String.format(
+                    "Ambiguous reference: %d %s nodes found with %s %s; use the numeric id instead",
+                    matches.size(), label.name().toLowerCase(), nameProperty, ref));
+        }
+        return matches.getFirst();
+    }
+
+    /**
+     * Enforces name/sigil uniqueness among the children of a given parent node: throws if
+     * a *different* child already has the candidate name, otherwise returns normally having
+     * acquired a write lock on the parent node, so that the caller can safely assign the name.
+     *
+     * @param tx the transaction within which we are working
+     * @param parentNode the parent node whose children are checked for a name collision
+     * @param childRelType the relationship type connecting parentNode to its children
+     * @param childLabel the label the colliding child must carry to be considered
+     * @param nameProperty the name of the property to check for a collision
+     * @param candidateName the name/sigil being claimed
+     * @param excludeSelf a child to exclude from the collision check (e.g. the node being
+     *                    renamed, which may already carry candidateName as its current
+     *                    name) -- may be null, e.g. on create, when there is no such node yet
+     * @throws NameConflictException if a different child of childLabel already has
+     *         nameProperty == candidateName
+     */
+    public static void ensureNameUnique(Transaction tx, Node parentNode, RelationshipType childRelType,
+                                         Label childLabel, String nameProperty, String candidateName, Node excludeSelf) {
+        tx.acquireWriteLock(parentNode);
+        for (Node child : getRelated(parentNode, childRelType)) {
+            if (!child.hasLabel(childLabel)) continue;
+            if (child.equals(excludeSelf)) continue;
+            if (candidateName.equals(child.getProperty(nameProperty, null))) {
+                throw new NameConflictException(String.format(
+                        "A %s with %s '%s' already exists", childLabel.name().toLowerCase(), nameProperty, candidateName));
+            }
+        }
+    }
+
+    /**
+     * Helper to check whether a string looks like a numeric id.
+     *
+     * @param value the string to check
+     * @return true if it can parse as a number
+     */
+    public static boolean nameIsNumeric(String value) {
+        try {
+            Long.parseLong(value);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     /**

@@ -20,10 +20,15 @@ import net.stemmaweb.rest.ERelations;
 public class StemmaModel {
 
     /**
-     * The name (identifier) of the stemma. Must be unique within a tradition.
+     * The internal (application-managed, numeric) ID of the stemma.
      */
-    @Schema(description = "The name (identifier) of the stemma. Must be unique within a tradition.")
-    private String identifier;
+    @Schema(description = "The internal (application-managed, numeric) ID of the stemma.")
+    private String id;
+    /**
+     * The name of the stemma. Must be unique within a tradition.
+     */
+    @Schema(description = "The name of the stemma. Must be unique within a tradition.")
+    private String name;
     /**
      * True if this is an undirected tree, rather than a directed stemma.
      */
@@ -50,7 +55,9 @@ public class StemmaModel {
     public StemmaModel () {}
 
     public StemmaModel(Transaction tx, Node stemmaNode) {
-        identifier = stemmaNode.getProperty("name").toString();
+        Object idProp = stemmaNode.getProperty("id", null);
+        id = idProp == null ? null : idProp.toString();
+        name = stemmaNode.getProperty("name").toString();
         is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);
         is_contaminated = stemmaNode.hasProperty("is_contaminated");
         if (stemmaNode.hasProperty("from_jobid"))
@@ -61,8 +68,10 @@ public class StemmaModel {
         dot = writer.getStemmaDot(stemmaNode, false);
     }
 
-    public String getIdentifier () { return this.identifier; }
-    public void setIdentifier(String identifier) { this.identifier = identifier; }
+    public String getId () { return this.id; }
+
+    public String getName () { return this.name; }
+    public void setName(String name) { this.name = name; }
 
     public String getDot () { return this.dot; }
     public void setDot(String dot) { this.dot = dot; }

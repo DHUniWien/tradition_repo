@@ -5,13 +5,13 @@ import static net.stemmaweb.Util.jsonerror;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
@@ -44,13 +44,14 @@ import net.stemmaweb.services.VariantGraphService;
 public class AnnotationLabel {
     private final GraphDatabaseService db;
     private final String tradId;
-    private final String name;
+    private final String ref;
 
-    AnnotationLabel(String tradId, String name) {
+    AnnotationLabel(String tradId, String requestedName) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         this.tradId = tradId;
-        this.name = name;
+        // The ref might be the annotation label's numeric id, or it might be its name.
+        this.ref = requestedName;
     }
 
     /**
@@ -70,6 +71,7 @@ public class AnnotationLabel {
             description = "Retrieves the specification for the given annotation type name.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "400", description = "if the annotation label reference is a name shared by multiple labels (legacy data only)", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "404", description = "Annotation label not found", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
@@ -83,6 +85,10 @@ public class AnnotationLabel {
         	} else {
         	    response = Response.ok(new AnnotationLabelModel(ourNode)).build();
         	}
+        } catch (NotFoundException e) {
+        	response = Response.status(Response.Status.NOT_FOUND).build();
+        } catch (IllegalArgumentException e) {
+        	response = Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
         	e.printStackTrace();
         	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -100,7 +106,8 @@ public class AnnotationLabel {
      * @statuscode 200 on update of existing label
      * @statuscode 201 on creation of new label
      * @statuscode 400 if there is an error in the annotation type specification
-     * @statuscode 409 if the requested name is already in use
+     * @statuscode 409 if the requested name is already in use, or if a rename was requested for
+     *             a label that is still in use by an annotation or another label's links
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
@@ -119,7 +126,8 @@ public class AnnotationLabel {
                     @ApiResponse(responseCode = "200", description = "Updated existing label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
                     @ApiResponse(responseCode = "201", description = "Created new label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
                     @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "409", description = "Requested name is already in use", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "400", description = "if the annotation label reference is a name shared by multiple labels (legacy data only)", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "Requested name is already in use, or a rename was requested for a label that is still in use by an annotation or another label's links", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
     )
@@ -131,19 +139,29 @@ public class AnnotationLabel {
             // Get the existing list of annotation labels associated with this tradition
             List<String> reservedWords = Arrays.asList("USER", "ROOT", "__SYSTEM__");
             List<String> existingLabels = getValidTargetsForTradition(tx, reservedWords);
+            boolean specHasProperties = alm.getProperties() != null && !alm.getProperties().isEmpty();
+            boolean specHasLinks = alm.getLinks() != null && !alm.getLinks().isEmpty();
 
             if (ourNode == null) {
                 isNew = true;
                 // Sanity check - the name in the request needs to match the name in the URL.
-                if (!alm.getName().equals(name))
+                if (!alm.getName().equals(ref))
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity(jsonerror("Name mismatch in annotation label creation request")).build();
+                // Reject names that look like object IDs
+                if (DatabaseService.nameIsNumeric(alm.getName()))
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(jsonerror("Annotation label name may not be numeric: " + alm.getName())).build();
                 // The label can't already exist in the NODES enum
                 if (existingLabels.contains(alm.getName()) || reservedWords.contains(alm.getName()))
                     return Response.status(Response.Status.CONFLICT)
                             .entity(jsonerror("Requested label " + alm.getName() + " already in use")).build();
-                // Create the label and its properties and links
-                ourNode = tx.createNode(Nodes.ANNOTATIONLABEL);
+                // We need to be specifying at least one link.
+                if (!specHasLinks)
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(jsonerror("Annotation label must have at least one link specified")).build();
+                // Create the label; we will add properties and links below.
+                ourNode = DatabaseService.createNode(tx, Nodes.ANNOTATIONLABEL);
                 tradNode.createRelationshipTo(ourNode, ERelations.HAS_ANNOTATION_TYPE);
                 ourNode.setProperty("name", alm.getName());
                 existingLabels.add(alm.getName());
@@ -151,26 +169,50 @@ public class AnnotationLabel {
                 // We are updating an existing label, so we should delete its existing properties and links.
                 // First check to make sure that, if we have changed the name, there is not already
                 // another annotation label with this name
-                if (!alm.getName().equals(name) && (existingLabels.contains(alm.getName()) || reservedWords.contains(alm.getName())))
-                    return Response.status(Response.Status.CONFLICT).entity(jsonerror(
-                            "Requested label name " + alm.getName() + " already in use")).build();
-
-                // LATER Sanity check that the properties / links being deleted (and not restored) aren't in use
-                Relationship p = ourNode.getSingleRelationship(ERelations.HAS_PROPERTIES, Direction.OUTGOING);
-                if (p != null) {
-                    p.getEndNode().delete();
-                    p.delete();
+                String currentName = ourNode.getProperty("name").toString();
+                if (DatabaseService.nameIsNumeric(alm.getName()))
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(jsonerror("Annotation label name may not be numeric: " + alm.getName())).build();
+                // Now deal with the name field being empty or null - in this case, pretend no name change was requested
+                if (alm.getName() == null || alm.getName().isEmpty())
+                    alm.setName(currentName);
+                if (!alm.getName().equals(currentName)) {
+                    if (existingLabels.contains(alm.getName()) || reservedWords.contains(alm.getName()))
+                        return Response.status(Response.Status.CONFLICT).entity(jsonerror(
+                                "Requested label name " + alm.getName() + " already in use")).build();
+                    // Annotations carry their label's name as a node label, and other labels'
+                    // link schemata refer to it by name, so a label in use can't be renamed.
+                    // LATER consider allowing rename-only requests
+                    String usage = findLabelUsage(tradNode, ourNode, currentName);
+                    if (usage != null)
+                        return Response.status(Response.Status.CONFLICT).entity(jsonerror(
+                                "Cannot rename an annotation label that is still in use: " + usage)).build();
                 }
-                Relationship l = ourNode.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
-                if (l != null) {
-                    l.getEndNode().delete();
-                    l.delete();
+
+                // Apply the (possible) rename.
+                ourNode.setProperty("name", alm.getName());
+
+                // Delete the property and/or link definitions if we are resetting them
+                // LATER Sanity check that the properties / links being deleted (and not restored) aren't in use
+                if (specHasProperties) {
+                    Relationship p = ourNode.getSingleRelationship(ERelations.HAS_PROPERTIES, Direction.OUTGOING);
+                    if (p != null) {
+                        p.getEndNode().delete();
+                        p.delete();
+                    }
+                }
+                if (specHasLinks) {
+                    Relationship l = ourNode.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
+                    if (l != null) {
+                        l.getEndNode().delete();
+                        l.delete();
+                    }
                 }
 
             }
             // Now reset the properties and links according to the model given.
             // Do we have any new properties?
-            if (!alm.getProperties().isEmpty()) {
+            if (specHasProperties) {
                 Node pnode = tx.createNode(Nodes.PROPERTIES);
                 ourNode.createRelationshipTo(pnode, ERelations.HAS_PROPERTIES);
                 ArrayList<String> allowedValues = new ArrayList<>(Arrays.asList("Boolean", "Long", "Double",
@@ -198,7 +240,7 @@ public class AnnotationLabel {
                 }
             }
             // Do we have any links?
-            if (!alm.getLinks().isEmpty()) {
+            if (specHasLinks) {
                 Node lnode = tx.createNode(Nodes.LINKS);
                 ourNode.createRelationshipTo(lnode, ERelations.HAS_LINKS);
                 for (String key : alm.getLinks().keySet()) {
@@ -213,6 +255,10 @@ public class AnnotationLabel {
             tx.commit();
             return Response.status(isNew ? Response.Status.CREATED : Response.Status.OK)
             		.entity(returnedModel).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -238,6 +284,7 @@ public class AnnotationLabel {
             description = "Deletes the specified annotation label specification from the tradition. Returns an error if the label is still in use.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "400", description = "if the annotation label reference is a name shared by multiple labels (legacy data only)", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "404", description = "Annotation label not found", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "409", description = "Annotation label is still in use", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
@@ -250,26 +297,29 @@ public class AnnotationLabel {
     		AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
     		Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
             // Check for annotations on this tradition using this label, before we delete it
-            for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION))
-                if (annoNode.hasLabel(Label.label(ourModel.getName())))
-                    return Response.status(Response.Status.CONFLICT).entity(jsonerror(
-                            "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getElementId()))
-                            .build();
+            Node annoNode = findAnnotationUsing(tradNode, ourModel.getName());
+            if (annoNode != null)
+                return Response.status(Response.Status.CONFLICT).entity(jsonerror(
+                        "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getElementId()))
+                        .build();
 
             // Delete the label's properties and links
             for (Relationship r : DatabaseService.getRelationships(ourNode, Direction.OUTGOING)) {
                 r.getEndNode().delete();
                 r.delete();
             }
-            // Delete any reference to the label in any other label's linkset
+            // Delete any reference to the label in any other label's linkset -- compare against
+            // the resolved label's actual name, not the raw URL reference (which may be a numeric
+            // id), since link targets are always stored by name.
             for (Node n : getExistingLabelsForTradition(tx)) {
                 if (n.equals(ourNode)) continue;
                 Relationship l = n.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
                 if (l != null) {
-                    for (String lname : l.getEndNode().getPropertyKeys()) {
-                        if (l.getEndNode().getProperty(lname).toString().equals(name))
-                            l.getEndNode().removeProperty(lname);
-                    }
+                    // Links are stored keyed by the target label's name, with the link
+                    // type(s) as the value -- so it is the key we need to match.
+                    Node linkNode = l.getEndNode();
+                    if (linkNode.hasProperty(ourModel.getName()))
+                        linkNode.removeProperty(ourModel.getName());
                 }
             }
             // Finally, delete the label
@@ -277,20 +327,75 @@ public class AnnotationLabel {
             ourNode.delete();
             tx.commit();
             return Response.ok(ourModel).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 
+    /**
+     * Resolves this annotation label's path-segment reference (numeric id or name) to its node,
+     * among the annotation labels belonging to the tradition.
+     *
+     * @param tx the transaction within which we are working
+     * @return the matching annotation label node, or null if no label matches the reference
+     * @throws NotFoundException if no such tradition exists
+     * @throws IllegalArgumentException if the reference is a name shared by 2+ labels
+     *         (only reachable for legacy data created before name uniqueness was enforced)
+     */
     private Node lookupAnnotationLabel(Transaction tx) {
-        Node ourNode = null;
         Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
-        Optional<Node> foundNode = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
-        		.stream().filter(x -> x.getProperty("name", "").equals(name)).findFirst();
-        if (foundNode.isPresent()) ourNode = foundNode.get();
+        if (tradNode == null)
+            throw new NotFoundException(String.format("No tradition found with id %s", tradId));
+        List<Node> candidates = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE);
+        try {
+            return DatabaseService.resolveManagedRef(tx, Nodes.ANNOTATIONLABEL, candidates, ref, "name");
+        } catch (NotFoundException e) {
+            return null;
+        }
+    }
 
-        return ourNode;
+    /**
+     * Finds an annotation on the tradition that uses the annotation label of the given name
+     * (annotations carry their label's name as a Neo4j node label).
+     *
+     * @param tradNode the tradition node
+     * @param labelName the annotation label's current name
+     * @return the first annotation found using the label, or null if there is none
+     */
+    private static Node findAnnotationUsing(Node tradNode, String labelName) {
+        Label asLabel = Label.label(labelName);
+        for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION))
+            if (annoNode.hasLabel(asLabel))
+                return annoNode;
+        return null;
+    }
+
+    /**
+     * Reports whether the annotation label of the given name is in use, either by an
+     * annotation on the tradition, or as a link target in another annotation label's link
+     * schema (stored keyed by the target label's name).
+     *
+     * @param tradNode the tradition node
+     * @param labelNode the annotation label node itself, whose own links are not counted
+     * @param labelName the annotation label's current name
+     * @return a description of the first use found, or null if the label is unused
+     */
+    private static String findLabelUsage(Node tradNode, Node labelNode, String labelName) {
+        Node annoNode = findAnnotationUsing(tradNode, labelName);
+        if (annoNode != null)
+            return "used by annotation " + annoNode.getProperty("id", annoNode.getElementId());
+        for (Node other : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)) {
+            if (other.equals(labelNode)) continue;
+            Relationship l = other.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
+            if (l != null && l.getEndNode().hasProperty(labelName))
+                return "link target of annotation label " + other.getProperty("name");
+        }
+        return null;
     }
 
     private List<Node> getExistingLabelsForTradition(Transaction tx) {

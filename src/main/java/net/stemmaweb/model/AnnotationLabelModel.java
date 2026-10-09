@@ -18,6 +18,10 @@ import net.stemmaweb.services.DatabaseService;
 
 public class AnnotationLabelModel {
     /**
+     * The internal (application-managed, numeric) ID of the annotation label.
+     */
+    private String id;
+    /**
      * What is the label name for this type of annotation?
      */
     private String name;
@@ -70,6 +74,8 @@ public class AnnotationLabelModel {
 
     private void initFromNode(Node annNode) {
 //        GraphDatabaseService db = annNode.getGraphDatabase();
+    	// Look up the id
+    	if (annNode.hasProperty("id")) this.setId(annNode.getProperty("id").toString());
     	// Look up the name
     	this.setName(annNode.getProperty("name").toString());
 
@@ -92,6 +98,14 @@ public class AnnotationLabelModel {
     			links.put(key, lnode.getProperty(key).toString());
     		}
     	}
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    private void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {

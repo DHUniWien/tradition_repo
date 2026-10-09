@@ -17,7 +17,7 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 @JsonInclude(Include.NON_NULL)
 public class WitnessModel implements Comparable<WitnessModel> {
     /**
-     * The Neo4J node ID of the witness
+     * The internal (application-managed, numeric) ID of the witness
      */
     private String id;
     /**
@@ -33,7 +33,7 @@ public class WitnessModel implements Comparable<WitnessModel> {
      * @param node - the witness node to initialize from
      */
     public WitnessModel(Node node) {
-        id = node.getElementId();
+        id = node.getProperty("id").toString();
         if (node.hasProperty("sigil"))
             sigil = (String) node.getProperty("sigil");
     }

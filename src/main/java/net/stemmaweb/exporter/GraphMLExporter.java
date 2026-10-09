@@ -114,7 +114,7 @@ public class GraphMLExporter {
     }
 
     /**
-     * The application-assigned "id" property on Reading/Section/Annotation nodes (see
+     * The application-assigned "id" property on any managed-label node (see
      * DatabaseService.assignIdIfManaged), and likewise on RELATED relationships (see
      * DatabaseService.createRelatedRelationship), is a global counter value (scoped to the
      * whole ROOT node, not per-tradition): meaningless outside the tradition that minted it,
@@ -131,7 +131,9 @@ public class GraphMLExporter {
     private static boolean isManagedNumericId(Entity ent, String propName) {
         if (!propName.equals("id")) return false;
         if (ent instanceof Node node) {
-            return node.hasLabel(Nodes.READING) || node.hasLabel(Nodes.SECTION) || node.hasLabel(Nodes.ANNOTATION);
+            for (Label label : node.getLabels())
+                if (DatabaseService.isManagedLabel(label)) return true;
+            return false;
         }
         return ent instanceof Relationship rel && rel.isType(ERelations.RELATED);
     }

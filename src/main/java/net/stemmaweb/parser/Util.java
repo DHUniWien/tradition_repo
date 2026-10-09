@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -55,13 +56,69 @@ public class Util {
         return endNode;
     }
 
-    // Witness node creation
-    static Node createWitness(Transaction tx, String sigil, Boolean hypothetical) throws IllegalArgumentException {
-        // First check if the sigil has any characters that will cause trouble for REST
-        for (String illegal : new String[] {"<", ">", "#", "%", "\"", "{", "}", "|", "\\", "^", "[", "]", "`", "(", ")"})
+    // NCName pattern for validation
+    private static final String NCNAME_START_CHARS =
+            "A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF"
+                    + "\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
+    private static final String NCNAME_CHARS =
+            NCNAME_START_CHARS + "\\-.0-9\\u00B7\\u0300-\\u036F\\u203F\\u2040";
+    private static final Pattern NCNAME_PATTERN =
+            Pattern.compile("^[" + NCNAME_START_CHARS + "][" + NCNAME_CHARS + "]*$");
+
+    /**
+     * Validates that a witness sigil is a legal NCName for use in TEI exports.
+     *
+     * @param sigil the candidate sigil
+     * @throws IllegalArgumentException if sigil is null or not a valid NCName
+     */
+    public static void validateSigil(String sigil) throws IllegalArgumentException {
+        if (sigil == null || !NCNAME_PATTERN.matcher(sigil).matches())
+            throw new IllegalArgumentException(String.format(
+                    "The sigil \"%s\" is not a valid name: it must start with a letter or underscore "
+                            + "and contain only letters, digits, underscores, hyphens, or periods thereafter",
+                    sigil));
+    }
+
+    // Characters that would break a REST URL path segment.
+    private static final String[] PATH_UNSAFE_CHARS =
+            {"<", ">", "#", "%", "\"", "{", "}", "|", "\\", "^", "[", "]", "`", "(", ")"};
+
+    /**
+     * Validates the sigil of a hypothetical (non-extant) stemma witness. Don't need NCNames
+     * but do need REST path compatibility.
+     *
+     * @param sigil the candidate sigil
+     * @throws IllegalArgumentException if sigil is null or empty, or contains a character that
+     *         would break a REST URL path segment
+     */
+    private static void validateHypotheticalSigil(String sigil) throws IllegalArgumentException {
+        if (sigil == null || sigil.isEmpty())
+            throw new IllegalArgumentException("A witness sigil may not be empty.");
+        for (String illegal : PATH_UNSAFE_CHARS)
             if (sigil.contains(illegal))
                 throw new IllegalArgumentException("The character " + illegal + " may not appear in a sigil name.");
-        Node witnessNode = tx.createNode(Nodes.WITNESS);
+    }
+
+    /**
+     * Validates a sigil for a new witness: full NCName validation (see {@link #validateSigil})
+     * for an extant witness, whose sigil ends up as a TEI xml:id on export; the lighter
+     * path-safety check for a hypothetical stemma witness, which is never exported to TEI.
+     *
+     * @param sigil the candidate sigil
+     * @param hypothetical whether the witness is hypothetical
+     * @throws IllegalArgumentException if the sigil is not valid for this kind of witness
+     */
+    public static void validateWitnessSigil(String sigil, Boolean hypothetical) throws IllegalArgumentException {
+        if (Boolean.TRUE.equals(hypothetical))
+            validateHypotheticalSigil(sigil);
+        else
+            validateSigil(sigil);
+    }
+
+    // Witness node creation
+    public static Node createWitness(Transaction tx, String sigil, Boolean hypothetical) throws IllegalArgumentException {
+        validateWitnessSigil(sigil, hypothetical);
+        Node witnessNode = DatabaseService.createNode(tx, Nodes.WITNESS);
         witnessNode.setProperty("sigil", sigil);
         witnessNode.setProperty("hypothetical", hypothetical);
         witnessNode.setProperty("quotesigil", !isDotId(sigil));
@@ -95,7 +152,7 @@ public class Util {
         }
     }
 
-    private static Boolean isDotId (String nodeid) {
+    public static Boolean isDotId (String nodeid) {
         return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
                 || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
