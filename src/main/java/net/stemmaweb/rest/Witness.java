@@ -73,7 +73,7 @@ public class Witness {
      * @return the matching witness node
      * @throws NotFoundException if no such tradition exists, or no witness matches the reference
      * @throws IllegalArgumentException if the reference is a sigil shared by 2+ witnesses
-     *         (only reachable for legacy data created before sigil uniqueness was enforced)
+     *         (should be unreachable!)
      */
     private Node resolveWitnessNode(Transaction tx) {
         Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
@@ -152,11 +152,6 @@ public class Witness {
                             responseCode = "400",
                             description = "Cannot delete witness from a single section",
                             content = @Content(schema = @Schema(implementation = String.class))
-                    ),
-                    @ApiResponse(
-                            responseCode = "400",
-                            description = "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
-                            content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
                             responseCode = "404",
@@ -248,8 +243,6 @@ public class Witness {
             tx.commit();
         } catch (NotFoundException e) {
             return Response.status(Status.NOT_FOUND).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();

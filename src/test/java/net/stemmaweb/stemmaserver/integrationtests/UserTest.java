@@ -251,7 +251,7 @@ public class UserTest {
             try (Response actualResponse = jerseyTest.target("/user/1")
                     .request()
                     .delete()) {
-                assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), actualResponse.getStatus());
+                assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
             }
 
             /*

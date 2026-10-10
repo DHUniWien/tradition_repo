@@ -408,7 +408,7 @@ public class Stemma {
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
                     @ApiResponse(
-                            responseCode = "412",
+                            responseCode = "409",
                             description = "if the stemma is contaminated",
                             content = @Content(schema = @Schema(implementation = Map.class))
                     ),
@@ -434,7 +434,7 @@ public class Stemma {
 
             // Check if the stemma has contamination. If so it can't be reoriented!
             if (stemma.hasProperty("is_contaminated"))
-                return Response.status(Status.PRECONDITION_FAILED)
+                return Response.status(Status.CONFLICT)
                         .entity(jsonerror("Contaminated stemma cannot be reoriented")).build();
 
             // Find the requested archetype witness among the stemma's witnesses

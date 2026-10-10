@@ -182,7 +182,7 @@ public class User {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserModel.class))),
                     @ApiResponse(responseCode = "404", description = "User not found", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "412", description = "User still owns traditions", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "User still owns traditions", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
     )
@@ -197,7 +197,7 @@ public class User {
                 // See if the user owns any traditions
                 ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
                 if (!userTraditions.isEmpty())
-                    return Response.status(Status.PRECONDITION_FAILED)
+                    return Response.status(Status.CONFLICT)
                             .entity("User's traditions must be deleted first")
                             .build();
 

@@ -293,7 +293,7 @@ digraph "loop" {
                 .target("/tradition/" + tradId + "/stemma/loop/reorient/A")
                 .request()
                 .post(null)) {
-            assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), result.getStatus());
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), result.getStatus());
         }
     }
 
