@@ -6832,7 +6832,7 @@
             }
           },
           "400" : {
-            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "description" : "Cannot delete witness from a single section",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7564,7 +7564,7 @@
               }
             }
           },
-          "412" : {
+          "409" : {
             "description" : "if the stemma is contaminated",
             "content" : {
               "application/json; charset=utf-8" : {
@@ -7978,7 +7978,7 @@
             }
           },
           "400" : {
-            "description" : "if the witness reference is a sigil shared by multiple witnesses (legacy data only)",
+            "description" : "Cannot delete witness from a single section",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -8416,7 +8416,7 @@
               "application/json" : { }
             }
           },
-          "412" : {
+          "409" : {
             "description" : "User still owns traditions",
             "content" : {
               "application/json" : { }

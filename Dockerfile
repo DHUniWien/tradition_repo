@@ -1,4 +1,4 @@
-FROM tomcat:9-jdk11
+FROM tomcat:11-jdk25
 LABEL vendor=DHUniWien
 
 # Update packages, install Graphviz
