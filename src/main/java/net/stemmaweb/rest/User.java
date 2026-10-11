@@ -198,7 +198,7 @@ public class User {
                 ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
                 if (!userTraditions.isEmpty())
                     return Response.status(Status.CONFLICT)
-                            .entity("User's traditions must be deleted first")
+                            .entity(jsonerror("User's traditions must be deleted first"))
                             .build();
 
                 // Otherwise, do the deed.
@@ -207,9 +207,11 @@ public class User {
                 tx.commit();
             } else {
                 return Response.status(Status.NOT_FOUND)
-                        .entity("A user with this ID was not found")
+                        .entity(jsonerror("A user with this ID was not found"))
                         .build();
             }
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(removed).build();
     }

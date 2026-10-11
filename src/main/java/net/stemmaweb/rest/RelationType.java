@@ -100,7 +100,7 @@ public class RelationType {
             responses = {
                     @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
                     @ApiResponse(responseCode = "400", description = "if the relation type reference is a name shared by multiple types (legacy data only)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
-                    @ApiResponse(responseCode = "404", description = "Not found, if the relation type does not exist", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Not found, if the relation type does not exist or if the tradition does not exist", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
     )
@@ -110,7 +110,7 @@ public class RelationType {
             Node foundRelType = resolveRelationTypeNode(tx, traditionNode);
             return Response.ok(new RelationTypeModel(foundRelType)).build();
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
@@ -144,11 +144,10 @@ public class RelationType {
             responses = {
                     @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel (existing type was updated)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
                     @ApiResponse(responseCode = "201", description = "A JSON RelationTypeModel (new type was created)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
-                    @ApiResponse(responseCode = "304", description = "A default type was requested, but could not be generated"),
                     @ApiResponse(responseCode = "400", description = "Bad request, if the specification is invalid, with an error report in JSON format", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "400", description = "if the relation type reference is a name shared by multiple types (legacy data only)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
                     @ApiResponse(responseCode = "404", description = "Not found, if no such tradition exists", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "409", description = "A default type was requested, but a type of that name already exists; the new name conflicts with another existing relation type; or a rename was requested for a type that is still in use by relations", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "A default type was requested, but could not be generated or a type of that name already exists; the new name conflicts with another existing relation type; or a rename was requested for a type that is still in use by relations", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }
     )
@@ -171,7 +170,8 @@ public class RelationType {
                             .entity(jsonerror("Cannot instantiate a default for a type that already exists")).build();
                 RelationTypeModel defaultType = RelationService.makeDefaultType(tx, traditionNode, typeName);
                 if (defaultType == null)
-                    return Response.notModified().build();
+                    return Response.status(Response.Status.CONFLICT)
+                            .entity(jsonerror("Could not generate a default relation type for the given name")).build();
 
                 tx.commit();
                 return Response.status(Response.Status.CREATED).entity(defaultType).build();

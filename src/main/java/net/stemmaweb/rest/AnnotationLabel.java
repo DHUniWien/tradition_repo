@@ -117,6 +117,7 @@ public class AnnotationLabel {
                     @ApiResponse(responseCode = "201", description = "Created new label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
                     @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "400", description = "if the annotation label reference is a name shared by multiple labels (legacy data only)", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "409", description = "Requested name is already in use, or a rename was requested for a label that is still in use by an annotation or another label's links", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
             }

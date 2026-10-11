@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import net.stemmaweb.model.RelationTypeModel;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Traverser;
@@ -89,16 +90,20 @@ public class Relation {
                             content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = GraphModel.class))
                     ),
                     @ApiResponse(
-                            responseCode = "304",
-                            description = "If the specified relation type/scope already exists"
+                            responseCode = "204",
+                            description = "If an identical relation already exists"
                     ),
                     @ApiResponse(
                             responseCode = "400",
                             description = "If the request has an invalid scope"
                     ),
                     @ApiResponse(
+                            responseCode = "404",
+                            description = "If the specified source or target reading does not exist, with JSON error message"
+                    ),
+                    @ApiResponse(
                             responseCode = "409",
-                            description = "If the relationship cannot legally be created"
+                            description = "If the relationship cannot legally be created, with JSON error message"
                     ),
                     @ApiResponse(
                             responseCode = "500",
@@ -111,7 +116,7 @@ public class Relation {
         if (relationModel.getScope() == null) relationModel.setScope(SCOPE_LOCAL);
         String scope = relationModel.getScope();
         if (!scope.equals(SCOPE_TRADITION) && !scope.equals(SCOPE_SECTION) && !scope.equals(SCOPE_LOCAL)) {
-            return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
         }
 
         try (Transaction tx = db.beginTx()) {
@@ -120,7 +125,7 @@ public class Relation {
             // Create the local relation
             GraphModel localResult = RelationService.createLocalRelation(tx, tradId, relationModel);
             if (localResult.getRelations().isEmpty()) {
-                return Response.status(Status.NOT_MODIFIED).build();
+                return Response.status(Status.NO_CONTENT).build();
             }
             relationChanges.addReadings(localResult.getReadings());
             relationChanges.addRelations(localResult.getRelations());
@@ -196,6 +201,8 @@ public class Relation {
             return Response.status(Status.CREATED).entity(relationChanges).build();
         } catch (IllegalStateException e) {
             return Response.status(Status.CONFLICT).entity(jsonerror(e.getMessage())).build();
+        } catch (NotFoundException e) {
+            return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -223,13 +230,16 @@ public class Relation {
             ),
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of all relationships that were removed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class))),
-                    @ApiResponse(responseCode = "400", description = "Bad request, if an invalid scope was specified", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "404", description = "Not found, if no matching relationship was found", content = @Content(mediaType = "application/json")),
-                    @ApiResponse(responseCode = "500", description = "Failure (uncaught exception; response body format not guaranteed)")
+                    @ApiResponse(responseCode = "400", description = "Bad request, if scope is missing or invalid", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Not found, if no matching relationship was found, or if the source or target reading does not exist", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure (uncaught exception), with JSON error message", content = @Content(mediaType = "application/json"))
             }
     )
     public Response deleteByData(RelationModel relationModel) {
         ArrayList<RelationModel> deleted = new ArrayList<>();
+        if (relationModel.getScope() == null) {
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror("scope is required")).build();
+        }
 
         try (Transaction tx = db.beginTx()) {
             Node readingA = DatabaseService.findNodeOrThrow(tx, Nodes.READING, relationModel.getSource());
@@ -275,6 +285,10 @@ public class Relation {
                     return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
             }
             tx.commit();
+        } catch (NotFoundException e) {
+            return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.status(Response.Status.OK).entity(deleted).build();
     }
@@ -300,7 +314,8 @@ public class Relation {
             ),
             responses = {
                     @ApiResponse(responseCode = "200", description = "The deleted relation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationModel.class))),
-                    @ApiResponse(responseCode = "500", description = "Failure (e.g. the given ID does not belong to a RELATED relationship), with JSON error message", content = @Content(mediaType = "application/json"))
+                    @ApiResponse(responseCode = "404", description = "If the given ID does not belong to a RELATED relationship, with JSON error message", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure (uncaught exception), with JSON error message", content = @Content(mediaType = "application/json"))
             }
     )
     public Response deleteById(@PathParam("relationId") String relationId) {
@@ -311,6 +326,8 @@ public class Relation {
             relationModel = new RelationModel(relationship);
             relationship.delete();
             tx.commit();
+        } catch (NotFoundException e) {
+            return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }

@@ -103,11 +103,6 @@ public class Stemma {
                             content = @Content(schema = @Schema(implementation = StemmaModel.class))
                     ),
                     @ApiResponse(
-                            responseCode = "201",
-                            description = "Stemma was created",
-                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
-                    ),
-                    @ApiResponse(
                             responseCode = "400",
                             description = "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
                             content = @Content(schema = @Schema(implementation = Map.class))
@@ -128,8 +123,7 @@ public class Stemma {
         try (Transaction tx = db.beginTx()) {
             Node stemmaNode = resolveStemmaNode(tx);
             StemmaModel result = new StemmaModel(tx, stemmaNode);
-            Status returncode = newCreated ? Status.CREATED : Status.OK;
-            return Response.status(returncode).entity(result).build();
+            return Response.status(Status.OK).entity(result).build();
         } catch (NotFoundException e) {
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror(String.format("No stemma %s found for tradition %s", ref, tradId))).build();

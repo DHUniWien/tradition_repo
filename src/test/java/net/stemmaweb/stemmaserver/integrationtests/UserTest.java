@@ -31,6 +31,7 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.User;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -434,6 +435,103 @@ public class UserTest {
                 .request(MediaType.APPLICATION_JSON)
                 .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getNotFoundStemmaResponse.getStatus());
+    }
+
+    /**
+     * Test that deleteUser returns 409 with proper JSON error format when user still owns traditions
+     */
+    @Test
+    public void testDeleteUserConflictBody() {
+        /*
+         * Create User 1
+         */
+        UserModel userModel = new UserModel();
+        userModel.setId("conflict_user");
+        userModel.setRole("user");
+        try (Response r = jerseyTest.target("/user/conflict_user")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(userModel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
+
+        /*
+         * Create a test tradition for the user
+         */
+        try(Transaction tx = db.beginTx())
+        {
+            String createTradition = "CREATE (tradition:TRADITION { id:'999' })";
+            tx.execute(createTradition).close();
+            String createNewRelationQuery = "MATCH(user:USER {id:'conflict_user'}) "
+                    + "MATCH(tradition: TRADITION {id:'999'}) "
+                    + "SET tradition.name = 'TestTradition' "
+                    + "SET tradition.public = '0' "
+                    + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
+            tx.execute(createNewRelationQuery).close();
+            tx.commit();
+        }
+
+        /*
+         * Try to remove the user (should fail with 409)
+         */
+        try (Response actualResponse = jerseyTest.target("/user/conflict_user")
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
+            String error = net.stemmaweb.stemmaserver.Util.getValueFromJson(actualResponse, "error");
+            assertNotNull("409 error response should be JSON with 'error' field", error);
+            assertFalse("Error message should be non-empty", error.isEmpty());
+        }
+    }
+
+    /**
+     * Test that deleteUser returns 404 with proper JSON error format when user not found
+     */
+    @Test
+    public void testDeleteUserNotFoundBody() {
+        /*
+         * Try to remove a non-existent user (should return 404)
+         */
+        try (Response actualResponse = jerseyTest.target("/user/nonexistent_user")
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+            String error = net.stemmaweb.stemmaserver.Util.getValueFromJson(actualResponse, "error");
+            assertNotNull("404 error response should be JSON with 'error' field", error);
+            assertFalse("Error message should be non-empty", error.isEmpty());
+        }
+    }
+
+    /**
+     * Test that deleteUser returns 500 with proper JSON error format on unexpected exceptions
+     */
+    @Test
+    public void testDeleteUserUnexpectedErrorCatchAll() {
+        // Test that deleteUser has a catch-all exception handler that returns 500 with
+        // proper JSON error format. This triggers a genuine unexpected exception
+        // (NullPointerException) by shutting down the database before calling deleteUser.
+        // When deleteUser() tries to call db.beginTx(), it will get NPE
+        // since db is null after shutdown, falling through to catch (Exception e).
+
+        // First create a user
+        UserModel userModel = new UserModel();
+        userModel.setId("exception_user");
+        userModel.setRole("user");
+        try (Response r = jerseyTest.target("/user/exception_user")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(userModel))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        }
+
+        // Now shutdown the database to force an exception
+        GraphDatabaseServiceProvider.shutdown();
+
+        // Try to delete the user - should get 500 with jsonerror body
+        Response response = new User("exception_user").deleteUser();
+
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        String error = net.stemmaweb.stemmaserver.Util.getValueFromJson(response, "error");
+        assertNotNull("500 error response should be JSON with 'error' field", error);
+        assertFalse("Error message should be non-empty", error.isEmpty());
     }
 
     /*

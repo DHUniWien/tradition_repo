@@ -200,6 +200,19 @@ graph "Semstem 1402333041_0" {
     }
 
     @Test
+    public void getStemmaAlwaysReturnsOkTest() {
+        // GET on an existing stemma should always report 200, never 201 (201 is reserved
+        // for the POST /stemma creation endpoint, which does not route through getStemma()).
+        String stemmaTitle = "stemma";
+        try (Response actualStemmaResponse = jerseyTest
+                .target("/tradition/" + tradId + "/stemma/" + stemmaTitle)
+                .request(MediaType.APPLICATION_JSON)
+                .get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
+        }
+    }
+
+    @Test
     public void setStemmaTest() {
 
         try (Transaction tx = db.beginTx()) {

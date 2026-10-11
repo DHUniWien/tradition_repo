@@ -775,6 +775,61 @@ graph "Semstem 1402333041_0" {
         }
     }
 
+    @Test
+    public void testGetWitnessAsTextWithLayerBadRank() {
+        // Call with a non-numeric start rank parameter
+        Response response = jerseyTest
+                .target("/tradition/" + tradId + "/witness/A/text")
+                .queryParam("start", "not-a-number")
+                .queryParam("end", "5")
+                .request()
+                .get();
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("Invalid rank parameters", Util.getValueFromJson(response, "error"));
+
+        // Call with a non-numeric end rank parameter (when not "E")
+        Response response2 = jerseyTest
+                .target("/tradition/" + tradId + "/witness/A/text")
+                .queryParam("start", "0")
+                .queryParam("end", "not-a-number")
+                .request()
+                .get();
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response2.getStatus());
+        assertEquals("Invalid rank parameters", Util.getValueFromJson(response2, "error"));
+    }
+
+    @Test
+    public void testGetWitnessInfoNotFound() {
+        // Test that getWitnessInfo returns 404 with proper JSON error format for non-existent witness.
+        // This verifies the jsonerror wrapping on the NotFoundException handler.
+        Response response = jerseyTest
+                .target("/tradition/" + tradId + "/witness/NonExistent")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        String errorMsg = Util.getValueFromJson(response, "error");
+        assertNotNull("Error response should be JSON with 'error' field", errorMsg);
+    }
+
+    @Test
+    public void testGetWitnessInfoUnexpectedErrorCatchAll() {
+        // Test that getWitnessInfo has a catch-all exception handler that returns 500 with
+        // proper JSON error format (Step 3 requirement). This triggers a genuine unexpected
+        // exception (NullPointerException) that bypasses the specific NotFoundException and
+        // IllegalArgumentException catch clauses.
+        //
+        // Shutdown the GraphDatabaseServiceProvider singleton, then construct a Witness
+        // instance. When getWitnessInfo() tries to call db.beginTx(), it will get NPE
+        // since db is null after shutdown, falling through to catch (Exception e).
+        GraphDatabaseServiceProvider.shutdown();
+        Response response = new Witness(tradId, "A").getWitnessInfo();
+
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        String error = Util.getValueFromJson(response, "error");
+        assertNotNull("500 error response should be JSON with 'error' field", error);
+        assertFalse("Error message should be non-empty", error.isEmpty());
+    }
+
     /*
      * Shut down the jersey server
      *

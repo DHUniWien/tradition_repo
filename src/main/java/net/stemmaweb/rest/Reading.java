@@ -108,7 +108,7 @@ public class Reading {
             description = "Returns the metadata for a single reading.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "The reading information as a JSON structure.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReadingModel.class))),
-                    @ApiResponse(responseCode = "204", description = "If the reading doesn't exist"),
+                    @ApiResponse(responseCode = "404", description = "If the reading doesn't exist"),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message")
             }
     )
@@ -118,7 +118,8 @@ public class Reading {
             reading = new ReadingModel(DatabaseService.findNodeOrThrow(tx, Nodes.READING, readId));
         } catch (NotFoundException | IllegalArgumentException e) {
             // The tradition and reading were set, but to something that doesn't exist
-            return Response.noContent().build();
+            errorMessage = "Reading " + readId + " not found";
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
@@ -347,7 +348,7 @@ public class Reading {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "A GraphModel containing the lacuna and its associated SEQUENCE links.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GraphModel.class))),
-                    @ApiResponse(responseCode = "400", description = "If a specified witness does not pass through the given reading"),
+                    @ApiResponse(responseCode = "400", description = "If a specified witness does not pass through the given reading, or if the witness path ends at the given reading"),
                     @ApiResponse(responseCode = "404", description = "Reading not found"),
                     @ApiResponse(responseCode = "500", description = "On error")
             })
@@ -375,10 +376,15 @@ public class Reading {
                 }
                 // Find the witness's following node
                 HashMap<String, String> wit = parseSigil(sigil);
-                Node next = getNeighbourReadingInSequence(tx, readId, wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
-                if (next == null) {
-                    errorMessage = "Witness path " + sigil + " ends after requested reading";
-                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                Node next;
+                try {
+                    next = getNeighbourReadingInSequence(tx, readId, wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
+                } catch (RuntimeException e) {
+                    if (e.getMessage() != null && e.getMessage().startsWith("There is no next reading")) {
+                        errorMessage = "Witness path " + sigil + " ends after requested reading";
+                        return errorResponse(Status.BAD_REQUEST);
+                    }
+                    throw e;
                 }
                 // Are we going to need to re-rank it?
                 if (next.getProperty("rank", 0L).equals((Long) us.getProperty("rank") + 1))
@@ -901,7 +907,7 @@ public class Reading {
             requestBody = @RequestBody(description = "A set of criteria indicating how the reading is to be split.", required = true, content = @Content(schema = @Schema(implementation = ReadingBoundaryModel.class))),
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
-                    @ApiResponse(responseCode = "400", description = "Please specify a model for how the reading should be split!", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "400", description = "No model specified for how the reading should be split, the split index is out of range, the given (regex or literal) separator does not match / is not found in the reading text, the separator does not occur at the given index, or the reading to be split is part of a relation.", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "404", description = "Reading not found", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with a descriptive error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
@@ -942,7 +948,7 @@ public class Reading {
                 errorMessage = "A reading to be split cannot be part of any relation";
 
             if (errorMessage != null)
-                return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                return errorResponse(Status.BAD_REQUEST);
 
             readingsAndRelations = split(tx, originalReading, splitIndex, model);
             ReadingService.recalculateRank(tx, originalReading, true);
@@ -1076,7 +1082,8 @@ public class Reading {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = ReadingModel.class))),
-                    @ApiResponse(responseCode = "404", description = "If there is no subsequent reading", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "400", description = "If the requested witness layer does not pass through this reading", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "404", description = "If the reading doesn't exist, or if there is no subsequent reading", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
     )
@@ -1084,15 +1091,21 @@ public class Reading {
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         try (Transaction tx = db.beginTx()) {
             Node foundNeighbour = getNeighbourReadingInSequence(tx, readId, witnessId, layer, Direction.OUTGOING);
-            if (foundNeighbour != null) {
-                ReadingModel result = new ReadingModel(foundNeighbour);
-                if (result.getIs_end()) {
-                    errorMessage = "this was the last reading for this witness";
-                    return errorResponse(Status.NOT_FOUND);
-                }
-                return Response.ok(new ReadingModel(foundNeighbour)).build();
+            ReadingModel result = new ReadingModel(foundNeighbour);
+            if (result.getIs_end()) {
+                errorMessage = "this was the last reading for this witness";
+                return errorResponse(Status.NOT_FOUND);
             }
-            return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
+            return Response.ok(result).build();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
+        } catch (IllegalArgumentException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.BAD_REQUEST);
+        } catch (Exception e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -1117,7 +1130,8 @@ public class Reading {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = ReadingModel.class))),
-                    @ApiResponse(responseCode = "404", description = "If there is no prior reading", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "400", description = "If the requested witness layer does not pass through this reading", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "404", description = "If the reading doesn't exist, or if there is no prior reading", content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
             }
     )
@@ -1125,15 +1139,21 @@ public class Reading {
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         try (Transaction tx = db.beginTx()) {
             Node foundNeighbour = getNeighbourReadingInSequence(tx, readId, witnessId, layer, Direction.INCOMING);
-            if (foundNeighbour != null) {
-                ReadingModel result = new ReadingModel(foundNeighbour);
-                if (result.getIs_start()) {
-                    errorMessage = "this was the first reading for this witness";
-                    return errorResponse(Status.NOT_FOUND);
-                }
-                return Response.ok(new ReadingModel(foundNeighbour)).build();
+            ReadingModel result = new ReadingModel(foundNeighbour);
+            if (result.getIs_start()) {
+                errorMessage = "this was the first reading for this witness";
+                return errorResponse(Status.NOT_FOUND);
             }
-            return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
+            return Response.ok(result).build();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
+        } catch (IllegalArgumentException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.BAD_REQUEST);
+        } catch (Exception e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
     }
 

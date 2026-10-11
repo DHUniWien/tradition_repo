@@ -66,6 +66,7 @@ import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
@@ -447,7 +448,7 @@ public class ReadingTest {
     // The bare top-level /reading/{id} route constructs its Reading resource via a
     // constructor that validates the id up front (ReadingService.getTraditionId) and
     // throws a 404 before getReading()'s own body (and its
-    // catch (NotFoundException | IllegalArgumentException) -> 204 branch) ever runs.
+    // catch (NotFoundException | IllegalArgumentException) -> 404 branch) ever runs.
     // This has not changed in this task: only the format of a "valid-looking" id
     // changed (from elementId-shaped to numeric), not the control flow, so both a
     // malformed and a well-formed-but-missing id continue to produce 404 here, same
@@ -466,6 +467,22 @@ public class ReadingTest {
                 .target("/reading/999999")
                 .request(MediaType.APPLICATION_JSON).get();
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
+    }
+
+    // getReading()'s own NotFoundException/IllegalArgumentException -> 404 branch is
+    // unreachable via any registered HTTP route, since every route that delegates to
+    // Reading pre-validates the reading's existence (and tradition membership) before
+    // constructing/invoking it (see the comment above). Exercise it directly here: the
+    // two-argument constructor does no such up-front validation, so calling getReading()
+    // on an instance built with a bogus id reaches the method's own NOT_FOUND handling.
+    // (This used to be a Status.NO_CONTENT (204) response; it must now be 404.)
+    @Test
+    public void testGetReadingNotFound() {
+        Reading reading = new Reading("999999999999", tradId);
+        Response response = reading.getReading();
+        assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -956,6 +973,30 @@ public class ReadingTest {
         followingRdg = jerseyTest.target("/reading/" + following).request().get(ReadingModel.class);
         assertEquals("Ινα", followingRdg.getText());
         assertEquals(Long.valueOf(34), followingRdg.getRank());
+    }
+
+    // Calling lacunaAfter on the very last reading for a witness (i.e. the witness path
+    // ends at the given reading, with no next reading to thread the lacuna before) should
+    // be a client error (400), not a 500.
+    @Test
+    public void testAddLacunaWitnessEndsAtReading() {
+        String endId;
+        try (Transaction tx = db.beginTx()) {
+            Node endNode = tx.findNode(Nodes.READING, "is_end", true);
+            assertNotNull(endNode);
+            endId = endNode.getProperty("id").toString();
+            tx.commit();
+        }
+
+        try (Response response = jerseyTest.target("/reading/" + endId + "/lacunaAfter")
+                .queryParam("witness", "A")
+                .request()
+                .post(Entity.text(null))) {
+            assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+            assertEquals("Witness path A ends after requested reading",
+                    Util.getValueFromJson(response, "error"));
+        }
     }
 
     @Test
@@ -2100,7 +2141,7 @@ public class ReadingTest {
                 .post(Entity.json(readingBoundaryModel));
 
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals("no such separator exists",
                 Util.getValueFromJson(response, "error"));
@@ -2117,7 +2158,7 @@ public class ReadingTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(readingBoundaryModel));
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         assertEquals("The separator does not appear in the index location in the text",
@@ -2212,7 +2253,7 @@ public class ReadingTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(readingBoundaryModel));
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         assertEquals("The index must be smaller than the text length",
@@ -2232,7 +2273,7 @@ public class ReadingTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(readingBoundaryModel));
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         assertEquals(
@@ -2329,7 +2370,7 @@ public class ReadingTest {
                     .target("/reading/" + rood.getProperty("id").toString() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+            assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
             assertEquals("The given regular expression does not match the original text",
                     Util.getValueFromJson(response, "error"));
@@ -2847,6 +2888,94 @@ public class ReadingTest {
         assertEquals(MediaType.APPLICATION_JSON_TYPE, actualResponse.getMediaType());
         assertEquals("this was the first reading for this witness",
                 Util.getValueFromJson(actualResponse, "error"));
+    }
+
+    // getNextReadingInWitness()/getPreviousReadingInWitness() are only ever reached, via
+    // any registered HTTP route, with a reading id whose existence has already been
+    // validated by the delegating resource locator (see the comment on
+    // testGetReadingNotFound above for the general pattern). Exercise the methods' own
+    // NotFoundException handling directly: before this fix, a NotFoundException thrown by
+    // ReadingService.getNeighbourReadingInSequence() was not caught at all, so it propagated
+    // out as a raw, unmapped exception instead of a 404 Response with a JSON error body.
+    @Test
+    public void testGetNextReadingInWitnessNotFound() {
+        Reading reading = new Reading("999999999999", tradId);
+        Response response = reading.getNextReadingInWitness("A", "witnesses");
+        assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
+    }
+
+    @Test
+    public void testGetPreviousReadingInWitnessNotFound() {
+        Reading reading = new Reading("999999999999", tradId);
+        Response response = reading.getPreviousReadingInWitness("A", "witnesses");
+        assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
+    }
+
+    // ReadingService.getNeighbourReadingInSequence() throws a plain RuntimeException (neither
+    // NotFoundException nor IllegalArgumentException) when a *known, well-formed but
+    // nonexistent* witness sigil is requested for the default "witnesses" layer: the upfront
+    // sanity check only applies when a non-default layer is requested, so a bogus witness
+    // sigil with the default layer sails past it and falls through to "no matching sequence
+    // found" -> RuntimeException("There is no next/prior reading!"). Before this fix, that
+    // propagated as a raw unmapped exception (500 with no JSON body); it should now be caught
+    // and turned into a 500 with a JSON error body.
+    @Test
+    public void testGetNextReadingInWitnessUnknownWitnessSigil() {
+        String readId = readingLookup.get("with/3");
+        Response response = jerseyTest
+                .target("/reading/" + readId + "/next/ZZZ")
+                .request()
+                .get(Response.class);
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
+    }
+
+    @Test
+    public void testGetPreviousReadingInWitnessUnknownWitnessSigil() {
+        String readId = readingLookup.get("with/3");
+        Response response = jerseyTest
+                .target("/reading/" + readId + "/prior/ZZZ")
+                .request()
+                .get(Response.class);
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
+    }
+
+    // Opportunistic (Minor): no direct test previously existed for the pre-existing,
+    // correctly-documented 400 branch of these same two methods, triggered by a witness/layer
+    // combination that doesn't pass through the given reading (IllegalArgumentException from
+    // ReadingService.getNeighbourReadingInSequence()'s sanity check, which only applies when a
+    // non-default layer is requested).
+    @Test
+    public void testGetNextReadingInWitnessLayerMismatch() {
+        String readId = readingLookup.get("with/3");
+        Response response = jerseyTest
+                .target("/reading/" + readId + "/next/A")
+                .queryParam("layer", "a.c.")
+                .request()
+                .get(Response.class);
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
+    }
+
+    @Test
+    public void testGetPreviousReadingInWitnessLayerMismatch() {
+        String readId = readingLookup.get("with/3");
+        Response response = jerseyTest
+                .target("/reading/" + readId + "/prior/A")
+                .queryParam("layer", "a.c.")
+                .request()
+                .get(Response.class);
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        assertNotNull(Util.getValueFromJson(response, "error"));
     }
 
     @Test

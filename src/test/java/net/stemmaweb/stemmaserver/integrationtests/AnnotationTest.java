@@ -469,6 +469,88 @@ public class AnnotationTest extends TestCase {
         assertEquals(0, labels.size());
     }
 
+    public void testAddAnnotationLinkSucceeds() {
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget(readingLookup.get("venerabilis/3"));
+        alm.setTargetLabel("READING");
+        alm.setType("BEGIN");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            // There should now be two BEGIN links
+            am = response.readEntity(AnnotationModel.class);
+        }
+        assertEquals(3, am.getLinks().size());
+        assertEquals(2, am.getLinks().stream().filter(x -> x.getType().equals("BEGIN")).count());
+    }
+
+    public void testAddAnnotationLinkAlreadyExists() {
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget(readingLookup.get("venerabilis/3"));
+        alm.setTargetLabel("READING");
+        alm.setType("BEGIN");
+        // Add the link first time - should succeed
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        }
+
+        // Try adding the same link again - should get CONFLICT (409), not NOT_MODIFIED (304)
+        try (Response response2 = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), response2.getStatus());
+        }
+    }
+
+    public void testAddAnnotationLinkTargetNotFound() {
+        addTestLabel();
+        AnnotationModel am = addTestAnnotation();
+
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget("99999");  // Non-existent reading ID
+        alm.setTargetLabel("READING");
+        alm.setType("BEGIN");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        }
+    }
+
+    // addAnnotationLink()'s annotationNotFound(tx) branch previously returned an empty 404
+    // body, inconsistent with the "target not found" branch of the same method (and with
+    // every other endpoint's @Produces("application/json") contract). It should return a
+    // non-empty jsonerror body like its sibling branch.
+    public void testAddAnnotationLinkAnnotationNotFound() {
+        AnnotationLinkModel alm = new AnnotationLinkModel();
+        alm.setTarget(readingLookup.get("venerabilis/3"));
+        alm.setTargetLabel("READING");
+        alm.setType("BEGIN");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation/99999/link")
+                .request()
+                .post(Entity.json(alm))) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+            String body = response.readEntity(String.class);
+            assertNotNull(body);
+            assertFalse(body.isBlank());
+            assertTrue(body.contains("error"));
+        }
+    }
+
     public void testAddDeleteAnnotationLink() {
         addTestLabel();
         AnnotationModel am = addTestAnnotation();
@@ -488,25 +570,16 @@ public class AnnotationTest extends TestCase {
         assertEquals(3, am.getLinks().size());
         assertEquals(2, am.getLinks().stream().filter(x -> x.getType().equals("BEGIN")).count());
 
-
-        // Try it again - we should get a not-modified
-        try (Response response2 = jerseyTest
-                .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
-                .request()
-                .post(Entity.json(alm))) {
-            assertEquals(Response.Status.NOT_MODIFIED.getStatusCode(), response2.getStatus());
-        }
-
         // Now try deleting the link
         /*
          * skipping the test since I don't find any solution for delete with parameters
-         * 
+         *
          * jerseyTest.client().property(ClientProperties.
          * SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
-         * 
+         *
          * response = jerseyTest .target("/tradition/" + tradId + "/annotation/" +
          * am.getId() + "/link") .request() .method("DELETE", Entity.json(alm));
-         * 
+         *
          * assertEquals(Response.Status.OK.getStatusCode(), response.getStatus()); am =
          * response.readEntity(AnnotationModel.class); // The link shouldn't be there
          * anymore assertEquals(2, am.getLinks().size()); assertEquals(1,

@@ -227,6 +227,9 @@ public class Tradition {
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
             tx.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         if (traditionNode == null)
@@ -308,6 +311,7 @@ public class Tradition {
                             content = @Content(schema = @Schema(type = "object", example = "{\"sectionId\": 123456}"))
                     ),
                     @ApiResponse(responseCode = "400", description = "Unrecognized file type"),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
             }
     )
@@ -321,6 +325,8 @@ public class Tradition {
         try (Transaction tx = db.beginTx()) {
         	// Get the existing section list
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+        	if (traditionNode == null)
+        	    return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition not found")).build();
         	ArrayList<SectionModel> existingSections = produceSectionList(traditionNode, tx);
         	
         	Response result = parseDispatcher(traditionId, sectionName, filetype, uploadedInputStream, true, tx);
@@ -456,6 +462,7 @@ public class Tradition {
             responses = {
                     @ApiResponse(responseCode = "201", description = "Annotation created successfully",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "400", description = "The annotation specification is invalid, e.g. references an annotation label not defined for this tradition"),
                     @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             }
@@ -469,6 +476,8 @@ public class Tradition {
             AnnotationModel result = AnnotationService.addAnnotationToTradition(tx, traditionNode, am);
             tx.commit();
             return Response.status(Status.CREATED).entity(result).build();
+    	} catch (IllegalArgumentException e) {
+    		return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
     	} catch (Exception e) {
     		e.printStackTrace();
     		return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -780,7 +789,7 @@ public class Tradition {
             return Response.ok(result).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
     }
@@ -817,7 +826,7 @@ public class Tradition {
             return Response.ok(result).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
     }
@@ -948,20 +957,27 @@ public class Tradition {
      *
      */
     @DELETE
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
             tags = {"Tradition"},
             summary = "Delete tradition",
             description = "Removes an entire tradition, including all witnesses, stemmata, sections, readings, and relationships.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Tradition deleted successfully"),
+                    @ApiResponse(responseCode = "200", description = "Tradition deleted successfully, with the deleted tradition's metadata",
+                            content = @Content(schema = @Schema(implementation = TraditionModel.class))),
                     @ApiResponse(responseCode = "404", description = "Tradition does not exist"),
                     @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
             }
     )
     public Response deleteTraditionById() {
+        TraditionModel removed;
         try (Transaction tx = db.beginTx()) {
         	Node foundTradition = VariantGraphService.getTraditionNode(tx, traditionId);
         	if (foundTradition != null) {
+                // Build the model to return *before* anything is deleted -- TraditionModel's
+                // constructor reads this tradition's OWNS_TRADITION/HAS_WITNESS/HAS_RELATION_TYPE
+                // relationships, which would already be gone by the time the deletion below finishes.
+                removed = new TraditionModel(foundTradition);
                 /*
                  * Find all the nodes and relations to remove
                  */
@@ -990,7 +1006,7 @@ public class Tradition {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
-        return Response.ok().build();
+        return Response.ok(removed).build();
     }
 
     /*
@@ -1251,6 +1267,7 @@ public class Tradition {
             responses = {
                     @ApiResponse(responseCode = "200", description = "The JSON alignment",
                             content = @Content(schema = @Schema(implementation = AlignmentModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
@@ -1292,6 +1309,7 @@ public class Tradition {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "The CSV alignment as plaintext"),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
@@ -1332,6 +1350,7 @@ public class Tradition {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "The TSV alignment as plaintext"),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )
@@ -1376,6 +1395,7 @@ public class Tradition {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "The character matrix as plaintext"),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
             }
     )

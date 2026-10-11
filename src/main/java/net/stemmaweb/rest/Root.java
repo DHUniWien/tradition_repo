@@ -156,7 +156,7 @@ public class Root {
             ),
             responses = {
                     @ApiResponse(responseCode = "201", description = "The tradition was created successfully.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TraditionModel.class))),
-                    @ApiResponse(responseCode = "400", description = "No file was specified, and the 'empty' flag was not set.", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "400", description = "No file was specified and the 'empty' flag was not set, or a file was specified but the 'filetype' parameter was missing or empty.", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "409", description = "The requested owner does not exist in the database.", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Something went wrong. An error message will be returned.", content = @Content(mediaType = "application/json"))
             }
@@ -190,6 +190,10 @@ public class Root {
         // No file to parse
         if (fileDetail == null && uploadedInputStream == null && empty == null)
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("No file found")).build();
+
+        // Filetype is required when a file is present
+        if (empty == null && (filetype == null || filetype.isBlank()))
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("filetype parameter is required when uploading a file")).build();
 
         String tradId;
     	try (Transaction tx = db.beginTx()) {

@@ -200,6 +200,22 @@ public class AnnotationLabelTest {
     }
 
     @Test
+    public void testCreateOrUpdateAnnotationLabelNoSuchTradition() {
+        // PUT to a nonexistent tradition ID should return 404, since VariantGraphService.getTraditionNode
+        // will return null and lookupAnnotationLabel will throw NotFoundException.
+        String badTradId = "10000";
+
+        AnnotationLabelModel putBody = new AnnotationLabelModel();
+        putBody.setName("foo");
+        putBody.setLinks(new HashMap<>(Map.of("READING", "BEGIN")));
+        try (Response putResponse = jerseyTest.target("/tradition/" + badTradId + "/annotationlabel/foo")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(putBody))) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), putResponse.getStatus());
+        }
+    }
+
+    @Test
     public void annotationLabelNonexistentTraditionTest() {
         // GET/PUT/DELETE against a tradition id that doesn't exist at all (as opposed to an
         // annotation label reference that doesn't exist within a real tradition) must 404, not

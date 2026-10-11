@@ -44,8 +44,8 @@ public class TabularExporter {
         try {
             traditionSections = getSections(tradId, sectionList);
             if(traditionSections==null) {
-            	
-                return Response.status(Response.Status.NOT_FOUND).build();
+
+                return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition not found")).build();
             }
 
             return Response.ok(getTraditionAlignment(traditionSections, conflate, excludeLayers),
@@ -68,7 +68,8 @@ public class TabularExporter {
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        if (wholeTradition == null) return Response.status(Response.Status.NOT_FOUND).build();
+        if (wholeTradition == null)
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition not found")).build();
 
         // Got this far? Turn it into CSV.
         // The CSV will go into a string that we can return.
@@ -108,7 +109,8 @@ public class TabularExporter {
         AlignmentModel wholeTradition;
         try {
             wholeTradition = returnFullAlignment(tradId, conflate, sectionList, excludeLayers);
-            if (wholeTradition==null) return Response.status(Response.Status.NOT_FOUND).build();
+            if (wholeTradition==null)
+                return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition not found")).build();
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

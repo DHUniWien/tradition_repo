@@ -775,6 +775,42 @@ public class RelationTypeTest {
     }
 
     @Test
+    public void testCreateDefaultTypeAlreadyExists() {
+        // Create a default relation type
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("spelling");
+        rtm.setDefaultsettings(true);
+
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        }
+
+        // Now try setting the same default relation again, which should fail with 409
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
+            // Verify the error has a message
+            String errorBody = jerseyResult.readEntity(String.class);
+            assertTrue(errorBody.contains("error"));
+        }
+    }
+
+    @Test
+    public void testGetRelationTypeNoSuchTradition() {
+        // GET against a tradition id that doesn't exist returns 404
+        String badTradId = "10000";
+        try (Response getResponse = jerseyTest.target("/tradition/" + badTradId + "/relationtype/foo")
+                .request(MediaType.APPLICATION_JSON)
+                .get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getResponse.getStatus());
+            // Verify the error has a message
+            String errorBody = getResponse.readEntity(String.class);
+            assertTrue(errorBody.contains("error"));
+        }
+    }
+
+    @Test
     public void testRelTypeDeleteByIdBlockedByExistingRelations() {
         // Make sure deletion guard checks relations by type name, not type ID
         String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");

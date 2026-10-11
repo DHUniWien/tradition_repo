@@ -27,6 +27,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.glassfish.jersey.test.JerseyTest;
+import org.json.JSONObject;
 import org.jspecify.annotations.NonNull;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
@@ -64,6 +65,7 @@ import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -301,6 +303,8 @@ public class SectionTest extends TestCase {
                 .request(MediaType.APPLICATION_JSON)
                 .delete()) {
             assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+            SectionModel deleted = jerseyResult.readEntity(SectionModel.class);
+            assertEquals(firstSectId, deleted.getId());
         }
 
         tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
@@ -1709,6 +1713,190 @@ public class SectionTest extends TestCase {
             String witId = node.getAttributes().getNamedItem("xml:id").getNodeValue();
             assertTrue(expectedWitnesses.contains(witId));
         }
+    }
+
+    /*
+     * HTTP return code rationalization tests (Task 5): existence checks, empty-result-as-500,
+     * invalid JSON bodies, content-type mismatches.
+     */
+
+    // Creates a section node that genuinely belongs to the test tradition (linked via PART)
+    // but that has no collation data at all yet -- no start/end node, no witnesses, no
+    // readings. This is what a section looks like immediately after creation and before any
+    // data has been imported into it: a legitimate, non-error empty state.
+    private String createBareEmptySection() {
+        String sectId;
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+            Node sectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
+            sectionNode.setProperty("name", "Empty section");
+            tradNode.createRelationshipTo(sectionNode, ERelations.PART);
+            sectId = String.valueOf(sectionNode.getProperty("id"));
+            tx.commit();
+        }
+        return sectId;
+    }
+
+    // A section that exists but has no witnesses yet is not a 500 -- it's a 200 with an
+    // empty array, exactly like a section that exists but has no readings yet.
+    public void testGetAllWitnessesEmptySection() {
+        String emptySectId = createBareEmptySection();
+        Response response = jerseyTest.target("/tradition/" + tradId + "/section/" + emptySectId + "/witnesses")
+                .request()
+                .get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<WitnessModel> wits = response.readEntity(new GenericType<>() {});
+        assertEquals(0, wits.size());
+    }
+
+    public void testGetAllReadingsEmptySection() {
+        String emptySectId = createBareEmptySection();
+        Response response = jerseyTest.target("/tradition/" + tradId + "/section/" + emptySectId + "/readings")
+                .request()
+                .get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<ReadingModel> rdgs = response.readEntity(new GenericType<>() {});
+        assertEquals(0, rdgs.size());
+    }
+
+    // NOTE: Tradition.getSection()'s sub-resource locator already 404s (with a JSON body)
+    // before ever delegating to a Section instance, for any sectionId that doesn't actually
+    // belong to the given tradition -- so a truly nonexistent section can't be reached via
+    // the nested REST route at all. The methods below are tested by direct instantiation
+    // instead, to pin their own defensive existence checks regardless of that upstream guard.
+
+    public void testGetAllRelationshipsNoSuchSection() {
+        Response response = new Section(tradId, "999999").getAllRelationships("false");
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    // Creates a section with a minimal valid collation (a start node connected to an end
+    // node via a single SEQUENCE edge) but with no RELATED relations defined at all -- what
+    // a freshly imported collation looks like before anyone creates a relation.
+    private String createCollatedSectionWithNoRelations() {
+        String sectId;
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+            Node sectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
+            sectionNode.setProperty("name", "Relation-free section");
+            tradNode.createRelationshipTo(sectionNode, ERelations.PART);
+
+            Node startNode = DatabaseService.createNode(tx, Nodes.READING);
+            startNode.setProperty("is_start", true);
+            startNode.setProperty("text", "#START#");
+            startNode.setProperty("rank", 0L);
+
+            Node endNode = DatabaseService.createNode(tx, Nodes.READING);
+            endNode.setProperty("is_end", true);
+            endNode.setProperty("text", "#END#");
+            endNode.setProperty("rank", 1L);
+
+            sectionNode.createRelationshipTo(startNode, ERelations.COLLATION);
+            sectionNode.createRelationshipTo(endNode, ERelations.HAS_END);
+            Relationship seq = startNode.createRelationshipTo(endNode, ERelations.SEQUENCE);
+            seq.setProperty("witnesses", new String[]{"A"});
+
+            sectId = String.valueOf(sectionNode.getProperty("id"));
+            tx.commit();
+        }
+        return sectId;
+    }
+
+    // A freshly imported collation legitimately has zero RELATED relations until someone
+    // creates one -- this is a 200 with an empty array, not a 500, exactly like the
+    // witnesses/readings empty-section cases above.
+    @SuppressWarnings("unchecked")
+    public void testGetAllRelationshipsEmptySection() {
+        String relFreeSectId = createCollatedSectionWithNoRelations();
+        Response response = new Section(tradId, relFreeSectId).getAllRelationships("false");
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<RelationModel> relList = (List<RelationModel>) response.getEntity();
+        assertTrue(relList.isEmpty());
+    }
+
+    public void testGetColocatedClustersNoSuchSection() {
+        Response response = new Section(tradId, "999999").getColocatedClusters();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    // A startRdg/endRdg that names a nonexistent reading should 404, not 500.
+    public void testGetLemmaTextBadReadingRef() {
+        Response response = jerseyTest.target("/tradition/" + tradId + "/section/" + firstSectId + "/lemmatext")
+                .queryParam("startRdg", "999999")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject(response.readEntity(String.class));
+        assertTrue(body.has("error"));
+    }
+
+    // Same as above, for the sibling /lemmareadings endpoint.
+    public void testGetLemmaReadingsBadReadingRef() {
+        Response response = jerseyTest.target("/tradition/" + tradId + "/section/" + firstSectId + "/lemmareadings")
+                .queryParam("startRdg", "999999")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject(response.readEntity(String.class));
+        assertTrue(body.has("error"));
+    }
+
+    public void testGetLemmaReadingsNoSuchSectionIsJson() {
+        Response response = new Section(tradId, "999999").getLemmaReadings("false", "1", "E", null, null);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    public void testGetAnnotationsOnSectionNoSuchSectionIsJson() {
+        Response response = new Section(tradId, "999999").getAnnotationsOnSection(new ArrayList<>(), "false");
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    public void testGetVariantGroupsNoSuchSectionIsJson() {
+        Response response = new Section(tradId, "999999").getVariantGroups(
+                "no", "no", "no", "no", "punct", null, null, new ArrayList<>());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    public void testInitRanksNoSuchSectionIsJson() {
+        Response response = new Section(tradId, "999999").initRanks();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    public void testGetGraphModelNoSuchSection() {
+        Response response = new Section("nonexistentTradId", firstSectId).getGraphModel();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    public void testGetGraphMLNoSuchSection() {
+        Response response = new Section("nonexistentTradId", firstSectId).getGraphML();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
+    }
+
+    public void testGetDotNoSuchSection() {
+        Response response = new Section("nonexistentTradId", firstSectId)
+                .getDot(false, false, false, false, null, new ArrayList<>());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
+        JSONObject body = new JSONObject((String) response.getEntity());
+        assertTrue(body.has("error"));
     }
 
     public void tearDown() throws Exception {

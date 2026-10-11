@@ -206,20 +206,21 @@ public class Annotation {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Link successfully added",
                             content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
-                    @ApiResponse(responseCode = "304", description = "Link already exists"),
                     @ApiResponse(responseCode = "400", description = "Invalid AnnotationLinkModel"),
-                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition"),
+                    @ApiResponse(responseCode = "404", description = "Annotation not found or does not belong to this tradition, or link target not found"),
+                    @ApiResponse(responseCode = "409", description = "Link already exists"),
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             })
     public Response addAnnotationLink(AnnotationLinkModel linkModel) {
         try (Transaction tx = db.beginTx()) {
             if (annotationNotFound(tx))
-                return Response.status(Response.Status.NOT_FOUND).build();
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(jsonerror("Annotation not found or does not belong to this tradition")).build();
             Node aNode = DatabaseService.findNodeOrThrow(tx, Nodes.ANNOTATION, annoId);
             AnnotationLabelModel labelModel = new AnnotationLabelModel(tradId, dynamicLabelOf(aNode), tx);
             AnnotationLinkModel result = AnnotationService.addAnnotationLink(tx, aNode, labelModel, linkModel);
             if (result == null)
-                return Response.notModified().build();
+                return Response.status(Response.Status.CONFLICT).entity(jsonerror("Link already exists")).build();
             AnnotationModel updated = new AnnotationModel(aNode);
             tx.commit();
             return Response.ok(updated).build();

@@ -274,6 +274,15 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals("Bad format: is this CollateX JSON input instead of output?", msg);
     }
 
+    public void testMissingFiletype() {
+        // Upload a file with no filetype parameter — should get 400 with jsonerror, not 500
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "TestTradition", "LR", "1",
+                "src/TestFiles/Matthew-407.json", null);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        String errorMsg = Util.getValueFromJson(response, "error");
+        assertTrue(errorMsg != null && errorMsg.contains("filetype"));
+    }
+
     /** For diagnostic use when parsing a section fails
     public void testSomething() throws Exception {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,

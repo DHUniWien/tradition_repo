@@ -427,6 +427,47 @@ public class TabularInputOutputTest extends TestCase {
 
     }
 
+    // A 404 for a nonexistent tradition should carry a non-empty jsonerror(...) JSON body on
+    // /json, /csv, and /matrix, not an empty one.
+    public void testExportJsonNoSuchTradition() {
+        Response response = jerseyTest
+                .target("/tradition/nonexistentTradId/json")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        String body = response.readEntity(String.class);
+        assertNotNull(body);
+        assertFalse(body.isEmpty());
+        JSONObject json = new JSONObject(body);
+        assertTrue(json.has("error"));
+    }
+
+    public void testExportCsvNoSuchTradition() {
+        Response response = jerseyTest
+                .target("/tradition/nonexistentTradId/csv")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        String body = response.readEntity(String.class);
+        assertNotNull(body);
+        assertFalse(body.isEmpty());
+        JSONObject json = new JSONObject(body);
+        assertTrue(json.has("error"));
+    }
+
+    public void testExportCharMatrixNoSuchTradition() {
+        Response response = jerseyTest
+                .target("/tradition/nonexistentTradId/matrix")
+                .request()
+                .get();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        String body = response.readEntity(String.class);
+        assertNotNull(body);
+        assertFalse(body.isEmpty());
+        JSONObject json = new JSONObject(body);
+        assertTrue(json.has("error"));
+    }
+
     public void testConflatedJSONExport() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/globalrel_test.xml", "stemmaweb");

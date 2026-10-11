@@ -37,6 +37,7 @@ import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.StemmaModel;
@@ -433,6 +434,8 @@ public class TraditionTest {
                 .request()
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+        TraditionModel deleted = removalResponse.readEntity(TraditionModel.class);
+        assertEquals(tradId, deleted.getId());
 
         try (Transaction tx = db.beginTx()) {
         	Node startNode = VariantGraphService.getStartNode(tx, tradId);
@@ -578,6 +581,101 @@ public class TraditionTest {
             result = tx.execute("match (t:TRADITION {id:'" + tradId + "'}) return t");
             nodes = result.columnAs("t");
             assertTrue(nodes.hasNext());
+        }
+    }
+
+    /**
+     * POSTing a new section to a nonexistent tradition should 404, not 500.
+     */
+    @Test
+    public void testAddSectionNoSuchTradition() {
+        try (Response response = Util.addSectionToTradition(jerseyTest, "1337",
+                "src/TestFiles/testTradition.xml", "stemmaweb", "section 2")) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        }
+    }
+
+    /**
+     * POSTing an annotation that references an annotation label not defined for this
+     * tradition should 400, not 500.
+     */
+    @Test
+    public void testAddAnnotationBadLabel() {
+        AnnotationModel am = new AnnotationModel();
+        am.setLabel("NOTDEFINED");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(am))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        }
+    }
+
+    /**
+     * A successful tradition delete should return 200 with the deleted tradition's metadata,
+     * consistent with every other DELETE endpoint in this API (e.g. Witness, Stemma).
+     */
+    @Test
+    public void testDeleteTraditionReturnsDeletedModel() {
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId)
+                .request()
+                .delete()) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            TraditionModel deleted = response.readEntity(TraditionModel.class);
+            assertEquals(tradId, deleted.getId());
+        }
+    }
+
+    /**
+     * GET /tradition/{id}/json on a nonexistent tradition should 404.
+     */
+    @Test
+    public void testGetJsonNoSuchTradition() {
+        try (Response response = jerseyTest
+                .target("/tradition/1337/json")
+                .request()
+                .get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        }
+    }
+
+    /**
+     * GET /tradition/{id}/csv on a nonexistent tradition should 404.
+     */
+    @Test
+    public void testGetCsvNoSuchTradition() {
+        try (Response response = jerseyTest
+                .target("/tradition/1337/csv")
+                .request()
+                .get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        }
+    }
+
+    /**
+     * GET /tradition/{id}/tsv on a nonexistent tradition should 404.
+     */
+    @Test
+    public void testGetTsvNoSuchTradition() {
+        try (Response response = jerseyTest
+                .target("/tradition/1337/tsv")
+                .request()
+                .get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        }
+    }
+
+    /**
+     * GET /tradition/{id}/matrix on a nonexistent tradition should 404.
+     */
+    @Test
+    public void testGetCharMatrixNoSuchTradition() {
+        try (Response response = jerseyTest
+                .target("/tradition/1337/matrix")
+                .request()
+                .get()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
         }
     }
 

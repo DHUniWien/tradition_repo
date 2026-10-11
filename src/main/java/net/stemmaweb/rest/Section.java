@@ -194,47 +194,52 @@ public class Section {
      *
      */
     @DELETE
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @Operation(
             tags = {"Section"},
             summary = "Delete section",
             description = "Delete the specified section, and update the tradition's sequence of sections to account for any resulting gap. Returns a JSON response on error with key 'error'.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "on success"),
+                    @ApiResponse(responseCode = "200", description = "on success, with the deleted section's metadata",
+                            content = @Content(schema = @Schema(implementation = SectionModel.class))),
                     @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
                     @ApiResponse(responseCode = "500", description = "on failure, with an error message")
             })
     public Response deleteSection() {
+        SectionModel removed;
         try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
         		return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
         				.entity(jsonerror("Tradition and/or section not found")).build();
             Node foundSection = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
-            if (foundSection != null) {
-                // Find the section either side of this one and connect them if necessary.
-                removeSectionFromSequence(foundSection);
-                // Collect all nodes and relationships that belong to this section.
-                Set<Relationship> removableRelations = new HashSet<>();
-                Set<Node> removableNodes = new HashSet<>();
-                VariantGraphService.returnTraditionSection(tx, foundSection).nodes()
-                        .forEach(x -> {
-                            removableNodes.add(x);
-                            removableRelations.addAll(DatabaseService.getRelationships(x, Direction.BOTH));
-                        });
+            // Build the model to return *before* anything is deleted -- SectionModel's
+            // constructor traverses this section's COLLATION/SEQUENCE/HAS_END structure,
+            // which would already be gone by the time the deletion logic below finishes.
+            removed = new SectionModel(tx, foundSection);
+            // Find the section either side of this one and connect them if necessary.
+            removeSectionFromSequence(foundSection);
+            // Collect all nodes and relationships that belong to this section.
+            Set<Relationship> removableRelations = new HashSet<>();
+            Set<Node> removableNodes = new HashSet<>();
+            VariantGraphService.returnTraditionSection(tx, foundSection).nodes()
+                    .forEach(x -> {
+                        removableNodes.add(x);
+                        removableRelations.addAll(DatabaseService.getRelationships(x, Direction.BOTH));
+                    });
 
-                // Remove said nodes and relationships.
-                removableRelations.forEach(Relationship::delete);
-                removableNodes.forEach(Node::delete);
-                // Clean up any annotations that need it.
-                AnnotationService.pruneAnnotations(VariantGraphService.getTraditionNode(tx, tradId));
-                tx.commit();
-            }
+            // Remove said nodes and relationships.
+            removableRelations.forEach(Relationship::delete);
+            removableNodes.forEach(Node::delete);
+            // Clean up any annotations that need it.
+            AnnotationService.pruneAnnotations(VariantGraphService.getTraditionNode(tx, tradId));
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().type(MediaType.APPLICATION_JSON_TYPE)
                     .entity(jsonerror(e.getMessage())).build();
         }
 
-        return Response.ok().build();
+        return Response.ok(removed).build();
     }
 
     /*
@@ -264,11 +269,12 @@ public class Section {
             if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
                 return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
-            ArrayList<Node> sectionWitnessNodes = VariantGraphService.collectSectionWitnesses(tx, tradId, sectId);
-            if (sectionWitnessNodes.isEmpty())
-                return Response.serverError()
-                        .entity(jsonerror("No witnesses found in section")).build();
+            // check that the collation even exists yet
+            Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
+            if (sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING) == null)
+                return Response.ok(new ArrayList<WitnessModel>()).build();
 
+            ArrayList<Node> sectionWitnessNodes = VariantGraphService.collectSectionWitnesses(tx, tradId, sectId);
             ArrayList<WitnessModel> sectionWits = new ArrayList<>();
             sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
             Collections.sort(sectionWits);
@@ -307,10 +313,12 @@ public class Section {
             if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
                 return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
             }
-            List<ReadingModel> readingModels = VariantGraphService.sectionReadings(tx, sectId);
-            if (readingModels.isEmpty()) {
-                return Response.serverError().entity(jsonerror("No readings found in section")).build();
+            // check that the collation even exists yet
+            Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
+            if (sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING) == null) {
+                return Response.ok(new ArrayList<ReadingModel>()).build();
             }
+            List<ReadingModel> readingModels = VariantGraphService.sectionReadings(tx, sectId);
             return Response.ok(readingModels).build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -337,14 +345,15 @@ public class Section {
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationModel.class)))),
-                    @ApiResponse(responseCode = "500", description = "On error, such as a nonexistent section")
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
             })
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         try (Transaction tx = db.beginTx()) {
-            ArrayList<RelationModel> relList = VariantGraphService.sectionRelations(tx, sectId, includeReadings.equals("true"));
-            if (relList.isEmpty()) {
-                return Response.serverError().entity(jsonerror("No relations found in section")).build();
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
             }
+            ArrayList<RelationModel> relList = VariantGraphService.sectionRelations(tx, sectId, includeReadings.equals("true"));
             return Response.ok(relList).build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -369,11 +378,15 @@ public class Section {
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
                     @ApiResponse(responseCode = "500", description = "on error")
             })
     public Response getColocatedClusters() {
         List<Set<Node>> clusterList;
         try (Transaction tx = db.beginTx()) {
+            if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
+            }
             clusterList = RelationService.getClusters(tx, tradId, sectId, true);
             List<List<ReadingModel>> result = new ArrayList<>();
             for (Set<Node> cluster : clusterList) {
@@ -385,7 +398,7 @@ public class Section {
             tx.close();
             return Response.ok(result).build();
         } catch (Exception e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
     /**
@@ -415,7 +428,7 @@ public class Section {
             },
             responses = {
                     @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = TextSequenceModel.class))),
-                    @ApiResponse(responseCode = "404", description = "If no such tradition exists"),
+                    @ApiResponse(responseCode = "404", description = "If no such tradition/section exists, or the referenced reading (startRdg/endRdg) does not exist"),
                     @ApiResponse(responseCode = "500", description = "On failure, with an error message")
             })
     public Response getLemmaText(@QueryParam("final")     @DefaultValue("false") String followFinal,
@@ -425,7 +438,7 @@ public class Section {
                                  @QueryParam("endRdg")   String endRdg) {
         try (Transaction tx = db.beginTx()) {
             if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
-                return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
             List<ReadingModel> sectionLemmata;
             try {
@@ -438,6 +451,9 @@ public class Section {
                 sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank, tx);
                 // Add on the end node, so we know whether a lacuna marker is needed.
                 sectionLemmata.add(new ReadingModel(VariantGraphService.getEndNode(tx, sectId)));
+            } catch (NotFoundException | IllegalArgumentException e) {
+                // either a bad reading ID or the ID doesn't exist in this tradition
+                return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
             } catch (Exception e) {
                 return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
@@ -480,7 +496,7 @@ public class Section {
             responses = {
                     @ApiResponse(responseCode = "200", description = "on success",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
-                    @ApiResponse(responseCode = "404", description = "if no such tradition exists"),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition exists, or the referenced reading (startRdg/endRdg) does not exist"),
                     @ApiResponse(responseCode = "500", description = "on failure, with an error message")
             })
     public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal,
@@ -490,13 +506,16 @@ public class Section {
                                      @QueryParam("endRdg")   String endRdg) {
         try (Transaction tx = db.beginTx()) {
             if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
-                return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
             List<ReadingModel> sectionLemmata;
             try {
                 if (startRdg != null) startRank = rankForReading(startRdg, tx);
                 if (endRdg != null) endRank = rankForReading(endRdg, tx);
                 sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank, tx);
+            } catch (NotFoundException | IllegalArgumentException e) {
+                // either a bad reading ID or the ID doesn't exist in this tradition
+                return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
             } catch (Exception e) {
                 e.printStackTrace();
                 return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -583,7 +602,7 @@ public class Section {
                                             @QueryParam("recursive") @DefaultValue("false") String recurse) {
     	try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
-        		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	List<AnnotationModel> result = new ArrayList<>();
     		// We want to find all annotation nodes that are linked both to the tradition node
     		// and to some node in this section.
@@ -662,7 +681,7 @@ public class Section {
                                                          @QueryParam("exclude_witness") List<String> excWitnesses) {
         try (Transaction tx = db.beginTx()) {
             if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
-                return Response.status(Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
             }
 
             Node sectionNode = DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, sectId);
@@ -1034,7 +1053,7 @@ public class Section {
     public Response initRanks() {
     	try (Transaction tx = db.beginTx()) {
         	if (!VariantGraphService.sectionInTradition(tx, tradId, sectId))
-        		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
         	ReadingService.recalculateRank(tx, VariantGraphService.getStartNode(tx, sectId), true);
             tx.commit();
@@ -1508,8 +1527,8 @@ public class Section {
             // TODO does this check make sense, or does the not-found happen already in Tradition.java?
     		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
             if (traditionNode == null)
-                return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
-                        .entity("No such tradition found").build();
+                return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
+                        .entity(jsonerror("No such tradition found")).build();
 
             GraphModel thisSection = new GraphModel();
             // Collect section nodes and relationships once
@@ -1571,8 +1590,8 @@ public class Section {
     	try (Transaction tx = db.beginTx()) {
             Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
             if (traditionNode == null)
-                return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
-                        .entity("No such tradition found").build();
+                return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
+                        .entity(jsonerror("No such tradition found")).build();
 
             GraphMLExporter exporter = new GraphMLExporter(tx);
             return exporter.writeNeo4J(tradId, sectId);
@@ -1668,7 +1687,8 @@ public class Section {
     	try (Transaction tx = db.beginTx()) {
     		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
             if (traditionNode == null)
-                return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
+                return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
+                        .entity(jsonerror("No such tradition found")).build();
             // Put our options into an object
             DisplayOptionModel dm = new DisplayOptionModel(
                     includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);

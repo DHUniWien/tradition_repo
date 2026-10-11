@@ -143,7 +143,7 @@
             }
           },
           "400" : {
-            "description" : "If a specified witness does not pass through the given reading"
+            "description" : "If a specified witness does not pass through the given reading, or if the witness path ends at the given reading"
           },
           "404" : {
             "description" : "Reading not found"
@@ -179,7 +179,7 @@
               }
             }
           },
-          "204" : {
+          "404" : {
             "description" : "If the reading doesn't exist"
           },
           "500" : {
@@ -528,8 +528,18 @@
               }
             }
           },
+          "400" : {
+            "description" : "If the requested witness layer does not pass through this reading",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
-            "description" : "If there is no subsequent reading",
+            "description" : "If the reading doesn't exist, or if there is no subsequent reading",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -606,8 +616,18 @@
               }
             }
           },
+          "400" : {
+            "description" : "If the requested witness layer does not pass through this reading",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
-            "description" : "If there is no prior reading",
+            "description" : "If the reading doesn't exist, or if there is no prior reading",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -950,7 +970,7 @@
             }
           },
           "400" : {
-            "description" : "Please specify a model for how the reading should be split!",
+            "description" : "No model specified for how the reading should be split, the split index is out of range, the given (regex or literal) separator does not match / is not found in the reading text, the separator does not occur at the given index, or the reading to be split is part of a relation.",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -1017,6 +1037,9 @@
               }
             }
           },
+          "400" : {
+            "description" : "The annotation specification is invalid, e.g. references an annotation label not defined for this tradition"
+          },
           "404" : {
             "description" : "Tradition not found"
           },
@@ -1066,6 +1089,9 @@
           },
           "400" : {
             "description" : "Unrecognized file type"
+          },
+          "404" : {
+            "description" : "Tradition not found"
           },
           "500" : {
             "description" : "Internal server error, with an error message"
@@ -1163,7 +1189,14 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "Tradition deleted successfully"
+            "description" : "Tradition deleted successfully, with the deleted tradition's metadata",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TraditionModel"
+                }
+              }
+            }
           },
           "404" : {
             "description" : "Tradition does not exist"
@@ -1509,14 +1542,14 @@
               }
             }
           },
-          "304" : {
-            "description" : "Link already exists"
-          },
           "400" : {
             "description" : "Invalid AnnotationLinkModel"
           },
           "404" : {
-            "description" : "Annotation not found or does not belong to this tradition"
+            "description" : "Annotation not found or does not belong to this tradition, or link target not found"
+          },
+          "409" : {
+            "description" : "Link already exists"
           },
           "500" : {
             "description" : "Internal server error"
@@ -1860,6 +1893,12 @@
               "application/json" : { }
             }
           },
+          "404" : {
+            "description" : "Tradition not found",
+            "content" : {
+              "application/json" : { }
+            }
+          },
           "409" : {
             "description" : "Requested name is already in use, or a rename was requested for a label that is still in use by an annotation or another label's links",
             "content" : {
@@ -2012,6 +2051,9 @@
           "200" : {
             "description" : "The character matrix as plaintext"
           },
+          "404" : {
+            "description" : "Tradition not found"
+          },
           "500" : {
             "description" : "Internal server error",
             "content" : {
@@ -2083,6 +2125,9 @@
         "responses" : {
           "200" : {
             "description" : "The CSV alignment as plaintext"
+          },
+          "404" : {
+            "description" : "Tradition not found"
           },
           "500" : {
             "description" : "Internal server error",
@@ -2382,6 +2427,9 @@
               }
             }
           },
+          "404" : {
+            "description" : "Tradition not found"
+          },
           "500" : {
             "description" : "Internal server error",
             "content" : {
@@ -2444,7 +2492,7 @@
             }
           },
           "400" : {
-            "description" : "If a specified witness does not pass through the given reading"
+            "description" : "If a specified witness does not pass through the given reading, or if the witness path ends at the given reading"
           },
           "404" : {
             "description" : "Reading not found"
@@ -2487,7 +2535,7 @@
               }
             }
           },
-          "204" : {
+          "404" : {
             "description" : "If the reading doesn't exist"
           },
           "500" : {
@@ -2878,8 +2926,18 @@
               }
             }
           },
+          "400" : {
+            "description" : "If the requested witness layer does not pass through this reading",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
-            "description" : "If there is no subsequent reading",
+            "description" : "If the reading doesn't exist, or if there is no subsequent reading",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -2963,8 +3021,18 @@
               }
             }
           },
+          "400" : {
+            "description" : "If the requested witness layer does not pass through this reading",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
-            "description" : "If there is no prior reading",
+            "description" : "If the reading doesn't exist, or if there is no prior reading",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -3349,7 +3417,7 @@
             }
           },
           "400" : {
-            "description" : "Please specify a model for how the reading should be split!",
+            "description" : "No model specified for how the reading should be split, the split index is out of range, the given (regex or literal) separator does not match / is not found in the reading text, the separator does not occur at the given index, or the reading to be split is part of a relation.",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -3417,14 +3485,17 @@
               }
             }
           },
-          "304" : {
-            "description" : "If the specified relation type/scope already exists"
+          "204" : {
+            "description" : "If an identical relation already exists"
           },
           "400" : {
             "description" : "If the request has an invalid scope"
           },
+          "404" : {
+            "description" : "If the specified source or target reading does not exist, with JSON error message"
+          },
           "409" : {
-            "description" : "If the relationship cannot legally be created"
+            "description" : "If the relationship cannot legally be created, with JSON error message"
           },
           "500" : {
             "description" : "On failure, with JSON error message"
@@ -3469,19 +3540,22 @@
             }
           },
           "400" : {
-            "description" : "Bad request, if an invalid scope was specified",
+            "description" : "Bad request, if scope is missing or invalid",
             "content" : {
               "application/json" : { }
             }
           },
           "404" : {
-            "description" : "Not found, if no matching relationship was found",
+            "description" : "Not found, if no matching relationship was found, or if the source or target reading does not exist",
             "content" : {
               "application/json" : { }
             }
           },
           "500" : {
-            "description" : "Failure (uncaught exception; response body format not guaranteed)"
+            "description" : "Failure (uncaught exception), with JSON error message",
+            "content" : {
+              "application/json" : { }
+            }
           }
         }
       }
@@ -3518,8 +3592,14 @@
               }
             }
           },
+          "404" : {
+            "description" : "If the given ID does not belong to a RELATED relationship, with JSON error message",
+            "content" : {
+              "application/json" : { }
+            }
+          },
           "500" : {
-            "description" : "Failure (e.g. the given ID does not belong to a RELATED relationship), with JSON error message",
+            "description" : "Failure (uncaught exception), with JSON error message",
             "content" : {
               "application/json" : { }
             }
@@ -3570,7 +3650,7 @@
             }
           },
           "404" : {
-            "description" : "Not found, if the relation type does not exist",
+            "description" : "Not found, if the relation type does not exist or if the tradition does not exist",
             "content" : {
               "application/json" : { }
             }
@@ -3635,9 +3715,6 @@
               }
             }
           },
-          "304" : {
-            "description" : "A default type was requested, but could not be generated"
-          },
           "400" : {
             "description" : "if the relation type reference is a name shared by multiple types (legacy data only)",
             "content" : {
@@ -3655,7 +3732,7 @@
             }
           },
           "409" : {
-            "description" : "A default type was requested, but a type of that name already exists; the new name conflicts with another existing relation type; or a rename was requested for a type that is still in use by relations",
+            "description" : "A default type was requested, but could not be generated or a type of that name already exists; the new name conflicts with another existing relation type; or a rename was requested for a type that is still in use by relations",
             "content" : {
               "application/json" : { }
             }
@@ -3842,7 +3919,14 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "on success"
+            "description" : "on success, with the deleted section's metadata",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SectionModel"
+                }
+              }
+            }
           },
           "404" : {
             "description" : "if no such tradition or section exists"
@@ -4016,8 +4100,11 @@
               }
             }
           },
+          "404" : {
+            "description" : "if no such tradition or section exists"
+          },
           "500" : {
-            "description" : "On error, such as a nonexistent section"
+            "description" : "on failure, with an error message"
           }
         }
       }
@@ -4278,6 +4365,9 @@
                 }
               }
             }
+          },
+          "404" : {
+            "description" : "if no such tradition or section exists"
           },
           "500" : {
             "description" : "on error"
@@ -5043,7 +5133,7 @@
             }
           },
           "404" : {
-            "description" : "if no such tradition exists"
+            "description" : "if no such tradition exists, or the referenced reading (startRdg/endRdg) does not exist"
           },
           "500" : {
             "description" : "on failure, with an error message"
@@ -5150,7 +5240,7 @@
             }
           },
           "404" : {
-            "description" : "If no such tradition exists"
+            "description" : "If no such tradition/section exists, or the referenced reading (startRdg/endRdg) does not exist"
           },
           "500" : {
             "description" : "On failure, with an error message"
@@ -5218,7 +5308,7 @@
             }
           },
           "400" : {
-            "description" : "If a specified witness does not pass through the given reading"
+            "description" : "If a specified witness does not pass through the given reading, or if the witness path ends at the given reading"
           },
           "404" : {
             "description" : "Reading not found"
@@ -5268,7 +5358,7 @@
               }
             }
           },
-          "204" : {
+          "404" : {
             "description" : "If the reading doesn't exist"
           },
           "500" : {
@@ -5701,8 +5791,18 @@
               }
             }
           },
+          "400" : {
+            "description" : "If the requested witness layer does not pass through this reading",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
-            "description" : "If there is no subsequent reading",
+            "description" : "If the reading doesn't exist, or if there is no subsequent reading",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -5793,8 +5893,18 @@
               }
             }
           },
+          "400" : {
+            "description" : "If the requested witness layer does not pass through this reading",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
           "404" : {
-            "description" : "If there is no prior reading",
+            "description" : "If the reading doesn't exist, or if there is no prior reading",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -6221,7 +6331,7 @@
             }
           },
           "400" : {
-            "description" : "Please specify a model for how the reading should be split!",
+            "description" : "No model specified for how the reading should be split, the split index is out of range, the given (regex or literal) separator does not match / is not found in the reading text, the separator does not occur at the given index, or the reading to be split is part of a relation.",
             "content" : {
               "application/json; charset=utf-8" : {
                 "schema" : {
@@ -7308,16 +7418,6 @@
               }
             }
           },
-          "201" : {
-            "description" : "Stemma was created",
-            "content" : {
-              "application/json; charset=utf-8" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/StemmaModel"
-                }
-              }
-            }
-          },
           "400" : {
             "description" : "if the stemma reference is a name shared by multiple stemmata (legacy data only); address the stemma by its numeric id instead",
             "content" : {
@@ -7799,6 +7899,9 @@
         "responses" : {
           "200" : {
             "description" : "The TSV alignment as plaintext"
+          },
+          "404" : {
+            "description" : "Tradition not found"
           },
           "500" : {
             "description" : "Internal server error",
@@ -8560,7 +8663,7 @@
             }
           },
           "400" : {
-            "description" : "No file was specified, and the 'empty' flag was not set.",
+            "description" : "No file was specified and the 'empty' flag was not set, or a file was specified but the 'filetype' parameter was missing or empty.",
             "content" : {
               "application/json" : { }
             }

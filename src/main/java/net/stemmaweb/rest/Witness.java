@@ -126,9 +126,12 @@ public class Witness {
             WitnessModel thisWit = new WitnessModel(witnessNode);
             return Response.ok(thisWit).build();
         } catch (NotFoundException e) {
-            return Response.status(Status.NOT_FOUND).build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 
@@ -461,19 +464,20 @@ public class Witness {
             @QueryParam("start") @DefaultValue("0") String start,
             @QueryParam("end") @DefaultValue("E") String end) {
 
-        long startRank = Long.parseLong(start);
-        long endRank = end.equals("E") ? Long.MAX_VALUE : Long.parseLong(end);
-
         // Empty out the layer list if it is the default.
         if (layer.size() == 1 && layer.getFirst().isEmpty())
             layer.removeFirst();
 
         try (Transaction tx = db.beginTx()) {
+            long startRank = Long.parseLong(start);
+            long endRank = end.equals("E") ? Long.MAX_VALUE : Long.parseLong(end);
             Node witnessNode = resolveWitnessNode(tx);
             String actualSigil = witnessNode.getProperty("sigil").toString();
             String witnessText = VariantGraphService.getWitnessText(tx, tradId, sectId, actualSigil, layer, startRank, endRank);
             TextSequenceModel wtm = new TextSequenceModel(witnessText);
             return Response.ok(wtm).build();
+        } catch (NumberFormatException e) {
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror("Invalid rank parameters")).build();
         } catch (org.neo4j.graphdb.NotFoundException e) {
             return Response.status(Status.NOT_FOUND).entity(jsonerror(e.getMessage())).build();
         } catch (IllegalArgumentException e) {

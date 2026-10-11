@@ -149,7 +149,7 @@ public class RelationTest {
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(relationship))) {
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
+            assertEquals(Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
         }
     }
 
@@ -170,8 +170,64 @@ public class RelationTest {
                 .target("/tradition/" + tradId + "/relation")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(relationship))) {
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+            assertEquals(Status.NOT_FOUND.getStatusCode(),
                     actualResponse.getStatus());
+        }
+    }
+
+    /**
+     * create() with a nonexistent source/target reading ID in the non-local-scope branch
+     * should return 404, not an uncaught-exception 500.
+     */
+    @Test
+    public void testCreateRelationBadReadingRef() {
+        RelationModel relationship = new RelationModel();
+
+        relationship.setSource("16");
+        relationship.setTarget("1337");
+        relationship.setType("grammatical");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
+        relationship.setScope("section");
+
+        try (Response actualResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+            String body = actualResponse.readEntity(String.class);
+            assertTrue(body.contains("error"));
+        }
+    }
+
+    /**
+     * create() when an identical relation/scope already exists should return 204
+     */
+    @Test
+    public void testCreateRelationAlreadyExists() {
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("showers/5", "25");
+        RelationModel relationship = new RelationModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
+        relationship.setType("repetition");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
+
+        try (Response firstResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.CREATED.getStatusCode(), firstResponse.getStatus());
+        }
+
+        try (Response secondResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.NO_CONTENT.getStatusCode(), secondResponse.getStatus());
+            String body = secondResponse.readEntity(String.class);
+            assertTrue(body.isEmpty());
         }
     }
 
@@ -269,8 +325,69 @@ public class RelationTest {
                 .target("/tradition/" + tradId + "/relation/1337")
                 .request()
                 .delete()) {
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+            assertEquals(Status.NOT_FOUND.getStatusCode(),
                     removalResponse.getStatus());
+        }
+    }
+
+    /**
+     * deleteById() with a nonexistent relation ID should return 404, not an uncaught-exception 500.
+     */
+    @Test
+    public void testDeleteByIdBadRelationId() {
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation/999999")
+                .request()
+                .delete()) {
+            assertEquals(Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+            String body = removalResponse.readEntity(String.class);
+            assertTrue(body.contains("error"));
+        }
+    }
+
+    /**
+     * deleteByData() with scope omitted/null should return 400, not an uncaught NPE.
+     */
+    @Test
+    public void testDeleteRelationByDataNullScope() {
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("showers/5", "25");
+        RelationModel relationship = new RelationModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
+        relationship.setType("repetition");
+        relationship.setScope(null);
+
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation/remove")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.BAD_REQUEST.getStatusCode(), removalResponse.getStatus());
+            String body = removalResponse.readEntity(String.class);
+            assertTrue(body.contains("error"));
+        }
+    }
+
+    /**
+     * deleteByData() with a nonexistent source/target reading reference should return 404
+     * with a JSON error body, not an uncaught-exception 500 -- consistent with create() and
+     * deleteById() in this same class.
+     */
+    @Test
+    public void testDeleteRelationByDataBadReadingRef() {
+        RelationModel relationship = new RelationModel();
+        relationship.setSource("999999");
+        relationship.setTarget("999998");
+        relationship.setType("repetition");
+        relationship.setScope("local");
+
+        try (Response removalResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation/remove")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship))) {
+            assertEquals(Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+            String body = removalResponse.readEntity(String.class);
+            assertTrue(body.contains("error"));
         }
     }
 
