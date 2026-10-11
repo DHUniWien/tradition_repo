@@ -69,8 +69,8 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.glassfish.jersey.containers</groupId>
-			<artifactId>jersey-container-servlet-core</artifactId>
-			<version>4.0.0-M2</version>
+			<artifactId>jersey-container-servlet</artifactId>
+			<version>${jersey-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
