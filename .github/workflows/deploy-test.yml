@@ -1,4 +1,4 @@
-name: Build, test, and deploy master
+name: Build, test, and deploy main
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: [ master ]
+    branches: [ main ]
     paths:
       - 'src/**'
       - 'Dockerfile'
