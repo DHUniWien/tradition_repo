@@ -26,6 +26,8 @@ jobs:
       with:
         distribution: oracle-openjdk
         java-version: 25
+    - name: Install Graphviz
+      run: sudo apt update && sudo apt install -y graphviz
     - name: Build with Maven
       run: mvn -B package --file pom.xml
     - name: Archive .war file
