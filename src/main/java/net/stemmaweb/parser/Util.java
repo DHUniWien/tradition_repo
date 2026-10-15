@@ -11,6 +11,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
@@ -22,6 +23,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.internal.helpers.collection.Iterables;
 import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
@@ -158,12 +160,12 @@ public class Util {
     }
 
     // XML parsing utilities
-    static Document openFileStream(InputStream filestream) {
+    // Throws SAXException if the stream is not well-formed XML, so that the caller can report why.
+    static Document openFileStream(InputStream filestream) throws SAXException {
         try {
             return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(filestream);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+        } catch (ParserConfigurationException | IOException e) {
+            throw new IllegalStateException("Could not read XML stream", e);
         }
     }
 
