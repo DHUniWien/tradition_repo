@@ -552,6 +552,14 @@ public class GraphMLParser {
 		return exists;
 	}
 
+    // Inverse of the exporter's List.toString() serialization, e.g. "[A, B]" or "[]". Note that
+    // "".split(...) returns [""] rather than [], so an empty list has to be special-cased.
+    static String[] parseStringArray(String serialized) {
+        String contents = serialized.replace("[", "").replace("]", "").trim();
+        if (contents.isEmpty()) return new String[0];
+        return contents.split(",\\s+");
+    }
+
     private HashMap<String, Object> returnProperties(NodeList dataNodes, HashMap<String, String[]> dataKeys) {
         HashMap<String, Object> nodeProperties = new HashMap<>();
         for (int j = 0; j < dataNodes.getLength(); j++) {
@@ -563,7 +571,7 @@ public class GraphMLParser {
                 case "boolean" -> Boolean.valueOf(keyVal);
                 case "long" -> Long.valueOf(keyVal);
                 case "int" -> Integer.valueOf(keyVal);
-                case "stringarray" -> keyVal.replace("[", "").replace("]", "").split(",\\s+");
+                case "stringarray" -> parseStringArray(keyVal);
                 default -> // e.g. "string"
                         keyVal;
             };
