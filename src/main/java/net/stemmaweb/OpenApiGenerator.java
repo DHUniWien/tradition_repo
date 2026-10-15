@@ -121,7 +121,7 @@ public class OpenApiGenerator {
         openAPI.info(new Info()
                 .title("Stemmarest REST API")
                 .description(DESCRIPTION)
-                .version("1.1"));
+                .version("2.0"));
         openAPI.tags(TAGS);
 
         Reader reader = new Reader(openAPI);

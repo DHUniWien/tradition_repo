@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 
+import java.time.ZonedDateTime;
+
 /**
  * Provides a model for a user outside of the database. Can be parsed into a
  * json object.
@@ -38,6 +40,11 @@ public class UserModel {
      */
     private String email = "NOT YET SET";
 
+    /**
+     * Last time the user logged in. Depends on the client to set this value.
+     */
+    private ZonedDateTime lastLogin;
+
     public UserModel() {}
 
     public UserModel(Node node) {
@@ -50,6 +57,8 @@ public class UserModel {
             setActive((Boolean) node.getProperty("active"));
         if (node.hasProperty("email"))
             setEmail(node.getProperty("email").toString());
+        if (node.hasProperty("lastLogin"))
+            setLastLogin((ZonedDateTime) node.getProperty("lastLogin"));
     }
 
     public String getPassphrase () { return passphrase; }
@@ -71,5 +80,11 @@ public class UserModel {
     }
     public void setEmail(String email) {
         this.email = email;
+    }
+    public ZonedDateTime getLastLogin() {
+        return lastLogin;
+    }
+    public void setLastLogin(ZonedDateTime lastLogin) {
+        this.lastLogin = lastLogin;
     }
 }

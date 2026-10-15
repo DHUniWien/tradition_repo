@@ -1,9 +1,13 @@
 package net.stemmaweb.rest;
 
 import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 
+import jakarta.ws.rs.*;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -17,12 +21,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -159,7 +157,49 @@ public class User {
         }
     }
 
-
+    /**
+     * Records a user login. Simply updates the lastLogin property to the current time.
+     */
+    @POST
+    @Path("/loggedin")
+    @Operation(
+            tags = {"User"},
+            summary = "Record user login",
+            description = "Records a user login. For use by client applications.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Success, with the timestamp that was recorded",
+                            content = @Content(mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Failure, with an error report in JSON format",
+                            content = @Content(mediaType = "application/json")
+                    )
+            }
+    )
+    public Response recordLogin() {
+        Node foundUser;
+        try (Transaction tx = db.beginTx()) {
+            foundUser = tx.findNode(Nodes.USER, "id", userId);
+            if (foundUser == null) {
+                return Response.status(Response.Status.NOT_FOUND).entity("User not found").build();
+            }
+            // Set the lastLogin property to the current time in UTC
+            ZonedDateTime ts = ZonedDateTime.now(ZoneOffset.UTC);
+            foundUser.setProperty("lastLogin", ts);
+            tx.commit();
+            return Response.ok(jsonresp("lastLogin", ts.toString())).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error recording login: " + e.getMessage()).build();
+        }
+    }
 
     /**
      * Removes a user. This may only be used when the user's traditions have already been deleted.

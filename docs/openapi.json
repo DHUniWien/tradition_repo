@@ -3,7 +3,7 @@
   "info" : {
     "title" : "Stemmarest REST API",
     "description" : "Stemmarest is a Neo4j-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). For an introduction to its conceptual structure, read on; to dive into specific API calls, see the navigation menu, which is organised by the sort of object each call concerns.\n\n### Definition of terms\n\nWhat follows is a definition of the concepts that occur within Stemmarest; understanding these terms will be helpful for understanding the API documentation (each is also described again, in the same words, at the top of its own section in the navigation menu). Note that most of these entities are defined with respect to (therefore, under) the **/tradition/{tradId}** heading in the API; readings, although defined as root objects, always belong to one and only one tradition section.\n",
-    "version" : "1.1"
+    "version" : "2.0"
   },
   "tags" : [ {
     "name" : "Tradition",
@@ -8582,6 +8582,42 @@
         }
       }
     },
+    "/user/{userId}/loggedin" : {
+      "post" : {
+        "tags" : [ "User" ],
+        "summary" : "Record user login",
+        "description" : "Records a user login. For use by client applications.",
+        "operationId" : "recordLogin",
+        "parameters" : [ {
+          "name" : "userId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Success, with the timestamp that was recorded",
+            "content" : {
+              "application/json" : { }
+            }
+          },
+          "404" : {
+            "description" : "User not found",
+            "content" : {
+              "application/json" : { }
+            }
+          },
+          "500" : {
+            "description" : "Failure, with an error report in JSON format",
+            "content" : {
+              "application/json" : { }
+            }
+          }
+        }
+      }
+    },
     "/tradition" : {
       "post" : {
         "tags" : [ "Tradition" ],
@@ -8748,6 +8784,10 @@
           },
           "email" : {
             "type" : "string"
+          },
+          "lastLogin" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         }
       },

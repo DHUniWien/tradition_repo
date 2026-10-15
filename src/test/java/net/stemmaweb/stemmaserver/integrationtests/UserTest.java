@@ -1,16 +1,13 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
+import net.stemmaweb.stemmaserver.Util;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -35,6 +32,8 @@ import net.stemmaweb.rest.User;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -532,6 +531,43 @@ public class UserTest {
         String error = net.stemmaweb.stemmaserver.Util.getValueFromJson(response, "error");
         assertNotNull("500 error response should be JSON with 'error' field", error);
         assertFalse("Error message should be non-empty", error.isEmpty());
+    }
+
+    @Test
+    public void testUserRecordLogin() {
+        // Test that we can record a timestamp for when a user logs in.
+        UserModel aRealUser = new UserModel();
+        aRealUser.setId("test_user");
+        aRealUser.setRole("user");
+        aRealUser.setEmail("test@example.com");
+        aRealUser.setPassphrase("OxDEADBEEFCAFE");
+        // Create them
+        try (Response r = jerseyTest.target("/user/test_user").request(MediaType.APPLICATION_JSON).put(Entity.json(aRealUser))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            UserModel created = r.readEntity(UserModel.class);
+            assertNull("user hasn't logged in yet", created.getLastLogin());
+        }
+        // Now record a login
+        ZonedDateTime tested = ZonedDateTime.now(ZoneOffset.UTC);
+        ZonedDateTime tstamp;
+        try (Response r = jerseyTest.target("/user/test_user/loggedin").request(MediaType.APPLICATION_JSON).method("POST")) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            tstamp = ZonedDateTime.parse(Util.getValueFromJson(r, "lastLogin"));
+            assertNotNull(tstamp);
+            // Make sure that tstamp is within one second or so of tested
+            assertTrue(tstamp.isAfter(tested));
+            assertTrue(tstamp.isBefore(tested.plusSeconds(1)));
+        }
+        // Make sure it got recorded
+        try (Response r = jerseyTest.target("/user/test_user").request(MediaType.APPLICATION_JSON).get()) {
+            UserModel created = r.readEntity(UserModel.class);
+            assertEquals(tstamp, created.getLastLogin());
+        }
+
+        // Make sure we get a 404 when we try to get a non-existent user
+        try (Response r = jerseyTest.target("/user/nonexistent/loggedin").request(MediaType.APPLICATION_JSON).method("POST")) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        }
     }
 
     /*
