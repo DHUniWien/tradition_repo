@@ -23,6 +23,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.AnnotationLinkModel;
@@ -121,6 +122,8 @@ public class GraphMLParser {
                 else if (firstSectionId == null)
                     firstSectionId = result.getEntity().toString();
             }
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -142,9 +145,13 @@ public class GraphMLParser {
     private Response parseGraphML(InputStream filestream, String fileName, Node parentNode,
                                   Map<String, String> idMap, boolean isSingleSection) {
         // We will use a DOM parser for this
-        Document doc = Util.openFileStream(filestream);
-        if (doc == null)
-            return Response.serverError().entity(jsonerror("No document found")).build();
+        Document doc;
+        try {
+            doc = Util.openFileStream(filestream);
+        } catch (SAXException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Could not parse XML in " + fileName + ": " + e.getMessage())).build();
+        }
 
         Element rootEl = doc.getDocumentElement();
         rootEl.normalize();
