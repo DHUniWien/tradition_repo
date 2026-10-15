@@ -266,7 +266,7 @@ public class GraphMLInputOutputTest extends TestCase {
         String sectxml = Util.saveGraphMLTempfile(r);
 
         // Try to create a new tradition with only a section download
-        r = Util.createTraditionFromFileOrString(jerseyTest, "legend", "LR",
+        r = Util.createTraditionFromFileOrString(jerseyTest, "legend", "legend section", "LR",
                 "me@example.org", sectxml, "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         String legendId = Util.getValueFromJson(r, "tradId");
@@ -276,6 +276,9 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals("quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magisque illustrabatur iugiter ac informabatur Sanctus autem", aWitnessText);
         WitnessModel aWitness = jerseyTest.target("/tradition/" + legendId + "/witness/B").request().get(WitnessModel.class);
         assertEquals("B", aWitness.getSigil());
+        // Does the section have the name we expect? We expect the file data to override what was passed to upload.
+        assertEquals("section 2", jerseyTest.target("/tradition/" + legendId + "/sections")
+                .request().get(new GenericType<List<SectionModel>>() {}).getFirst().getName());
 
         // Do the readings have the right section ID set?
         Set<String> newSections = jerseyTest.target("/tradition/" + legendId + "/sections")

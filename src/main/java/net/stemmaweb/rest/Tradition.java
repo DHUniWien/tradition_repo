@@ -429,11 +429,11 @@ public class Tradition {
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity(jsonerror("Unrecognized file type " + filetype)).build();
         if (sectionNode != null && !addToExisting) {
-            // We created a section with the name DEFAULT at the beginning. If that is still the name,
-            // change it to the tradition name
-        	String currentName = sectionNode.getProperty("name", "DEFAULT").toString();
-        	String tradName = traditionNode.getProperty("name", "DEFAULT").toString();
-        	if (currentName.equals("DEFAULT")) {
+            // We created a section with the name __DEFAULT__ at the beginning, if no other section name
+            // was supplied. If that is still the name, change it to the tradition name
+        	String currentName = sectionNode.getProperty("name", "__DEFAULT__").toString();
+        	String tradName = traditionNode.getProperty("name", "__DEFAULT__").toString();
+        	if (currentName.equals("__DEFAULT__")) {
         		sectionNode.setProperty("name", tradName);
         	}
         }

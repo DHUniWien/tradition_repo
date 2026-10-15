@@ -43,7 +43,7 @@ public class CollateXJsonParser {
         // parse the JSON
         ArrayList<String> collationWitnesses = new ArrayList<>();
         ArrayList<ArrayList<ReadingModel>> collationTable = new ArrayList<>();
-        String collationName = "DEFAULT";
+        String collationName = "__DEFAULT__";
 
         // JSON parsing block; turn CollateX JSON into our model classes.
         // Needs its own try/catch for JSON exceptions
@@ -134,8 +134,8 @@ public class CollateXJsonParser {
         try {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Set the section name if we found one and it isn't already set
-            if (!collationName.equals("DEFAULT")
-                    && parentNode.getProperty("name", "DEFAULT").equals("DEFAULT")) {
+            if (!collationName.equals("__DEFAULT__")
+                    && parentNode.getProperty("name", "__DEFAULT__").equals("__DEFAULT__")) {
                 parentNode.setProperty("name", collationName);
             }
             // Check that we have all the witnesses

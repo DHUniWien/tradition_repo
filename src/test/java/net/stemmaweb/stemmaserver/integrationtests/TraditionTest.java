@@ -70,10 +70,6 @@ public class TraditionTest {
 
     @Before
     public void setUp() throws Exception {
-
-//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
-//                .newImpermanentDatabase())
-//                .getDatabase();
         DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
     	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     	new GraphDatabaseServiceProvider(dbbuilder, db);
@@ -463,7 +459,7 @@ public class TraditionTest {
         // count the total number of nodes
         AtomicInteger numNodes = new AtomicInteger(0);
         try (Transaction tx = db.beginTx()) {
-            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.execute("match (n) return n").forEachRemaining(_ -> numNodes.getAndIncrement());
         }
         int originalNodeCount = numNodes.get();
 
@@ -532,7 +528,7 @@ public class TraditionTest {
         // now count the nodes
         numNodes.set(0);
         try (Transaction tx = db.beginTx()) {
-            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.execute("match (n) return n").forEachRemaining(_ -> numNodes.getAndIncrement());
         }
         assertTrue(numNodes.get() > originalNodeCount + 200);
 
@@ -547,7 +543,7 @@ public class TraditionTest {
         // nodes should be back to original number
         numNodes.set(0);
         try (Transaction tx = db.beginTx()) {
-            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.execute("match (n) return n").forEachRemaining(_ -> numNodes.getAndIncrement());
         }
         assertEquals(originalNodeCount, numNodes.get());
     }

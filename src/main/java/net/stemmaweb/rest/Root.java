@@ -122,6 +122,7 @@ public class Root {
      * in doing so. Returns the ID of the given tradition, in the form {@code {"tradId": <ID>}}.
      *
      * @param name      the name of the tradition. Default is the empty string.
+     * @param section_name the name of the section to be created. Default is the name of the tradition.
      * @param language  the language of the tradition text (e.g. Latin, Syriac).
      * @param direction the direction in which the text should be read. Possible values
      *                  are {@code LR} (left to right), {@code RL} (right to left), or {@code BI} (bidirectional).
@@ -164,6 +165,9 @@ public class Root {
     public Response importFromFile(@Parameter(name = "name", in = ParameterIn.QUERY,
                                             description = "the name of the tradition. Default is the empty string.")
                                    @DefaultValue("") @FormDataParam("name") String name,
+                                   @Parameter(name = "sectionName", in = ParameterIn.QUERY,
+                                            description = "the name of the section to be created. Defaults to the tradition name. Will be overridden if a section name is specified in the upload file")
+                                   @DefaultValue("__DEFAULT__") @FormDataParam("sectionName") String section_name,
                                    @Parameter(name = "userId", in = ParameterIn.QUERY,
                                             description = "the ID of the user to whom this tradition belongs. Required.",
                                             required = true)
@@ -208,7 +212,7 @@ public class Root {
 
             // Now read whatever data was sent into the tradition node we just created.
             if (empty == null) {
-                Response dataResult = parseDispatcher(tradId, "DEFAULT", filetype, uploadedInputStream, false, tx);
+                Response dataResult = parseDispatcher(tradId, section_name, filetype, uploadedInputStream, false, tx);
                 // If we had an error, skip ahead and return it.
                 if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode())
                     return dataResult;

@@ -3,6 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.ws.rs.core.GenericType;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -162,6 +163,18 @@ public class TEIParallelSegInputTest {
             }
             assertEquals( "Found orphaned placeholder nodes: " + orphaned, 0, orphaned.size());
         }
+    }
+
+    @Test
+    public void testTEIPSInputSectionNameSpecified() {
+        String newTid;
+        try (Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "section F",
+                "LR", "1", "src/TestFiles/florilegium_tei_ps.xml", "teips")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
+            newTid = Util.getValueFromJson(cResult, "tradId");
+        }
+        assertEquals("section F", jerseyTest.target("/tradition/" + newTid + "/sections")
+                .request().get(new GenericType<List<SectionModel>>() {}).getFirst().getName());
     }
 
     @After

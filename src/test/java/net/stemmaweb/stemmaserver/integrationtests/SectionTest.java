@@ -323,7 +323,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(4, returnedSections.size());
-        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("Florilegium", "part 1", "part 2", "part 3"));
+        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("section W", "part 1", "part 2", "part 3"));
         ArrayList<String> returnedIds = new ArrayList<>();
         returnedSections.forEach(x -> returnedIds.add(x.getName()));
         assertEquals(expectedSections, returnedIds);

@@ -59,7 +59,7 @@ public class CollateXJsonInputTest extends TestCase {
                 .target("/tradition/" + tradId + "/sections")
                 .request()
                 .get(new GenericType<>() {});
-        sectId = testSections.get(0).getId();
+        sectId = testSections.getFirst().getId();
     }
 
     public void testParseCollateX() {
@@ -175,6 +175,38 @@ public class CollateXJsonInputTest extends TestCase {
         assertTrue(dotStr.contains("label=<Դարձեալ<BR/><FONT COLOR=\"grey\">դարձեալ</FONT>>];")); // no HTML, normal form
         assertTrue(dotStr.contains("label=<&amp;<BR/><FONT COLOR=\"grey\">և</FONT>>];")); // no HTML / HTML escape, normal form
 
+    }
+
+    public void testParseCollateXSectionNameInRequest() {
+        String newTradId;
+        try (Response r = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle of Matthew",
+                "Anno 401", "LR", "1", "src/TestFiles/Matthew-401.json", "cxjson"))
+        {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            newTradId = Util.getValueFromJson(r, "tradId");
+        }
+        try (Response r = jerseyTest.target("/tradition/" + newTradId + "/sections").request().get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            List<SectionModel> allSections = r.readEntity(new GenericType<>() {});
+            assertEquals(1, allSections.size());
+            assertEquals("Anno 401", allSections.getFirst().getName());
+        }
+    }
+
+    public void testParseCollateXSectionNameDefault() {
+        String newTradId;
+        try (Response r = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle of Matthew",
+                 "LR", "1", "src/TestFiles/Matthew-401.json", "cxjson"))
+        {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            newTradId = Util.getValueFromJson(r, "tradId");
+        }
+        try (Response r = jerseyTest.target("/tradition/" + newTradId + "/sections").request().get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            List<SectionModel> allSections = r.readEntity(new GenericType<>() {});
+            assertEquals(1, allSections.size());
+            assertEquals("Chronicle of Matthew", allSections.getFirst().getName());
+        }
     }
 
     public void testNoRedundantWitnesses() {

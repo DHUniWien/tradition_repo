@@ -229,15 +229,16 @@ public class Util {
                     MediaType.APPLICATION_OCTET_STREAM_TYPE).getFormDataContentDisposition();
         }
 
-        return appRest.importFromFile(tName, userId, "false", "Default",
+        return appRest.importFromFile(tName, "DEFAULT", userId, "false", "Default",
                 tDir, empty, fType, input, fdcd);
     }
 
-    public static Response createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,
+    public static Response createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String sName, String tDir,
                                                                  String userId, String fName, String fType) {
         FormDataMultiPart form = new FormDataMultiPart();
         if (fType != null) form.field("filetype", fType);
         if (tName != null) form.field("name", tName);
+        if (sName != null) form.field("sectionName", sName);
         if (tDir != null) form.field("direction", tDir);
         if (userId != null) form.field("userId", userId);
         if (fName != null) {
@@ -252,6 +253,13 @@ public class Util {
                 .target("/tradition")
                 .request()
                 .post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA));
+    }
+
+    // Shortcut for old tests
+    public static Response createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,
+                                                           String userId, String fName, String fType) {
+        // Pass an empty first section name
+        return createTraditionFromFileOrString(jerseyTest, tName, null, tDir, userId, fName, fType);
     }
 
     public static Response addSectionToTradition(JerseyTest jerseyTest, String traditionId, String fileName,
@@ -270,7 +278,7 @@ public class Util {
 
     public static List<String> importFlorilegium (JerseyTest jerseyTest) {
         List<String> florIds = new ArrayList<>();
-        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
+        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "section W", "LR",
                 "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         String florId = Util.getValueFromJson(jerseyResult, "tradId");

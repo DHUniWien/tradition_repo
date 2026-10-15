@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import net.stemmaweb.model.*;
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
@@ -16,13 +17,6 @@ import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import junit.framework.TestCase;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -86,6 +80,19 @@ public class CollateXInputTest extends TestCase {
         assertEquals(1, allRelTypes.size());
         assertEquals("transposition", allRelTypes.get(0).getName());
         assertFalse(allRelTypes.get(0).getIs_colocation());
+    }
+
+    public void testParseCollateXWithSectionName() {
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Quick foxes","The first fox",
+                "LR", "1","src/TestFiles/quick_brown_fox.xml", "collatex");
+        assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
+        String tradId = Util.getValueFromJson(cResult, "tradId");
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/sections").request().get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            List<SectionModel> allSections = r.readEntity(new GenericType<>() {});
+            assertEquals(1, allSections.size());
+            assertEquals("The first fox", allSections.get(0).getName());
+        }
     }
 
     public void testParseCollateXFromPlaintext() {
