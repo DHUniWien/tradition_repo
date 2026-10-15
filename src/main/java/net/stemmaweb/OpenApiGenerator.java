@@ -99,6 +99,21 @@ public class OpenApiGenerator {
                     nodes) that it may link to.""")
     );
 
+    // Some @DefaultValue annotations use an internal sentinel to mean "not supplied; work out the
+    // real default at runtime". The sentinel is meaningless to API consumers (the parameter
+    // description says what the effective default is), so keep it out of the published spec.
+    private static final String SENTINEL_DEFAULT = "__DEFAULT__";
+
+    private static void stripSentinelDefaults(OpenAPI api) {
+        api.getPaths().values().forEach(item -> item.readOperations().forEach(op -> {
+            if (op.getParameters() == null) return;
+            op.getParameters().forEach(param -> {
+                if (param.getSchema() != null && SENTINEL_DEFAULT.equals(param.getSchema().getDefault()))
+                    param.getSchema().setDefault(null);
+            });
+        }));
+    }
+
     public static void main(String[] args) throws IOException {
         String outputPath = args.length > 0 ? args[0] : "docs/openapi.json";
 
@@ -111,6 +126,7 @@ public class OpenApiGenerator {
 
         Reader reader = new Reader(openAPI);
         OpenAPI result = reader.read(Root.class);
+        stripSentinelDefaults(result);
 
         Path output = Path.of(outputPath);
         if (output.getParent() != null)
