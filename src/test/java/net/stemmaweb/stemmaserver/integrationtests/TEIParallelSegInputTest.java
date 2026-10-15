@@ -1,8 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +10,8 @@ import org.junit.Test;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import jakarta.ws.rs.core.Response;
@@ -28,6 +27,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
+import static org.junit.Assert.*;
+
 /**
  * Test TEI parallel segmentation input.
  *
@@ -35,12 +36,13 @@ import net.stemmaweb.stemmaserver.Util;
  */
 public class TEIParallelSegInputTest {
     private JerseyTest jerseyTest;
+    private GraphDatabaseService db;
 
     @Before
     public void setUp() throws Exception {
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
-        GraphDatabaseService db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+        db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     	new GraphDatabaseServiceProvider(dbbuilder, db);
         Util.setupTestDB(db, "1");
 
@@ -108,7 +110,7 @@ public class TEIParallelSegInputTest {
         @SuppressWarnings("unchecked")
         ArrayList<SectionModel> sections = (ArrayList<SectionModel>) tradition.getAllSections().getEntity();
         assertEquals(1, sections.size());
-        assertEquals(tModel.getName(), sections.get(0).getName());
+        assertEquals(tModel.getName(), sections.getFirst().getName());
 
         // Basic statistics
         Response result = tradition.getAllWitnesses();
@@ -144,11 +146,22 @@ public class TEIParallelSegInputTest {
         assertEquals(Response.Status.CONFLICT.getStatusCode(), badResult.getStatus());
 
         // Get a witness text with a valid set of layers
-        layers.remove(0);
+        layers.removeFirst();
         layers.add("margin");
         ltm = (TextSequenceModel) q.getWitnessAsTextWithLayer(layers, "0", "E").getEntity();
         assertEquals(qpcText, ltm.getText());
 
+        // Make sure there aren't placeholders left over
+        try (Transaction tx = db.beginTx()) {
+            // Look for any unconnected nodes with is_placeholder property set
+            List<ReadingModel> orphaned = new ArrayList<>();
+            for (Node n : tx.getAllNodes()) {
+                if (n.hasProperty("is_placeholder") && !n.hasRelationship()) {
+                    orphaned.add(new ReadingModel(n));
+                }
+            }
+            assertEquals( "Found orphaned placeholder nodes: " + orphaned, 0, orphaned.size());
+        }
     }
 
     @After

@@ -346,6 +346,7 @@ public class ReadingService {
                 addWitnessLink(priorNode, thisToExtra.get(extra), w, extra);
             }
         }
+        placeholderNode.delete();
     }
 
     // Gets the neighbour reading in the given direction for the given witness. Returns

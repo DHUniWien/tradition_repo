@@ -132,7 +132,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
         if (node.hasProperty("grammar_invalid"))
             this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
         this.setId(node.getProperty("id").toString());
-        this.setSection(node.getProperty("section_id").toString());
+        if (node.hasProperty("section_id"))
+            this.setSection(node.getProperty("section_id").toString());
         // If there is an "ncommon" property, use this in preference to "is_common"
         // because it means we are in normalized mode
         this.setIs_common(node.getProperty("ncommon", node.getProperty("is_common", false)).equals(true));
