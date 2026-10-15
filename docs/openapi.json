@@ -8597,6 +8597,14 @@
             "default" : ""
           }
         }, {
+          "name" : "sectionName",
+          "in" : "query",
+          "description" : "the name of the section to be created. Defaults to the tradition name. Will be overridden if a section name is specified in the upload file",
+          "schema" : {
+            "type" : "string",
+            "default" : "__DEFAULT__"
+          }
+        }, {
           "name" : "userId",
           "in" : "query",
           "description" : "the ID of the user to whom this tradition belongs. Required.",
