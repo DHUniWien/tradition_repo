@@ -281,10 +281,13 @@ public class Witness {
             description = "Creates a new extant witness, with the URL reference as its sigil, if that reference "
                     + "doesn't resolve to an existing witness (a sigil in the request body must then match the URL "
                     + "reference); otherwise renames the resolved witness to the sigil given in the request body, "
-                    + "carrying the rename through to the witness's text. "
-                    + "Only valid tradition-wide, not within a single section.",
+                    + "carrying the rename through to the witness's text. A body with no sigil leaves the "
+                    + "sigil unchanged. Any of the descriptive metadata fields (settlement, repository, shelfmark, "
+                    + "description, production_date, production_place, production_person) given in the body are "
+                    + "set on the witness: a field that is absent is left unchanged, and a field that is an empty "
+                    + "string is cleared. Only valid tradition-wide, not within a single section.",
             requestBody = @RequestBody(
-                    description = "A WitnessModel containing the desired sigil",
+                    description = "A WitnessModel containing the desired sigil and/or metadata",
                     required = true,
                     content = @Content(schema = @Schema(implementation = WitnessModel.class))
             ),
@@ -349,7 +352,8 @@ public class Witness {
                             .entity(jsonerror("sigil in request body does not match the URL reference")).build();
                 targetSigil = ref;
             } else {
-                targetSigil = wm.getSigil();
+                // A body without a sigil (e.g. one that only carries metadata) keeps the current one
+                targetSigil = wm.getSigil() != null ? wm.getSigil() : witnessNode.getProperty("sigil").toString();
             }
             Util.validateSigil(targetSigil);
             DatabaseService.ensureNameUnique(tx, tradNode, ERelations.HAS_WITNESS, Nodes.WITNESS,
@@ -374,6 +378,7 @@ public class Witness {
                 witnessNode.setProperty("sigil", targetSigil);
                 witnessNode.setProperty("quotesigil", !Util.isDotId(targetSigil));
             }
+            wm.applyMetadataTo(witnessNode);
             WitnessModel result = new WitnessModel(witnessNode);
             tx.commit();
             return Response.status(isNew ? Status.CREATED : Status.OK).entity(result).build();

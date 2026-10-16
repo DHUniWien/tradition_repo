@@ -830,6 +830,72 @@ graph "Semstem 1402333041_0" {
         assertFalse("Error message should be non-empty", error.isEmpty());
     }
 
+    @Test
+    public void witnessMetadataTest() {
+        String url = "/tradition/" + tradId + "/witness/A";
+        // A fresh witness has no metadata, and none appears in its JSON
+        String bare = jerseyTest.target(url).request(MediaType.APPLICATION_JSON).get(String.class);
+        assertFalse(bare, bare.contains("settlement"));
+        assertFalse(bare, bare.contains("shelfmark"));
+
+        // Set all the metadata via PUT; the sigil stays as it was
+        WitnessModel meta = new WitnessModel();
+        meta.setSettlement("Oxford");
+        meta.setRepository("Bodleian Library");
+        meta.setShelfmark("MS. Lewis E 202");
+        meta.setDescription("Parchment, 120 leaves");
+        meta.setProductionDate("c. 1450");
+        meta.setProductionPlace("Constantinople");
+        meta.setProductionPerson("Michael Apostoles");
+        try (Response result = jerseyTest.target(url).request(MediaType.APPLICATION_JSON).put(Entity.json(meta))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+            WitnessModel updated = result.readEntity(WitnessModel.class);
+            assertEquals("A", updated.getSigil());
+            assertEquals("Oxford", updated.getSettlement());
+        }
+        WitnessModel fetched = jerseyTest.target(url).request(MediaType.APPLICATION_JSON).get(WitnessModel.class);
+        assertEquals("A", fetched.getSigil());
+        assertEquals("Oxford", fetched.getSettlement());
+        assertEquals("Bodleian Library", fetched.getRepository());
+        assertEquals("MS. Lewis E 202", fetched.getShelfmark());
+        assertEquals("Parchment, 120 leaves", fetched.getDescription());
+        assertEquals("c. 1450", fetched.getProductionDate());
+        assertEquals("Constantinople", fetched.getProductionPlace());
+        assertEquals("Michael Apostoles", fetched.getProductionPerson());
+
+        // A PUT with only some fields leaves the others (null = unchanged) alone, and an
+        // empty string clears a field
+        WitnessModel partial = new WitnessModel();
+        partial.setSettlement("Cambridge");
+        partial.setRepository("");
+        try (Response result = jerseyTest.target(url).request(MediaType.APPLICATION_JSON).put(Entity.json(partial))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        }
+        fetched = jerseyTest.target(url).request(MediaType.APPLICATION_JSON).get(WitnessModel.class);
+        assertEquals("Cambridge", fetched.getSettlement());
+        assertNull(fetched.getRepository());
+        assertEquals("MS. Lewis E 202", fetched.getShelfmark());
+        assertEquals("Michael Apostoles", fetched.getProductionPerson());
+
+        // Metadata can be given when creating a witness, and survives a rename
+        WitnessModel create = new WitnessModel();
+        create.setShelfmark("Cod. 17");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Newbie")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(create))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+            assertEquals("Cod. 17", result.readEntity(WitnessModel.class).getShelfmark());
+        }
+        WitnessModel rename = new WitnessModel();
+        rename.setSigil("Newbie2");
+        try (Response result = jerseyTest.target("/tradition/" + tradId + "/witness/Newbie")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rename))) {
+            assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+            WitnessModel renamed = result.readEntity(WitnessModel.class);
+            assertEquals("Newbie2", renamed.getSigil());
+            assertEquals("Cod. 17", renamed.getShelfmark());
+        }
+    }
+
     /*
      * Shut down the jersey server
      *
