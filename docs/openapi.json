@@ -6819,7 +6819,7 @@
       "put" : {
         "tags" : [ "Witness" ],
         "summary" : "Create or rename a witness",
-        "description" : "Creates a new extant witness, with the URL reference as its sigil, if that reference doesn't resolve to an existing witness (a sigil in the request body must then match the URL reference); otherwise renames the resolved witness to the sigil given in the request body, carrying the rename through to the witness's text. Only valid tradition-wide, not within a single section.",
+        "description" : "Creates a new extant witness, with the URL reference as its sigil, if that reference doesn't resolve to an existing witness (a sigil in the request body must then match the URL reference); otherwise renames the resolved witness to the sigil given in the request body, carrying the rename through to the witness's text. A body with no sigil leaves the sigil unchanged. Any of the descriptive metadata fields (settlement, repository, shelfmark, description, production_date, production_place, production_person) given in the body are set on the witness: a field that is absent is left unchanged, and a field that is an empty string is cleared. Only valid tradition-wide, not within a single section.",
         "operationId" : "putWitness",
         "parameters" : [ {
           "name" : "sigil",
@@ -6844,7 +6844,7 @@
           }
         } ],
         "requestBody" : {
-          "description" : "A WitnessModel containing the desired sigil",
+          "description" : "A WitnessModel containing the desired sigil and/or metadata",
           "content" : {
             "application/json" : {
               "schema" : {
@@ -7972,7 +7972,7 @@
       "put" : {
         "tags" : [ "Witness" ],
         "summary" : "Create or rename a witness",
-        "description" : "Creates a new extant witness, with the URL reference as its sigil, if that reference doesn't resolve to an existing witness (a sigil in the request body must then match the URL reference); otherwise renames the resolved witness to the sigil given in the request body, carrying the rename through to the witness's text. Only valid tradition-wide, not within a single section.",
+        "description" : "Creates a new extant witness, with the URL reference as its sigil, if that reference doesn't resolve to an existing witness (a sigil in the request body must then match the URL reference); otherwise renames the resolved witness to the sigil given in the request body, carrying the rename through to the witness's text. A body with no sigil leaves the sigil unchanged. Any of the descriptive metadata fields (settlement, repository, shelfmark, description, production_date, production_place, production_person) given in the body are set on the witness: a field that is absent is left unchanged, and a field that is an empty string is cleared. Only valid tradition-wide, not within a single section.",
         "operationId" : "putWitness_1",
         "parameters" : [ {
           "name" : "sigil",
@@ -7990,7 +7990,7 @@
           }
         } ],
         "requestBody" : {
-          "description" : "A WitnessModel containing the desired sigil",
+          "description" : "A WitnessModel containing the desired sigil and/or metadata",
           "content" : {
             "application/json" : {
               "schema" : {
@@ -9190,6 +9190,27 @@
             "type" : "string"
           },
           "sigil" : {
+            "type" : "string"
+          },
+          "settlement" : {
+            "type" : "string"
+          },
+          "repository" : {
+            "type" : "string"
+          },
+          "shelfmark" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "production_date" : {
+            "type" : "string"
+          },
+          "production_place" : {
+            "type" : "string"
+          },
+          "production_person" : {
             "type" : "string"
           }
         }
