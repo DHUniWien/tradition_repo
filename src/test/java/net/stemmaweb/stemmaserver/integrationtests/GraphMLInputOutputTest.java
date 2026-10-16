@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -634,6 +635,146 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(51, placeModels.size());
     }
 */
+
+    // Export the given tradition as GraphML, rename a sigil throughout the XML (as a legacy export
+    // with an invalid sigil would have it), and return the path of the resulting zip file.
+    private String exportWithRenamedSigla(String tid, Map<String,String> renames) throws Exception {
+        Response r = jerseyTest.target("/tradition/" + tid + "/graphml").request("application/zip").get();
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        LinkedHashMap<String,InputStream> files = net.stemmaweb.parser.Util.extractGraphMLZip(r.readEntity(InputStream.class));
+        java.io.File out = java.io.File.createTempFile("renamedSigla", ".zip");
+        out.deleteOnExit();
+        try (java.util.zip.ZipOutputStream zo = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(out))) {
+            for (Map.Entry<String,InputStream> e : files.entrySet()) {
+                String xml = new String(e.getValue().readAllBytes(), StandardCharsets.UTF_8);
+                // Find the data keys that hold the sigil of a witness, and those that hold lists of sigla
+                java.util.regex.Matcher km = java.util.regex.Pattern
+                        .compile("<key attr.name=\"sigil\" [^>]*id=\"(\\w+)\"/>").matcher(xml);
+                String sigilKey = km.find() ? km.group(1) : null;
+                java.util.regex.Matcher am = java.util.regex.Pattern
+                        .compile("<key [^>]*attr.type=\"stringarray\" for=\"edge\" id=\"(\\w+)\"/>").matcher(xml);
+                java.util.List<String> arrayKeys = new ArrayList<>();
+                while (am.find()) arrayKeys.add(am.group(1));
+                for (Map.Entry<String,String> rn : renames.entrySet()) {
+                    String from = java.util.regex.Pattern.quote(rn.getKey());
+                    String to = java.util.regex.Matcher.quoteReplacement(rn.getValue());
+                    if (sigilKey != null)
+                        xml = xml.replaceAll("(<data key=\"" + sigilKey + "\">)" + from + "(</data>)", "$1" + to + "$2");
+                    for (String ak : arrayKeys) {
+                        java.util.regex.Matcher dm = java.util.regex.Pattern
+                                .compile("(<data key=\"" + ak + "\">)\\[([^\\]]*)\\](</data>)").matcher(xml);
+                        StringBuilder sb = new StringBuilder();
+                        while (dm.find()) {
+                            String[] items = dm.group(2).isEmpty() ? new String[0] : dm.group(2).split(",\\s+");
+                            for (int i = 0; i < items.length; i++)
+                                if (items[i].equals(rn.getKey())) items[i] = rn.getValue();
+                            dm.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(
+                                    dm.group(1) + "[" + String.join(", ", items) + "]" + dm.group(3)));
+                        }
+                        dm.appendTail(sb);
+                        xml = sb.toString();
+                    }
+                }
+                zo.putNextEntry(new java.util.zip.ZipEntry(e.getKey()));
+                zo.write(xml.getBytes(StandardCharsets.UTF_8));
+                zo.closeEntry();
+            }
+        }
+        return out.getAbsolutePath();
+    }
+
+    public void testZipInputConvertsInvalidSigla() throws Exception {
+        String originalText = jerseyTest.target("/tradition/" + tradId + "/witness/A/text")
+                .request().get(String.class);
+        assertFalse(originalText.isEmpty());
+        String badSigil = "Lewis MS E202";
+        String zip = exportWithRenamedSigla(tradId, Map.of("A", badSigil));
+
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Converted", "LR",
+                "me@example.org", zip, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId = Util.getValueFromJson(r, "tradId");
+
+        List<WitnessModel> witnesses = jerseyTest.target("/tradition/" + newId + "/witnesses")
+                .request().get(new GenericType<>() {});
+        Set<String> sigla = witnesses.stream().map(WitnessModel::getSigil).collect(Collectors.toSet());
+        assertTrue(sigla.toString(), sigla.contains("Lewis_MS_E202"));
+        assertFalse(sigla.toString(), sigla.contains("A"));
+        assertFalse(sigla.toString(), sigla.contains(badSigil));
+        assertEquals(witnesses.size(), sigla.size());
+        WitnessModel converted = witnesses.stream().filter(w -> w.getSigil().equals("Lewis_MS_E202"))
+                .findFirst().orElseThrow();
+        // The original sigil is kept as the shelfmark
+        assertEquals(badSigil, converted.getShelfmark());
+        // ...and the text came along under the new sigil
+        assertEquals(originalText, jerseyTest.target("/tradition/" + newId + "/witness/Lewis_MS_E202/text")
+                .request().get(String.class));
+        // Witnesses that didn't need converting have no shelfmark added
+        assertTrue(witnesses.stream().filter(w -> !w.getSigil().equals("Lewis_MS_E202"))
+                .allMatch(w -> w.getShelfmark() == null));
+    }
+
+    public void testZipInputSigilConversionKeepsExistingShelfmark() throws Exception {
+        WitnessModel meta = new WitnessModel();
+        meta.setShelfmark("Cod. Existing 1");
+        meta.setSettlement("Oxford");
+        meta.setProductionPerson("An Unknown Scribe");
+        try (Response mr = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(meta))) {
+            assertEquals(Response.Status.OK.getStatusCode(), mr.getStatus());
+        }
+        String zip = exportWithRenamedSigla(tradId, Map.of("A", "NAF. 20023a"));
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Converted", "LR",
+                "me@example.org", zip, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId = Util.getValueFromJson(r, "tradId");
+        WitnessModel converted = jerseyTest.target("/tradition/" + newId + "/witness/NAF._20023a")
+                .request(MediaType.APPLICATION_JSON).get(WitnessModel.class);
+        assertEquals("Cod. Existing 1", converted.getShelfmark());
+        assertEquals("Oxford", converted.getSettlement());
+        assertEquals("An Unknown Scribe", converted.getProductionPerson());
+    }
+
+    public void testZipInputCollidingSiglaAreRejected() throws Exception {
+        String zip = exportWithRenamedSigla(tradId, Map.of("A", "X Y", "B", "X/Y"));
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Colliding", "LR",
+                "me@example.org", zip, "graphml");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        String error = Util.getValueFromJson(r, "error");
+        assertNotNull(error);
+        assertTrue(error, error.contains("X Y"));
+        assertTrue(error, error.contains("X/Y"));
+        assertTrue(error, error.contains("X_Y"));
+    }
+
+    public void testWitnessMetadataSurvivesGraphMLRoundTrip() {
+        WitnessModel meta = new WitnessModel();
+        meta.setSettlement("Oxford");
+        meta.setRepository("Bodleian Library");
+        meta.setShelfmark("MS. Lewis E 202");
+        meta.setDescription("Parchment, 120 leaves");
+        meta.setProductionDate("c. 1450");
+        meta.setProductionPlace("Constantinople");
+        meta.setProductionPerson("Michael Apostoles");
+        try (Response mr = jerseyTest.target("/tradition/" + tradId + "/witness/B")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(meta))) {
+            assertEquals(Response.Status.OK.getStatusCode(), mr.getStatus());
+        }
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml").request("application/zip").get();
+        String zip = Util.saveGraphMLTempfile(r);
+        r = Util.createTraditionFromFileOrString(jerseyTest, "Round trip", "LR", "me@example.org", zip, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId = Util.getValueFromJson(r, "tradId");
+        WitnessModel b = jerseyTest.target("/tradition/" + newId + "/witness/B")
+                .request(MediaType.APPLICATION_JSON).get(WitnessModel.class);
+        assertEquals("Oxford", b.getSettlement());
+        assertEquals("Bodleian Library", b.getRepository());
+        assertEquals("MS. Lewis E 202", b.getShelfmark());
+        assertEquals("Parchment, 120 leaves", b.getDescription());
+        assertEquals("c. 1450", b.getProductionDate());
+        assertEquals("Constantinople", b.getProductionPlace());
+        assertEquals("Michael Apostoles", b.getProductionPerson());
+    }
 
     // testXMLUserNodes
 

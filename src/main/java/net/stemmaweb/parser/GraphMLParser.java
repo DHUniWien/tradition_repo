@@ -5,6 +5,7 @@ import static net.stemmaweb.Util.jsonresp;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -61,10 +62,11 @@ public class GraphMLParser {
         String filename = isSingleSection ? "section-new.xml" : "tradition.xml";
         // We won't use this, but the new parser expects it
         HashMap<String, String> idMap = new HashMap<>();
+        SigilConverter sigilConverter = new SigilConverter();
         Response result;
         try {
             // Mimic whether this is a tradition or a section file
-            result = parseGraphML(filestream, filename, parentNode, idMap, isSingleSection);
+            result = parseGraphML(filestream, filename, parentNode, idMap, sigilConverter, isSingleSection);
             // Did something go wrong? If so, exit now
             if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                 return result;
@@ -91,6 +93,9 @@ public class GraphMLParser {
     public Response parseGraphMLZip(InputStream filestream, Node parentNode, boolean isSingleSection) {
         // Keep track of GraphML ID -> created node ID
         HashMap<String, String> idMap = new HashMap<>();
+        // Legacy exports may have sigla that are no longer valid; these get converted consistently
+        // throughout the whole import
+        SigilConverter sigilConverter = new SigilConverter();
         // Initialise our response
         String tradId = null;
         String firstSectionId = null;
@@ -111,7 +116,7 @@ public class GraphMLParser {
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity(jsonerror("Bad zipfile input - is tradition.xml not first?")).build();
                 InputStream fi = inputXML.get(filename);
-                Response result = parseGraphML(fi, filename, parentNode, idMap, isSingleSection);
+                Response result = parseGraphML(fi, filename, parentNode, idMap, sigilConverter, isSingleSection);
                 // Did something go wrong? If so, exit now
                 if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                     return result;
@@ -139,11 +144,13 @@ public class GraphMLParser {
      * @param fileName        - The name of the XML file we are working on
      * @param parentNode      - The tradition node (if !isSingleSection), or the section node
      * @param idMap           - A map of node xml:id -> Neo4J node ID
+     * @param sigilConverter  - Converts any invalid witness sigla found in the file into valid ones
      * @param isSingleSection - Whether we are parsing a new tradition, or adding a section to an existing one
      * @return a Response indicating the result
      */
     private Response parseGraphML(InputStream filestream, String fileName, Node parentNode,
-                                  Map<String, String> idMap, boolean isSingleSection) {
+                                  Map<String, String> idMap, SigilConverter sigilConverter,
+                                  boolean isSingleSection) {
         // We will use a DOM parser for this
         Document doc;
         try {
@@ -204,6 +211,16 @@ public class GraphMLParser {
                 return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("Node without label found")).build();
             String neolabel = nodeProperties.remove("neolabel").toString();
             String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
+
+            // A legacy export may have a witness sigil that is not valid now. If so, convert it, and
+            // keep the original as the shelfmark unless the witness already has one. Hypothetical
+            // witnesses only need path-safe sigla and don't go into the text, so we leave them alone.
+            if (neolabel.contains("WITNESS") && nodeProperties.get("sigil") instanceof String sigil
+                    && !Boolean.TRUE.equals(nodeProperties.get("hypothetical"))) {
+                nodeProperties.put("sigil", sigilConverter.convert(sigil));
+                if (sigilConverter.wasConverted(sigil))
+                    nodeProperties.putIfAbsent("shelfmark", sigil);
+            }
 
             if (neolabel.contains("TRADITION")) {
                 if (fileName.equals("tradition.xml") && !isSingleSection) {
@@ -368,6 +385,10 @@ public class GraphMLParser {
                     // clobber the fresh id createRelatedRelationship just minted above.
                     if (neolabel.equals("RELATED"))
                         edgeProperties.remove("id");
+                    // The witnesses and layers on a text link are all lists of sigla
+                    if (neolabel.equals("SEQUENCE") || neolabel.equals("NSEQUENCE"))
+                        edgeProperties.replaceAll((k, v) -> v instanceof String[] sigla
+                                ? Arrays.stream(sigla).map(sigilConverter::convert).toArray(String[]::new) : v);
                     edgeProperties.forEach(newRel::setProperty);
                     // Catch any relation types and witnesses that were used, so that we can ensure
                     // their existence when we are done
@@ -406,7 +427,13 @@ public class GraphMLParser {
             Util.ensureSectionLink(tx, traditionNode, thisSection);
 
         // Ensure that all witnesses exist
-        witnessSigla.forEach(x -> Util.findOrCreateExtant(tx, traditionNode, x));
+        witnessSigla.forEach(x -> {
+            Node witnessNode = Util.findOrCreateExtant(tx, traditionNode, x);
+            // A witness that only turned up in the text, not in the metadata, still needs its original sigil
+            String original = sigilConverter.conversions().get(x);
+            if (original != null && !witnessNode.hasProperty("shelfmark"))
+                witnessNode.setProperty("shelfmark", original);
+        });
 
         // Ensure that all relation types exist
         for (String rt : relationTypesUsed)

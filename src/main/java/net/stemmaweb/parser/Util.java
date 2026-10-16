@@ -59,13 +59,20 @@ public class Util {
     }
 
     // NCName pattern for validation
-    private static final String NCNAME_START_CHARS =
+    static final String NCNAME_START_CHARS =
             "A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF"
                     + "\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
-    private static final String NCNAME_CHARS =
+    static final String NCNAME_CHARS =
             NCNAME_START_CHARS + "\\-.0-9\\u00B7\\u0300-\\u036F\\u203F\\u2040";
     private static final Pattern NCNAME_PATTERN =
             Pattern.compile("^[" + NCNAME_START_CHARS + "][" + NCNAME_CHARS + "]*$");
+
+    /**
+     * Reports whether a witness sigil is a legal NCName; see {@link #validateSigil}.
+     */
+    public static boolean isValidSigil(String sigil) {
+        return sigil != null && NCNAME_PATTERN.matcher(sigil).matches();
+    }
 
     /**
      * Validates that a witness sigil is a legal NCName for use in TEI exports.
@@ -74,7 +81,7 @@ public class Util {
      * @throws IllegalArgumentException if sigil is null or not a valid NCName
      */
     public static void validateSigil(String sigil) throws IllegalArgumentException {
-        if (sigil == null || !NCNAME_PATTERN.matcher(sigil).matches())
+        if (!isValidSigil(sigil))
             throw new IllegalArgumentException(String.format(
                     "The sigil \"%s\" is not a valid name: it must start with a letter or underscore "
                             + "and contain only letters, digits, underscores, hyphens, or periods thereafter",

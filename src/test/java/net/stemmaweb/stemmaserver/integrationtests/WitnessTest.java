@@ -356,10 +356,10 @@ graph "Semstem 1402333041_0" {
                 "src/TestFiles/592th.xml", "graphmlsingle");
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
         String error = Util.getValueFromJson(r, "error");
-        assertTrue(error.startsWith("The sigil \""));
-        // ...it might be one of a few sigla. We just care that we get the error
-        assertTrue(error.endsWith("is not a valid name: it must start with a letter or underscore and "
-                + "contain only letters, digits, underscores, hyphens, or periods thereafter"));
+        // This file's sigla are fragments of JSON. Invalid sigla are converted on import where they can
+        // be, but here two of them convert to the same name, so the import is refused.
+        assertTrue(error, error.startsWith("Cannot import: the witness sigla \""));
+        assertTrue(error, error.contains("would both be named"));
     }
 
     @Test
