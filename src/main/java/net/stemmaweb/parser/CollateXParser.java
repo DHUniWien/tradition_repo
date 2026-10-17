@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -70,17 +71,17 @@ public class CollateXParser {
         try {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Create all the nodes from the graphml nodes
-            NodeList readingNodes = rootEl.getElementsByTagName("node");
+            List<org.w3c.dom.Node> readingNodes = Util.elementsByTag(rootEl, "node");
             HashMap<String,Node> createdReadings = new HashMap<>();
             long highestRank = 0L;
             boolean transpositionSeen = false;
-            for (int i = 0; i < readingNodes.getLength(); i++) {
-                NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
+            for (int i = 0; i < readingNodes.size(); i++) {
+                NamedNodeMap rdgAttrs = readingNodes.get(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
                 Node reading = DatabaseService.createNode(tx, Nodes.READING);
                 reading.setProperty("section_id", parentNode.getProperty("id").toString());
 
-                NodeList dataNodes = ((Element) readingNodes.item(i)).getElementsByTagName("data");
+                NodeList dataNodes = ((Element) readingNodes.get(i)).getElementsByTagName("data");
                 for (int j = 0; j < dataNodes.getLength(); j++) {
                     NamedNodeMap dataAttrs = dataNodes.item(j).getAttributes();
                     String keyId = dataAttrs.getNamedItem("key").getNodeValue();
@@ -112,16 +113,16 @@ public class CollateXParser {
 
             // Create all the sequences and keep track of the witnesses we see
             HashSet<String> seenWitnesses = new HashSet<>();
-            NodeList edgeNodes = rootEl.getElementsByTagName("edge");
-            for (int i = 0; i < edgeNodes.getLength(); i++) {
-                NamedNodeMap edgeAttrs = edgeNodes.item(i).getAttributes();
+            List<org.w3c.dom.Node> edgeNodes = Util.elementsByTag(rootEl, "edge");
+            for (int i = 0; i < edgeNodes.size(); i++) {
+                NamedNodeMap edgeAttrs = edgeNodes.get(i).getAttributes();
                 String sourceId = edgeAttrs.getNamedItem("source").getNodeValue();
                 String targetId = edgeAttrs.getNamedItem("target").getNodeValue();
                 Node source = createdReadings.get(sourceId);
                 Node target = createdReadings.get(targetId);
                 RelationshipType rtype = null;
                 String[] witnessList = null;
-                NodeList dataNodes = ((Element) edgeNodes.item(i)).getElementsByTagName("data");
+                NodeList dataNodes = ((Element) edgeNodes.get(i)).getElementsByTagName("data");
                 for (int j = 0; j < dataNodes.getLength(); j++) {
                     NamedNodeMap dataAttrs = dataNodes.item(j).getAttributes();
                     String keyId = dataAttrs.getNamedItem("key").getNodeValue();

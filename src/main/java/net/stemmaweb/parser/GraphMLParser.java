@@ -180,7 +180,7 @@ public class GraphMLParser {
         // The list of readings that come out of this file, so that we can update their section
         ArrayList<Node> thisReadings = new ArrayList<>();
         // The <node/> elements in the XML
-        NodeList entityNodes = rootEl.getElementsByTagName("node");
+        List<org.w3c.dom.Node> entityNodes = Util.elementsByTag(rootEl, "node");
         // The parentId we return should be the ID of the parent node for whatever we just processed –
         // either the tradition ID if we are parsing a new tradition, or the section ID if we are
         // parsing a new section into a tradition. LATER does this make sense??
@@ -215,8 +215,7 @@ public class GraphMLParser {
         // Now process the XML 'node' elements. When we are matching against existing tradition metadata,
         // hypothetical witnesses are held back to the end (see below), so the list can grow as we go.
         ArrayList<org.w3c.dom.Node> toProcess = new ArrayList<>();
-        for (int i = 0; i < entityNodes.getLength(); i++)
-            toProcess.add(entityNodes.item(i));
+        toProcess.addAll(entityNodes);
         HashSet<org.w3c.dom.Node> deferred = new HashSet<>();
         Map<String, String> witnessOwners = null;
         for (int i = 0; i < toProcess.size(); i++) {
@@ -384,9 +383,9 @@ public class GraphMLParser {
         // Any witness sigla found herein, so that we can ensure that the witnesses exist. This
         // is mostly useful when we are creating a tradition from a single exported section.
         HashSet<String> witnessSigla = new HashSet<>();
-        NodeList edgeNodes = rootEl.getElementsByTagName("edge");
-        for (int i = 0; i < edgeNodes.getLength(); i++) {
-            NamedNodeMap edgeAttrs = edgeNodes.item(i).getAttributes();
+        List<org.w3c.dom.Node> edgeNodes = Util.elementsByTag(rootEl, "edge");
+        for (int i = 0; i < edgeNodes.size(); i++) {
+            NamedNodeMap edgeAttrs = edgeNodes.get(i).getAttributes();
             String sourceXmlId = edgeAttrs.getNamedItem("source").getNodeValue();
             String targetXmlId = edgeAttrs.getNamedItem("target").getNodeValue();
             // Is this an annotation edge? If so, add it to userLabeledEdges for later processing
@@ -399,13 +398,13 @@ public class GraphMLParser {
                 // If the source or the target is in userLabeledNodes, we know this is a userLabeledEdge, i.e.
                 // an annotation edge. Skip it for later addition through the annotation framework
                 if (userLabeledNodes.containsKey(sourceXmlId) || userLabeledNodes.containsKey(targetXmlId)) {
-                    userLabeledEdges.add(edgeNodes.item(i));
+                    userLabeledEdges.add(edgeNodes.get(i));
                     continue;
                 } else
                     throw e;
             }
 
-            NodeList dataNodes = ((Element) edgeNodes.item(i)).getElementsByTagName("data");
+            NodeList dataNodes = ((Element) edgeNodes.get(i)).getElementsByTagName("data");
             HashMap<String, Object> edgeProperties = returnProperties(dataNodes, dataKeys);
             if (!edgeProperties.containsKey("neolabel"))
                 return Response.serverError().entity(jsonerror("Node without label found")).build();
@@ -478,7 +477,7 @@ public class GraphMLParser {
                     // where the annotation node was already created (e.g. the same annotation is present in
                     // multiple sections) but we still need to link it through proper channels below.
                     if (!neolabel.equals("HAS_ANNOTATION"))
-                        userLabeledEdges.add(edgeNodes.item(i));
+                        userLabeledEdges.add(edgeNodes.get(i));
                 }
             }
         }
@@ -620,9 +619,9 @@ public class GraphMLParser {
      */
     private HashMap<String, String> witnessOwnersByXmlId(Element rootEl, HashMap<String, String[]> dataKeys) {
         HashMap<String, String> owners = new HashMap<>();
-        NodeList edgeNodes = rootEl.getElementsByTagName("edge");
-        for (int i = 0; i < edgeNodes.getLength(); i++) {
-            Element edge = (Element) edgeNodes.item(i);
+        List<org.w3c.dom.Node> edgeNodes = Util.elementsByTag(rootEl, "edge");
+        for (int i = 0; i < edgeNodes.size(); i++) {
+            Element edge = (Element) edgeNodes.get(i);
             Object label = returnProperties(edge.getElementsByTagName("data"), dataKeys).get("neolabel");
             if (ERelations.HAS_WITNESS.name().equals(label))
                 owners.put(edge.getAttribute("target"), edge.getAttribute("source"));

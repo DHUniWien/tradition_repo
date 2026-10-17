@@ -23,6 +23,8 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.internal.helpers.collection.Iterables;
 import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
 import net.stemmaweb.model.RelationTypeModel;
@@ -174,6 +176,21 @@ public class Util {
         } catch (ParserConfigurationException | IOException e) {
             throw new IllegalStateException("Could not read XML stream", e);
         }
+    }
+
+    /**
+     * Returns the descendant elements with the given tag name as a fixed list. A DOM NodeList from
+     * getElementsByTagName is live, and Xerces re-walks the document on much of the getLength() / item(i)
+     * traffic of a counted loop, which makes iterating over the nodes or edges of a large section
+     * (100k+ elements) quadratic.
+     */
+    static List<org.w3c.dom.Node> elementsByTag(Element root, String tag) {
+        NodeList live = root.getElementsByTagName(tag);
+        int count = live.getLength();
+        List<org.w3c.dom.Node> result = new ArrayList<>(count);
+        for (int i = 0; i < count; i++)
+            result.add(live.item(i));
+        return result;
     }
 
     // Zip parsing utilities - public because also used by test suite
