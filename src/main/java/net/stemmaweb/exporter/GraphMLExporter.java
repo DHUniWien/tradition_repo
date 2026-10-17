@@ -66,10 +66,20 @@ public class GraphMLExporter {
             }
     }
 
+    // The XML ids of the nodes we have written, so that no database-internal elementId leaks into
+    // the output. This is kept for the life of the exporter, as the files of a multi-file export
+    // refer to the same nodes and the parser shares its XML id -> node map between them.
+    private final Map<String, String> xmlNodeIds = new HashMap<>();
+    private long edgeCounter = 0;
+
+    private String xmlId(Node node) {
+        return xmlNodeIds.computeIfAbsent(node.getElementId(), k -> "n" + xmlNodeIds.size());
+    }
+
     private void writeNode(XMLStreamWriter writer, Node node) {
         try {
             writer.writeStartElement("node");
-            writer.writeAttribute("id", node.getElementId());
+            writer.writeAttribute("id", xmlId(node));
 
             // Write out the labels. Skip ANNOTATION, as it is DB-internal
             ArrayList<String> labelNames = new ArrayList<>();
@@ -94,9 +104,9 @@ public class GraphMLExporter {
     private void writeEdge(XMLStreamWriter writer, Relationship edge) {
         try {
             writer.writeStartElement("edge");
-            writer.writeAttribute("id", edge.getElementId());
-            writer.writeAttribute("source", edge.getStartNode().getElementId());
-            writer.writeAttribute("target", edge.getEndNode().getElementId());
+            writer.writeAttribute("id", "e" + edgeCounter++);
+            writer.writeAttribute("source", xmlId(edge.getStartNode()));
+            writer.writeAttribute("target", xmlId(edge.getEndNode()));
 
             // Write out the type
             writer.writeStartElement("data");

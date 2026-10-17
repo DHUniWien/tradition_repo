@@ -203,7 +203,7 @@ public class Witness {
                         if (r.isType(ERelations.SEQUENCE) || r.isType(ERelations.LEMMA_TEXT))
                             return Response.serverError()
                                     .entity(String.format("Reading %s (%s) still has sequence links",
-                                            orphan.getElementId(), orphan.getProperty("text"))).build();
+                                            orphan.getProperty("id"), orphan.getProperty("text"))).build();
                         r.delete();
                     }
                     orphan.delete();

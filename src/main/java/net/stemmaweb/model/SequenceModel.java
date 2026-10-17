@@ -35,7 +35,10 @@ public class SequenceModel {
      */
     private String target;
     /**
-     * The internal database ID of this relationship
+     * The ID of this sequence link. Sequence links have no managed id of their own;
+     * this is derived from the link's type and the managed ids of its endpoints (see
+     * {@link #idFor}), which is unique because a given type of link connects any two
+     * readings at most once.
      */
     private String id;
     /**
@@ -60,7 +63,7 @@ public class SequenceModel {
         type = rel.getType().toString();
         source = rel.getStartNode().getProperty("id").toString();
         target = rel.getEndNode().getProperty("id").toString();
-        id = rel.getElementId();
+        id = idFor(rel);
 
         for (String p : rel.getPropertyKeys()) {
             if (p.equals("witnesses"))
@@ -71,6 +74,17 @@ public class SequenceModel {
                 layers.put(p, Arrays.asList((String[]) rel.getProperty(p)));
             }
         }
+    }
+
+    /**
+     * Derives the ID of a sequence link from its type and the managed ids of its start and
+     * end nodes, in a form that is safe to use as an XML / SVG element id.
+     * @param rel - the sequence relationship
+     * @return an id of the form TYPE-sourceId-targetId
+     */
+    public static String idFor(Relationship rel) {
+        return String.format("%s-%s-%s", rel.getType().name(),
+                rel.getStartNode().getProperty("id"), rel.getEndNode().getProperty("id"));
     }
 
     public String getType() {

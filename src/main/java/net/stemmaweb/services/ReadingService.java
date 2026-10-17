@@ -527,7 +527,7 @@ public class ReadingService {
     		n.removeProperty("touched");
     		if (!n.hasProperty("newrank"))
     			throw new Exception (String.format("Node %s (%s) traversed but not re-ranked!",
-    					n.getElementId(), n.getProperty("text")));
+    					n.getProperty("id"), n.getProperty("text")));
     		Long nr = (Long) n.removeProperty("newrank");
     		if (!n.hasProperty("rank") || !n.getProperty("rank").equals(nr)) {
     			changed.add(n);

@@ -644,6 +644,37 @@ public class AnnotationTest extends TestCase {
         }
     }
 
+    public void testAnnotationLinkToTradition() {
+        // A TRADITION target is addressed by its own (UUID) id, not an elementId
+        AnnotationLabelModel label = new AnnotationLabelModel();
+        label.setName("PROVENANCE");
+        label.addLink("TRADITION", "ABOUT");
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotationlabel/" + label.getName())
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(label))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
+        AnnotationModel am = new AnnotationModel();
+        am.setLabel("PROVENANCE");
+        AnnotationLinkModel about = new AnnotationLinkModel();
+        about.setTarget(tradId);
+        about.setTargetLabel("TRADITION");
+        about.setType("ABOUT");
+        am.addLink(about);
+        AnnotationModel created;
+        try (Response response = jerseyTest
+                .target("/tradition/" + tradId + "/annotation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(am))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+            created = response.readEntity(AnnotationModel.class);
+        }
+        assertEquals(1, created.getLinks().size());
+        assertEquals("TRADITION", created.getLinks().get(0).getTargetLabel());
+        assertEquals(tradId, created.getLinks().get(0).getTarget());
+    }
+
     public void testAddComplexAnnotation() {
         // Add our second section
         Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",

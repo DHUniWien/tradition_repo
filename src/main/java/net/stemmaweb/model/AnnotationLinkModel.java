@@ -1,6 +1,5 @@
 package net.stemmaweb.model;
 
-import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 
@@ -22,9 +21,9 @@ public class AnnotationLinkModel {
     private String follow;
     /**
      * The ID of the target node for this annotation link. For a managed target type
-     * (READING, SECTION, ANNOTATION) this is the target's application-assigned numeric
-     * id; for any other (unmanaged) target type this is the target node's elementId, as
-     * a permanent, deliberate exception (see the entity ID system design spec).
+     * (READING, SECTION, ANNOTATION, etc.) this is the target's application-assigned numeric
+     * id; for a TRADITION it is the tradition's UUID, and for a USER the user's externally
+     * supplied id.
      */
     private String target;
     /**
@@ -41,19 +40,11 @@ public class AnnotationLinkModel {
     public AnnotationLinkModel(Relationship r) {
         setType(r.getType().name());
         Node end = r.getEndNode();
-        String managed = DatabaseService.managedLabelOf(end);
-        if (managed != null) {
-            setTargetLabel(managed);
-            setTarget(end.getProperty("id").toString());
-        } else {
-            // Unmanaged type: assume, as elsewhere in this codebase, that the node
-            // carries exactly one label.
-            for (Label l : end.getLabels()) {
-                setTargetLabel(l.name());
-                break;
-            }
-            setTarget(end.getElementId());
-        }
+        String label = DatabaseService.addressableLabelOf(end);
+        if (label == null)
+            throw new IllegalStateException("Annotation link target has no id: " + end.getLabels());
+        setTargetLabel(label);
+        setTarget(end.getProperty("id").toString());
         if (r.hasProperty("follow"))
             setFollow(r.getProperty("follow").toString());
     }

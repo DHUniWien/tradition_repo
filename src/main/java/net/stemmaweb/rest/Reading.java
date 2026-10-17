@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -648,15 +649,14 @@ public class Reading {
 
             // Remove any sequences from the list that were created only temporarily (e.g. if
             // multiple nodes were duplicated serially.)
-            ArrayList<SequenceModel> tempSequences = new ArrayList<>();
+            // A sequence's id is derived from its type and endpoints, so a link that was deleted
+            // and recreated shows up twice; keep only one model per surviving link.
+            Map<String, SequenceModel> survivingSequences = new LinkedHashMap<>();
             for (SequenceModel sm : newSequences) {
-                try {
-                    tx.getRelationshipByElementId(sm.getId());
-                } catch (NotFoundException e) {
-                    tempSequences.add(sm);
-                }
+                if (sequenceStillExists(tx, sm))
+                    survivingSequences.putIfAbsent(sm.getId(), sm);
             }
-            newSequences.removeAll(tempSequences);
+            newSequences = new ArrayList<>(survivingSequences.values());
             tx.commit();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
@@ -1340,6 +1340,20 @@ public class Reading {
             return false;
         }
         return true;
+    }
+
+    private static boolean sequenceStillExists(Transaction tx, SequenceModel sm) {
+        try {
+            Node source = DatabaseService.findNodeOrThrow(tx, Nodes.READING, sm.getSource());
+            Node target = DatabaseService.findNodeOrThrow(tx, Nodes.READING, sm.getTarget());
+            for (Relationship r : DatabaseService.getRelationships(source, Direction.OUTGOING,
+                    ERelations.valueOf(sm.getType())))
+                if (r.getEndNode().equals(target))
+                    return true;
+        } catch (NotFoundException e) {
+            // fall through
+        }
+        return false;
     }
 
     private int getEffectiveDegree(Node reading, Direction direction) {

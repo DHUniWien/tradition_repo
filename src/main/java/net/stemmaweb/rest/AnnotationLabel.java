@@ -127,8 +127,10 @@ public class AnnotationLabel {
         try (Transaction tx = db.beginTx()) {
         	Node ourNode = lookupAnnotationLabel(tx);
         	Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
+            // Disallow annotations outside the tradition, or on the annotation definitions themselves
+            List<String> reservedWords = Arrays.asList("USER", "ROOT", "__SYSTEM__",
+                    "ANNOTATIONLABEL", "PROPERTIES", "LINKS");
             // Get the existing list of annotation labels associated with this tradition
-            List<String> reservedWords = Arrays.asList("USER", "ROOT", "__SYSTEM__");
             List<String> existingLabels = getValidTargetsForTradition(tx, reservedWords);
             boolean specHasProperties = alm.getProperties() != null && !alm.getProperties().isEmpty();
             boolean specHasLinks = alm.getLinks() != null && !alm.getLinks().isEmpty();
@@ -285,7 +287,7 @@ public class AnnotationLabel {
             Node annoNode = findAnnotationUsing(tradNode, ourModel.getName());
             if (annoNode != null)
                 return Response.status(Response.Status.CONFLICT).entity(jsonerror(
-                        "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getElementId()))
+                        "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getProperty("id")))
                         .build();
 
             // Delete the label's properties and links
@@ -373,7 +375,7 @@ public class AnnotationLabel {
     private static String findLabelUsage(Node tradNode, Node labelNode, String labelName) {
         Node annoNode = findAnnotationUsing(tradNode, labelName);
         if (annoNode != null)
-            return "used by annotation " + annoNode.getProperty("id", annoNode.getElementId());
+            return "used by annotation " + annoNode.getProperty("id");
         for (Node other : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)) {
             if (other.equals(labelNode)) continue;
             Relationship l = other.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);

@@ -107,21 +107,10 @@ public class AnnotationService {
         if (findExistingLink(annoNode, linkModel) != null)
             return null;
 
-        // Resolve the target node. For a managed label (READING, SECTION, ANNOTATION),
-        // look it up by its application-assigned id, exactly as any other managed-entity
-        // lookup. Otherwise, fall back to the permanent elementId exception for unmanaged
-        // target types, but verify the resolved node actually carries the claimed label --
-        // the client is now asserting the label, rather than it being read off the node.
+        // Resolve the target node by its id, which is of the kind appropriate to its label
+        // (see DatabaseService.findAddressableOrThrow).
         Label targetLabel = Label.label(targetLabelName);
-        Node target;
-        if (DatabaseService.isManagedLabel(targetLabel)) {
-            target = DatabaseService.findNodeOrThrow(tx, targetLabel, linkModel.getTarget());
-        } else {
-            target = tx.getNodeByElementId(linkModel.getTarget());
-            if (!target.hasLabel(targetLabel))
-                throw new IllegalArgumentException("Target node " + linkModel.getTarget()
-                        + " does not carry label " + targetLabelName);
-        }
+        Node target = DatabaseService.findAddressableOrThrow(tx, targetLabel, linkModel.getTarget());
 
         // See if the proposed link is valid, checking allowed link types against exactly
         // the label the client specified -- not every label the target node happens to
@@ -158,14 +147,13 @@ public class AnnotationService {
     }
 
     public static String findExistingLink(Node aNode, AnnotationLinkModel linkModel) {
-        boolean managed = linkModel.getTargetLabel() != null
-                && DatabaseService.isManagedLabel(Label.label(linkModel.getTargetLabel()));
+        if (linkModel.getTargetLabel() == null)
+            return null;
+        Label targetLabel = Label.label(linkModel.getTargetLabel());
         for (Relationship r : DatabaseService.getRelationships(aNode, Direction.OUTGOING)) {
             Node tNode = r.getEndNode();
-            boolean targetMatches = managed
-                    ? tNode.getProperty("id", "").toString().equals(linkModel.getTarget())
-                      && tNode.hasLabel(Label.label(linkModel.getTargetLabel()))
-                    : tNode.getElementId().equals(linkModel.getTarget());
+            boolean targetMatches = tNode.getProperty("id", "").toString().equals(linkModel.getTarget())
+                    && tNode.hasLabel(targetLabel);
             if (r.getType().name().equals(linkModel.getType()) && targetMatches) {
                 return r.getElementId();
             }

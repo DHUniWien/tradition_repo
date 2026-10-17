@@ -551,25 +551,18 @@ public class GraphMLParser {
                     // We can update the links with the "real" nodes and create the annotation.
                     for (AnnotationLinkModel alm : am.getLinks()) {
                         Node nodeTarget = tx.getNodeByElementId(idMap.get(alm.getTarget()));
-                        String managed = DatabaseService.managedLabelOf(nodeTarget);
-                        if (managed != null) {
-                            // Always the managed label itself (e.g. "ANNOTATION" for an
-                            // Annotation-kind target, never its dynamic per-tradition type
-                            // label) -- this must match what AnnotationService.addAnnotationLink
-                            // resolves the target *by* (via the id property), not just what it
-                            // validates against; see that method's own backward-compatibility
-                            // fallback for schemas that key their links map by the dynamic label.
-                            alm.setTargetLabel(managed);
-                            alm.setTarget(nodeTarget.getProperty("id").toString());
-                        } else {
-                            String singleLabel = null;
-                            for (org.neo4j.graphdb.Label l : nodeTarget.getLabels()) {
-                                singleLabel = l.name();
-                                break;
-                            }
-                            alm.setTargetLabel(singleLabel);
-                            alm.setTarget(nodeTarget.getElementId());
-                        }
+                        // Always the managed label itself (e.g. "ANNOTATION" for an Annotation-kind
+                        // target, never its dynamic per-tradition type label) -- this must match what
+                        // AnnotationService.addAnnotationLink resolves the target *by* (via the id
+                        // property), not just what it validates against; see that method's own
+                        // backward-compatibility fallback for schemas that key their links map by the
+                        // dynamic label. A TRADITION or USER target is likewise addressed by its id.
+                        String label = DatabaseService.addressableLabelOf(nodeTarget);
+                        if (label == null)
+                            throw new UnsupportedOperationException(
+                                    "Annotation link target in XML has no addressable id: " + nodeTarget.getLabels());
+                        alm.setTargetLabel(label);
+                        alm.setTarget(nodeTarget.getProperty("id").toString());
                     }
                     AnnotationModel newAnno;
                     try {

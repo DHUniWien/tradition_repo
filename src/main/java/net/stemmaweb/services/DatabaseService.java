@@ -157,6 +157,53 @@ public class DatabaseService {
     }
 
     /**
+     * Returns the label by which the given node is addressed by its "id" property: its
+     * managed label if it has one, or else TRADITION or USER. Those two carry an "id"
+     * too, but it is not minted from a counter -- a tradition's is a stable UUID, and a
+     * user's comes from outside -- so it is a string, not a number, and isn't
+     * constraint-backed. Returns null for a node that is addressable in neither way.
+     *
+     * @param node the node to check
+     * @return the label name, or null
+     */
+    public static String addressableLabelOf(Node node) {
+        String managed = managedLabelOf(node);
+        if (managed != null) return managed;
+        for (Nodes l : List.of(Nodes.TRADITION, Nodes.USER))
+            if (node.hasLabel(l) && node.hasProperty("id")) return l.name();
+        return null;
+    }
+
+    /**
+     * Finds the node with the given label whose "id" property is idStr: by numeric id for a
+     * managed label or EMENDATION (which is also a READING), by string id for TRADITION and USER.
+     *
+     * @param tx the transaction within which we are working
+     * @param label the label of the node to find
+     * @param idStr the "id" property value, as a string
+     * @return the matching node
+     * @throws IllegalArgumentException if nodes with this label are not addressable by id
+     * @throws NotFoundException if no such node exists
+     */
+    public static Node findAddressableOrThrow(Transaction tx, Label label, String idStr) {
+        if (isManagedLabel(label))
+            return findNodeOrThrow(tx, label, idStr);
+        // An emendation is a kind of reading, and is addressed by its reading id.
+        if (label.name().equals(Nodes.EMENDATION.name())) {
+            Node reading = findNodeOrThrow(tx, Nodes.READING, idStr);
+            if (!reading.hasLabel(Nodes.EMENDATION))
+                throw new NotFoundException("No emendation found with id " + idStr);
+            return reading;
+        }
+        if (!label.name().equals(Nodes.TRADITION.name()) && !label.name().equals(Nodes.USER.name()))
+            throw new IllegalArgumentException("Nodes labeled " + label.name() + " cannot be addressed by id");
+        Node node = tx.findNode(label, "id", idStr);
+        if (node == null)
+            throw new NotFoundException(String.format("No %s found with id %s", label.name().toLowerCase(), idStr));
+        return node;
+    }
+
+    /**
      * Creates a node with the given labels, assigning it an application-level
      * "id" property if one of the labels is managed (READING, SECTION,
      * ANNOTATION).

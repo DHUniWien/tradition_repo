@@ -35,6 +35,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.DisplayOptionModel;
+import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -218,16 +219,17 @@ public class DotExporter
                             relStartNodeId = lastSectionEndId;
 
                         // Does this edge coincide with a lemma edge?
-                        boolean edge_is_lemma = false;
+                        // If so, the edge takes the lemma link's id.
+                        String edgeId = SequenceModel.idFor(rel);
                         if (lemmaLinks.containsKey(relStartNode) && lemmaLinks.get(relStartNode).end.equals(node)) {
-                            edge_is_lemma = true;
+                            edgeId = lemmaLinks.get(relStartNode).id;
                             lemmaLinks.remove(relStartNode);
                         }
                         // Get the label
                         String label = sequenceLabel(convertProps(rel), numWits, dm);
                         Long rankDiff = (Long) node.getProperty("rank") - (Long) relStartNode.getProperty("rank");
-                        seqSpecs.add(relshipText(relStartNodeId, node.getProperty("id").toString(), label, rel.getElementId(),
-                                calcPenWidth(convertProps(rel)), rankDiff, edge_is_lemma));
+                        seqSpecs.add(relshipText(relStartNodeId, node.getProperty("id").toString(), label, edgeId,
+                                calcPenWidth(convertProps(rel)), rankDiff));
 
                     }
 
@@ -271,7 +273,7 @@ public class DotExporter
                 // Write any remaining lemma links
                 for (Node n : lemmaLinks.keySet()) {
                     LemmaLink ll = lemmaLinks.get(n);
-                    write(String.format("\t%s->%s [id=l%s];\n",
+                    write(String.format("\t%s->%s [id=\"%s\"];\n",
                             n.getProperty("id").toString(), ll.end.getProperty("id").toString(), ll.id));
                 }
                 // Write any emendation links
@@ -316,7 +318,7 @@ public class DotExporter
                     ? representatives.get(r.getStartNode()) : r.getStartNode();
             this.end = representatives.containsKey(r.getEndNode())
                     ? representatives.get(r.getEndNode()) : r.getEndNode();
-            this.id = r.getElementId();
+            this.id = SequenceModel.idFor(r);
         }
     }
 
@@ -433,14 +435,12 @@ public class DotExporter
         return df2.format(0.8 + 0.2 * hits);
     }
 
-    private static String relshipText(String sNodeId, String eNodeId, String label, String edgeId, String pWidth, Long rankDiff, boolean isLemmaLink)
+    private static String relshipText(String sNodeId, String eNodeId, String label, String edgeId, String pWidth, Long rankDiff)
     {
         String text;
         try {
-            String idStr = isLemmaLink ? "l" : "e";
-            idStr += edgeId;
             text = "\t" + sNodeId + "->" + eNodeId + " [label=\"" + label
-                    + "\", id=\"" + idStr + "\", penwidth=\"" + pWidth + "\"";
+                    + "\", id=\"" + edgeId + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
             text += "];\n";

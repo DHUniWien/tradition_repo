@@ -249,7 +249,7 @@ public class VariantGraphService {
                 if (!n.equals(representative))
                     representative.createRelationshipTo(n, ERelations.REPRESENTS);
                 if (!sectionNodes.remove(n))
-                    throw new Exception("Tried to make equivalence for node (" + n.getElementId()
+                    throw new Exception("Tried to make equivalence for node (" + n.getProperty("id", "?")
                             + ": " + n.getAllProperties().toString()
                             + ") that was not in sectionNodes");
             }
@@ -261,7 +261,7 @@ public class VariantGraphService {
         // Make sure we didn't have any accidental recursion in representation
         for (Node n : representatives.values()) {
             if (n.hasRelationship(Direction.INCOMING, ERelations.REPRESENTS))
-                throw new Exception("Recursive representation was created on node " + n.getElementId() + ": " + n.getAllProperties().toString());
+                throw new Exception("Recursive representation was created on node " + n.getProperty("id", "?") + ": " + n.getAllProperties().toString());
         }
 
         // Now that we have done this, make the shadow sequence

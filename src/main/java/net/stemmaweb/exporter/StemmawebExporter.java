@@ -196,6 +196,8 @@ public class StemmawebExporter {
             writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
             writer.writeEndElement();
 
+            // Map database elementIds to XML ids, so that no elementId leaks into the output
+            Map<String, String> xmlNodeIds = new HashMap<>();
             long nodeId = 0;
             long edgeId = 0;
             ArrayList<Node> graph1Nodes = new ArrayList<>();
@@ -207,7 +209,7 @@ public class StemmawebExporter {
                 nodeCountGraph1++;
                 props = node.getPropertyKeys();
                 writer.writeStartElement("node");
-                writer.writeAttribute("id", node.getElementId());
+                writer.writeAttribute("id", xmlNodeIds.computeIfAbsent(node.getElementId(), k -> "n" + xmlNodeIds.size()));
                 writer.writeStartElement("data");
                 writer.writeAttribute("key", nodeMap.get("id")[0]);
                 writer.writeCharacters("n" + nodeId++);
@@ -240,8 +242,8 @@ public class StemmawebExporter {
                         for (String witness : witnesses) {
                             writer.writeStartElement("edge");
 
-                            writer.writeAttribute("source", rel.getStartNode().getElementId());
-                            writer.writeAttribute("target", rel.getEndNode().getElementId());
+                            writer.writeAttribute("source", xmlNodeIds.computeIfAbsent(rel.getStartNode().getElementId(), k -> "n" + xmlNodeIds.size()));
+                            writer.writeAttribute("target", xmlNodeIds.computeIfAbsent(rel.getEndNode().getElementId(), k -> "n" + xmlNodeIds.size()));
                             writer.writeAttribute("id", "e" + edgeId++);
 
                             if (!property.equals("witnesses") && relationMap.containsKey(property)) {
@@ -288,7 +290,7 @@ public class StemmawebExporter {
             for (Node node : graph2Nodes) {
                 nodeCountGraph2++;
                 writer.writeStartElement("node");
-                writer.writeAttribute("id", node.getElementId());
+                writer.writeAttribute("id", xmlNodeIds.computeIfAbsent(node.getElementId(), k -> "n" + xmlNodeIds.size()));
                 writer.writeStartElement("data");
                 writer.writeAttribute("key", nodeMap.get("id")[0]);
                 writer.writeCharacters("n" + nodeId++);
@@ -301,8 +303,8 @@ public class StemmawebExporter {
                     edgeCountGraph2++;
                     props = rel.getPropertyKeys();
                     writer.writeStartElement("edge");
-                    startNode = rel.getStartNode().getElementId();
-                    endNode = rel.getEndNode().getElementId();
+                    startNode = xmlNodeIds.computeIfAbsent(rel.getStartNode().getElementId(), k -> "n" + xmlNodeIds.size());
+                    endNode = xmlNodeIds.computeIfAbsent(rel.getEndNode().getElementId(), k -> "n" + xmlNodeIds.size());
                     writer.writeAttribute("source", startNode);
                     writer.writeAttribute("target", endNode);
                     writer.writeAttribute("id", "e" + edgeId++);
