@@ -233,11 +233,14 @@ public class GraphMLParser {
             // A legacy export may have a witness sigil that is not valid now. If so, convert it, and
             // keep the original as the shelfmark unless the witness already has one. Hypothetical
             // witnesses only need path-safe sigla and don't go into the text, so we leave them alone.
-            if (neolabel.contains("WITNESS") && nodeProperties.get("sigil") instanceof String sigil
-                    && !Boolean.TRUE.equals(nodeProperties.get("hypothetical"))) {
-                nodeProperties.put("sigil", sigilConverter.convert(sigil));
-                if (sigilConverter.wasConverted(sigil))
-                    nodeProperties.putIfAbsent("shelfmark", sigil);
+            if (neolabel.contains("WITNESS") && nodeProperties.get("sigil") instanceof String sigil) {
+                if (Boolean.TRUE.equals(nodeProperties.get("hypothetical"))) {
+                    Util.validateWitnessSigil(sigil, true);
+                } else {
+                    nodeProperties.put("sigil", sigilConverter.convert(sigil));
+                    if (sigilConverter.wasConverted(sigil))
+                        nodeProperties.putIfAbsent("shelfmark", sigil);
+                }
             }
 
             // A hypothetical witness belongs to exactly one stemma, and is unrelated to any hypothetical
@@ -420,6 +423,13 @@ public class GraphMLParser {
                     edgeProperties.put("hypothesis", renamedFromExisting.get(tag));
             }
 
+            // The witnesses and layers on a text link are all lists of sigla. This is done out here
+            // rather than where the link is created, because a bad sigil must fail the whole import
+            // and the handler below that deals with annotation links would swallow the exception.
+            if (neolabel.equals("SEQUENCE") || neolabel.equals("NSEQUENCE"))
+                edgeProperties.replaceAll((k, v) -> v instanceof String[] sigla
+                        ? Arrays.stream(sigla).map(sigilConverter::convert).toArray(String[]::new) : v);
+
             // If we are parsing the tradition meta for a new section, check whether the relationship
             // in question already exists
             Relationship newRel = null;
@@ -449,10 +459,6 @@ public class GraphMLParser {
                     // clobber the fresh id createRelatedRelationship just minted above.
                     if (neolabel.equals("RELATED"))
                         edgeProperties.remove("id");
-                    // The witnesses and layers on a text link are all lists of sigla
-                    if (neolabel.equals("SEQUENCE") || neolabel.equals("NSEQUENCE"))
-                        edgeProperties.replaceAll((k, v) -> v instanceof String[] sigla
-                                ? Arrays.stream(sigla).map(sigilConverter::convert).toArray(String[]::new) : v);
                     edgeProperties.forEach(newRel::setProperty);
                     // Catch any relation types and witnesses that were used, so that we can ensure
                     // their existence when we are done
@@ -657,11 +663,16 @@ public class GraphMLParser {
 	}
 
     // Inverse of the exporter's List.toString() serialization, e.g. "[A, B]" or "[]". Note that
-    // "".split(...) returns [""] rather than [], so an empty list has to be special-cased.
+    // "".split(...) returns [""] rather than [], so an empty list has to be special-cased. (This
+    // means that a list holding a single empty string, which older exports also wrote as "[]",
+    // comes back as an empty list.) Empty entries elsewhere in the list are kept, so that a blank
+    // sigil can be noticed rather than quietly dropped.
     static String[] parseStringArray(String serialized) {
-        String contents = serialized.replace("[", "").replace("]", "").trim();
+        String contents = serialized.strip();
+        if (contents.startsWith("[") && contents.endsWith("]"))
+            contents = contents.substring(1, contents.length() - 1);
         if (contents.isEmpty()) return new String[0];
-        return contents.split(",\\s+");
+        return contents.split(", ", -1);
     }
 
     private HashMap<String, Object> returnProperties(NodeList dataNodes, HashMap<String, String[]> dataKeys) {

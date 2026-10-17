@@ -52,9 +52,22 @@ public class SigilConverterTest extends TestCase {
         assertEquals("_", sc.convert("///"));
     }
 
+    public void testBlankSigilIsRejected() {
+        SigilConverter sc = new SigilConverter();
+        for (String s : new String[] {"", " ", "  ", "\t"}) {
+            try {
+                sc.convert(s);
+                fail("Expected '" + s + "' to be rejected");
+            } catch (IllegalArgumentException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("sigil"));
+            }
+        }
+        assertTrue(sc.conversions().isEmpty());
+    }
+
     public void testOutputAlwaysValid() {
         // A fresh converter each time, since e.g. "a b" and "a\tb" are (correctly) a collision
-        for (String s : List.of("a b", "1/2", "(x)", "é ü", "a\tb", "###", "x,y", "[A]", "  ")) {
+        for (String s : List.of("a b", "1/2", "(x)", "é ü", "a\tb", "###", "x,y", "[A]")) {
             String c = new SigilConverter().convert(s);
             try {
                 Util.validateSigil(c);

@@ -30,12 +30,16 @@ public class SigilConverter {
      * Returns a valid sigil for the given one: the same sigil if it is already valid, otherwise a
      * converted form. The same input always gives the same output.
      *
-     * @throws IllegalArgumentException if the sigil is null, or if it, or its converted form, would
-     * be the same as that of a different sigil seen earlier
+     * @throws IllegalArgumentException if the sigil is null, empty or only whitespace, or if it, or
+     * its converted form, would be the same as that of a different sigil seen earlier
      */
     public String convert(String sigil) throws IllegalArgumentException {
         if (sigil == null)
             throw new IllegalArgumentException("A witness sigil may not be null.");
+        // Older versions allowed a witness with no sigil. There is nothing sensible to convert it
+        // to, and we cannot tell which witness it was meant to be.
+        if (sigil.isBlank())
+            throw new IllegalArgumentException("A witness sigil may not be empty.");
         if (converted.containsKey(sigil))
             return converted.get(sigil);
         if (Util.isValidSigil(sigil)) {

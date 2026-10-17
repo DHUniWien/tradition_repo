@@ -97,11 +97,11 @@ public class Util {
      * but do need REST path compatibility.
      *
      * @param sigil the candidate sigil
-     * @throws IllegalArgumentException if sigil is null or empty, or contains a character that
+     * @throws IllegalArgumentException if sigil is null or blank, or contains a character that
      *         would break a REST URL path segment
      */
     private static void validateHypotheticalSigil(String sigil) throws IllegalArgumentException {
-        if (sigil == null || sigil.isEmpty())
+        if (sigil == null || sigil.isBlank())
             throw new IllegalArgumentException("A witness sigil may not be empty.");
         for (String illegal : PATH_UNSAFE_CHARS)
             if (sigil.contains(illegal))
