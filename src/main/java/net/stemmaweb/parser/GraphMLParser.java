@@ -195,14 +195,32 @@ public class GraphMLParser {
                 .stream(VariantGraphService.returnTraditionMeta(tx, traditionNode).relationships().spliterator(), false).toList()
 				: new ArrayList<>();
 
+        // Stemma names must be unique within a tradition, but a file may carry a stemma whose name is
+        // already taken, either by another stemma in the file (legacy exports) or by one already in the
+        // tradition (e.g. a section re-imported after the stemma was changed). Such a stemma gets a
+        // new unique name. 'renamedFromExisting' records the new name for a stemma that collided
+        // with one already in the tradition, since the TRANSMITTED links in the file refer to it by
+        // its old name.
+        HashSet<String> existingStemmaNames = new HashSet<>();
+        for (Node s : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
+            existingStemmaNames.add(s.getProperty("name").toString());
+        HashSet<String> usedStemmaNames = new HashSet<>(existingStemmaNames);
+        HashMap<String, String> renamedFromExisting = new HashMap<>();
+
         // We will hold back nodes that were labeled by the user rather than the system, such as annotations,
         // so that we can add them to the graph with the existing verification / sanity checks.
         HashMap<String, org.w3c.dom.Node> userLabeledNodes = new HashMap<>();
         ArrayList<org.w3c.dom.Node> userLabeledEdges = new ArrayList<>();
 
-        // Now process the XML 'node' elements.
-        for (int i = 0; i < entityNodes.getLength(); i++) {
-            org.w3c.dom.Node entityXML = entityNodes.item(i);
+        // Now process the XML 'node' elements. When we are matching against existing tradition metadata,
+        // hypothetical witnesses are held back to the end (see below), so the list can grow as we go.
+        ArrayList<org.w3c.dom.Node> toProcess = new ArrayList<>();
+        for (int i = 0; i < entityNodes.getLength(); i++)
+            toProcess.add(entityNodes.item(i));
+        HashSet<org.w3c.dom.Node> deferred = new HashSet<>();
+        Map<String, String> witnessOwners = null;
+        for (int i = 0; i < toProcess.size(); i++) {
+            org.w3c.dom.Node entityXML = toProcess.get(i);
             NamedNodeMap entityAttrs = entityXML.getAttributes();
             String xmlId = entityAttrs.getNamedItem("id").getNodeValue();
             NodeList dataNodes = ((Element) entityXML).getElementsByTagName("data");
@@ -220,6 +238,16 @@ public class GraphMLParser {
                 nodeProperties.put("sigil", sigilConverter.convert(sigil));
                 if (sigilConverter.wasConverted(sigil))
                     nodeProperties.putIfAbsent("shelfmark", sigil);
+            }
+
+            // A hypothetical witness belongs to exactly one stemma, and is unrelated to any hypothetical
+            // witness of another stemma even if the two look identical. So it may only be matched with
+            // an existing witness of the same stemma, which means that stemma has to be resolved first.
+            boolean hypotheticalWitness = neolabel.contains("WITNESS")
+                    && Boolean.TRUE.equals(nodeProperties.get("hypothetical"));
+            if (hypotheticalWitness && !existingMeta.isEmpty() && deferred.add(entityXML)) {
+                toProcess.add(entityXML);
+                continue;
             }
 
             if (neolabel.contains("TRADITION")) {
@@ -264,8 +292,21 @@ public class GraphMLParser {
                     if (neolabel.contains("SECTION") && isSingleSection)
                         entity = parentNode;
                     else if (!existingMeta.isEmpty()) {
-                        // Does the node already exist in the tradition's metadata?
-                        for (Node ex : existingMeta) {
+                        // Does the node already exist in the tradition's metadata? A hypothetical witness
+                        // can only be found among the witnesses of its own stemma, if that stemma already
+                        // existed; any other node can't be matched with a hypothetical witness.
+                        List<Node> candidates = existingMeta;
+                        if (hypotheticalWitness) {
+                            if (witnessOwners == null)
+                                witnessOwners = witnessOwnersByXmlId(rootEl, dataKeys);
+                            String ownerXmlId = witnessOwners.get(xmlId);
+                            candidates = ownerXmlId == null || !idMap.containsKey(ownerXmlId) ? List.of()
+                                    : DatabaseService.getRelated(
+                                            tx.getNodeByElementId(idMap.get(ownerXmlId)), ERelations.HAS_WITNESS);
+                        }
+                        for (Node ex : candidates) {
+                            if (isHypotheticalWitness(ex) != hypotheticalWitness)
+                                continue;
                             exists = true;
                             for (String p : nodeProperties.keySet()) {
                                 exists = exists && nodeProperties.get(p).equals(ex.getProperty(p, null));
@@ -294,6 +335,17 @@ public class GraphMLParser {
                         if (neolabel.contains("READING") || neolabel.contains("SECTION")
                                 || neolabel.contains("ANNOTATION"))
                             nodeProperties.remove("id");
+                        if (neolabel.contains("STEMMA") && nodeProperties.get("name") instanceof String stemmaName) {
+                            String uniqueName = stemmaName;
+                            for (int n = 2; usedStemmaNames.contains(uniqueName); n++)
+                                uniqueName = String.format("%s (%d)", stemmaName, n);
+                            if (!uniqueName.equals(stemmaName)) {
+                                if (existingStemmaNames.contains(stemmaName))
+                                    renamedFromExisting.putIfAbsent(stemmaName, uniqueName);
+                                nodeProperties.put("name", uniqueName);
+                            }
+                            usedStemmaNames.add(uniqueName);
+                        }
                         boolean deletedAsAnnotation = false;
                         for (String l : entityLabel) {
                             try {
@@ -355,6 +407,18 @@ public class GraphMLParser {
             if (!edgeProperties.containsKey("neolabel"))
                 return Response.serverError().entity(jsonerror("Node without label found")).build();
             String neolabel = edgeProperties.remove("neolabel").toString();
+
+            // A TRANSMITTED link must be tagged with the name of its stemma. Legacy exports used
+            // the XML ID of the stemma node instead, so translate that; and if the stemma was
+            // renamed on import because its name was already taken, follow the rename. This has to
+            // happen before the check below, so that the link isn't mistaken for the existing stemma's.
+            if (neolabel.equals("TRANSMITTED") && edgeProperties.get("hypothesis") instanceof String tag) {
+                Node stemmaNode = idMap.containsKey(tag) ? tx.getNodeByElementId(idMap.get(tag)) : null;
+                if (stemmaNode != null && stemmaNode.hasLabel(Nodes.STEMMA))
+                    edgeProperties.put("hypothesis", stemmaNode.getProperty("name"));
+                else if (renamedFromExisting.containsKey(tag))
+                    edgeProperties.put("hypothesis", renamedFromExisting.get(tag));
+            }
 
             // If we are parsing the tradition meta for a new section, check whether the relationship
             // in question already exists
@@ -545,6 +609,26 @@ public class GraphMLParser {
         }
 
         return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentId)).build();
+    }
+
+    private static boolean isHypotheticalWitness(Node n) {
+        return n.hasLabel(Nodes.WITNESS) && Boolean.TRUE.equals(n.getProperty("hypothetical", false));
+    }
+
+    /**
+     * Maps the XML ID of each node that is the target of a HAS_WITNESS edge to the XML ID of the edge's source.
+     * For a hypothetical witness this is the one stemma that it belongs to.
+     */
+    private HashMap<String, String> witnessOwnersByXmlId(Element rootEl, HashMap<String, String[]> dataKeys) {
+        HashMap<String, String> owners = new HashMap<>();
+        NodeList edgeNodes = rootEl.getElementsByTagName("edge");
+        for (int i = 0; i < edgeNodes.getLength(); i++) {
+            Element edge = (Element) edgeNodes.item(i);
+            Object label = returnProperties(edge.getElementsByTagName("data"), dataKeys).get("neolabel");
+            if (ERelations.HAS_WITNESS.name().equals(label))
+                owners.put(edge.getAttribute("target"), edge.getAttribute("source"));
+        }
+        return owners;
     }
 
     private static HashMap<String, String[]> getDataKeyMap(Element rootEl) {

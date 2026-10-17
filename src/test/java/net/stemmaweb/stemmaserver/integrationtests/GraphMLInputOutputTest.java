@@ -195,6 +195,133 @@ public class GraphMLInputOutputTest extends TestCase {
         }
     }
 
+    // Legacy exports tagged TRANSMITTED links with the old stemma node's ID rather than its name.
+    public void testLegacyZipStemmaLinks() {
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Legacy", "LR",
+                "me@example.org", "src/TestFiles/legacy-stemma-ids.zip", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String legacyId = Util.getValueFromJson(r, "tradId");
+
+        ArrayList<StemmaModel> stemmata = jerseyTest.target("/tradition/" + legacyId + "/stemmata")
+                .request()
+                .get(new GenericType<>(){});
+        assertEquals(2, stemmata.size());
+        for (StemmaModel s : stemmata) {
+            String dot = s.getDot();
+            int edges = dot.split("\\s(?:->|--)\\s", -1).length - 1;
+            if (dot.contains("\"stemma\""))
+                assertEquals(21, edges);
+            else
+                assertEquals(24, edges);
+        }
+    }
+
+    // Copies a zip file, applying a text replacement to the contents of the named entry
+    private static String rewriteZipEntry(String zipPath, String entryName, java.util.function.UnaryOperator<String> edit) throws Exception {
+        java.io.File out = java.io.File.createTempFile("testRewritten", ".zip");
+        out.deleteOnExit();
+        try (java.util.zip.ZipInputStream in = new java.util.zip.ZipInputStream(new java.io.FileInputStream(zipPath));
+             java.util.zip.ZipOutputStream zo = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(out))) {
+            for (java.util.zip.ZipEntry e = in.getNextEntry(); e != null; e = in.getNextEntry()) {
+                String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                if (e.getName().equals(entryName)) {
+                    String edited = edit.apply(content);
+                    assertNotEquals(content, edited);
+                    content = edited;
+                }
+                zo.putNextEntry(new java.util.zip.ZipEntry(e.getName()));
+                zo.write(content.getBytes(StandardCharsets.UTF_8));
+                zo.closeEntry();
+            }
+        }
+        return out.getAbsolutePath();
+    }
+
+    private static int dotEdgeCount(StemmaModel s) {
+        return s.getDot().split("\\s(?:->|--)\\s", -1).length - 1;
+    }
+
+    // Two stemmas in one legacy file with the same name should come out distinctly named, each with its own links.
+    public void testLegacyZipDuplicateStemmaNames() throws Exception {
+        String zip = rewriteZipEntry("src/TestFiles/legacy-stemma-ids.zip", "tradition.xml",
+                c -> c.replace(">RHM 1418915634_0<", ">stemma<"));
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Legacy", "LR",
+                "me@example.org", zip, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String legacyId = Util.getValueFromJson(r, "tradId");
+
+        ArrayList<StemmaModel> stemmata = jerseyTest.target("/tradition/" + legacyId + "/stemmata")
+                .request()
+                .get(new GenericType<>(){});
+        assertEquals(2, stemmata.size());
+        assertEquals(Set.of("stemma", "stemma (2)"),
+                stemmata.stream().map(StemmaModel::getName).collect(Collectors.toSet()));
+        assertEquals(Set.of(21, 24),
+                stemmata.stream().map(GraphMLInputOutputTest::dotEdgeCount).collect(Collectors.toSet()));
+    }
+
+    // A stemma in an imported section whose name is already in the tradition (but which isn't identical to
+    // the existing one) is renamed, and its links follow it rather than joining the existing stemma's.
+    public void testSectionImportStemmaNameCollision() throws Exception {
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml").request("application/zip").get();
+        String zip = Util.saveGraphMLTempfile(r);
+        // Make the file's "stemma" differ from the one in the tradition
+        String changed = rewriteZipEntry(zip, "tradition.xml", c -> {
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("<key attr.name=\"directed\"[^>]* id=\"(\\w+)\"").matcher(c);
+            assertTrue(m.find());
+            return c.replace("<data key=\"" + m.group(1) + "\">true</data>",
+                    "<data key=\"" + m.group(1) + "\">false</data>");
+        });
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<>() {});
+        r = Util.addSectionToTradition(jerseyTest, tradId, changed, "graphml", "Section 2");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        assertEquals(sections.size() + 1, jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<List<SectionModel>>() {}).size());
+
+        ArrayList<StemmaModel> stemmata = jerseyTest.target("/tradition/" + tradId + "/stemmata")
+                .request()
+                .get(new GenericType<>(){});
+        assertEquals(3, stemmata.size());
+        for (StemmaModel s : stemmata) {
+            if (s.getName().equals("stemma")) assertEquals(3, dotEdgeCount(s));
+            else if (s.getName().equals("stemma (2)")) assertEquals(3, dotEdgeCount(s));
+            else assertTrue(s.getName().startsWith("Semstem"));
+        }
+        assertHypotheticalWitnessesOwnedByOneStemma(3);
+    }
+
+    // Re-importing a section whose stemmas are identical to the existing ones reuses them, hypothetical witnesses included.
+    public void testSectionImportReusesIdenticalStemmata() {
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml").request("application/zip").get();
+        String zip = Util.saveGraphMLTempfile(r);
+        r = Util.addSectionToTradition(jerseyTest, tradId, zip, "graphml", "Section 2");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+
+        ArrayList<StemmaModel> stemmata = jerseyTest.target("/tradition/" + tradId + "/stemmata")
+                .request()
+                .get(new GenericType<>(){});
+        assertEquals(2, stemmata.size());
+        for (StemmaModel s : stemmata)
+            assertEquals(3, dotEdgeCount(s));
+        assertHypotheticalWitnessesOwnedByOneStemma(2);
+    }
+
+    // Each hypothetical witness belongs to exactly one stemma; we expect the given number of them in all.
+    private void assertHypotheticalWitnessesOwnedByOneStemma(int expected) {
+        try (Transaction tx = db.beginTx()) {
+            int total = 0;
+            for (Node w : tx.findNodes(Nodes.WITNESS, "hypothetical", true).stream().toList()) {
+                total++;
+                assertEquals(1, StreamSupport.stream(w.getRelationships(Direction.INCOMING,
+                        ERelations.HAS_WITNESS).spliterator(), false).count());
+            }
+            assertEquals(expected, total);
+            tx.commit();
+        }
+    }
+
     public void testWrongDataForUpload() {
         // Try to add a JSON section to an existing tradition but claim it is GraphML zip
         try (Response r = Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/Matthew-418.json",
