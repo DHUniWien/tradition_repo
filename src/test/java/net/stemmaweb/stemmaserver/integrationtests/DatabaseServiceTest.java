@@ -15,6 +15,7 @@ import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.ConstraintViolationException;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
@@ -103,6 +104,23 @@ public class DatabaseServiceTest {
         try (Transaction tx = db.beginTx()) {
             DatabaseService.ensureConstraints(tx); // must not throw on second call
             tx.commit();
+        }
+    }
+
+    @Test
+    public void testTraditionAndUserIdsMustBeUnique() {
+        // setUp() has already created a tradition and a user, so duplicate their ids
+        for (Nodes label : new Nodes[]{Nodes.TRADITION, Nodes.USER}) {
+            try (Transaction tx = db.beginTx()) {
+                Object existingId = tx.findNodes(label).next().getProperty("id");
+                try {
+                    tx.createNode(label).setProperty("id", existingId);
+                    tx.commit();
+                    fail("Duplicate " + label + " id was accepted");
+                } catch (ConstraintViolationException e) {
+                    // expected
+                }
+            }
         }
     }
 

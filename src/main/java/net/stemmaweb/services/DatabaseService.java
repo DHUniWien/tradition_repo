@@ -47,8 +47,8 @@ public class DatabaseService {
     }
 
     /**
-     * Ensures that the node-uniqueness constraints on "id" for READING, SECTION,
-     * and ANNOTATION, and the relationship-uniqueness constraint on "id" for
+     * Ensures that the node-uniqueness constraints on "id" for every managed label
+     * plus TRADITION and USER, and the relationship-uniqueness constraint on "id" for
      * RELATED, all exist. Safe to call repeatedly (e.g. on every application
      * startup) -- a constraint that already exists is left alone rather than
      * re-created. Must be run in its own transaction, separate from any data
@@ -60,6 +60,10 @@ public class DatabaseService {
         Schema schema = tx.schema();
         for (Label l : MANAGED_COUNTERS.keySet())
             ensureNodePropertyUniqueness(schema, l, "id");
+        // TRADITION and USER ids aren't minted from a counter (a tradition's is a stable UUID, a
+        // user's comes from outside), but are addressable by "id" all the same, so must be unique.
+        ensureNodePropertyUniqueness(schema, Nodes.TRADITION, "id");
+        ensureNodePropertyUniqueness(schema, Nodes.USER, "id");
         ensureRelationshipPropertyUniqueness(schema, ERelations.RELATED, "id");
     }
 
