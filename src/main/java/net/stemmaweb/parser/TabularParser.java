@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -141,19 +142,41 @@ public class TabularParser {
             witnessList[0] = witnessList[0].replaceFirst("\\uFEFF", "");
             // Keep a table of the last-spotted reading for each witness
             HashMap<String, Node> lastReading = new HashMap<>();
-            // Add the non-layer witnesses to the graph
+            // Sort the columns into plain witnesses and layers, of the form XX (YY):
+            // - Any layer needs a base witness present.
+            // - XX(YY) without the space is also understood as a layer, and spaces inside the parentheses
+            //   don't matter, so only one of XX (YY), XX(YY) and XX ( YY ) can appear in a file.
+            // - Any non-space after the closing ) will cause an error. Nested parens are right out.
+            HashSet<String> baseSigla = new HashSet<>();
+            // column heading of each layer -> [base sigil, layer label]
             HashMap<String, String[]> layerWitnesses = new HashMap<>();
-            for (String sigil: witnessList) {
-                // See if it is a layered witness, of the form XX (YY)
-                String[] sigilParts = sigil.split("\\s+\\(");  // now we have ["XX", "YY)"]
-                if (sigilParts.length == 1) // it is not a layered witness
-                    Util.findOrCreateExtant(tx, traditionNode, sigil);
-                else if (sigilParts.length == 2) // it is a layered witness; store a ref to its base
-                    layerWitnesses.put(sigil, sigilParts);
-                else   // what is this i don't even
-                    return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(jsonerror("Malformed sigil " + sigil)).build();
+            // [base sigil, layer label] -> column heading, to notice two headings for the same layer
+            HashMap<List<String>, String> layerHeadings = new HashMap<>();
+            for (String columnKey: witnessList) {
+                String[] layer = parseLayerHeading(columnKey);
+                if (layer == null) // it is not a layered witness
+                    baseSigla.add(columnKey);
+                else {
+                    String other = layerHeadings.putIfAbsent(List.of(layer), columnKey);
+                    if (other != null)
+                        return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(String.format(
+                                "The columns \"%s\" and \"%s\" are both layer \"%s\" of witness \"%s\". "
+                                        + "Only one of them can be in the table.", other, columnKey, layer[1], layer[0]))).build();
+                    layerWitnesses.put(columnKey, layer);
+                }
+            }
+            for (String layered : layerWitnesses.keySet()) {
+                String base = layerWitnesses.get(layered)[0];
+                if (!baseSigla.contains(base))
+                    return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(String.format(
+                            "Layer witness \"%s\" has no base witness \"%s\" in the table. Add a column for \"%s\".",
+                            layered, base, base))).build();
+            }
 
+            // Add the base witnesses to the graph, and start every column at the start node
+            for (String sigil: witnessList) {
+                if (!layerWitnesses.containsKey(sigil))
+                    Util.findOrCreateExtant(tx, traditionNode, sigil);
                 lastReading.put(sigil, startNode);
             }
 
@@ -165,10 +188,11 @@ public class TabularParser {
                 HashMap<Relationship, ArrayList<String>> linkWitnesses = new HashMap<>();
                 for (int j = 0; j < collationRow.length; j++) {
                     String reading = collationRow[j];
-                    String sigil = witnessList[j];
-                    Node lastNode = lastReading.get(sigil);
+                    String columnKey = witnessList[j];
+                    Node lastNode = lastReading.get(columnKey);
                     // Is it an empty reading?
                     if (reading == null || reading.isEmpty()) {
+                        // Empty readings count against any other reading here being common
                         distinct++;
                         continue;
                     }
@@ -178,7 +202,7 @@ public class TabularParser {
                             continue;
 
                     // Does the reading exist?
-                    Node readingNode = createdReadings.getOrDefault(reading, null);
+                    Node readingNode = createdReadings.get(reading);
                     if (readingNode == null) {
                         readingNode = DatabaseService.createNode(tx, Nodes.READING);
                         readingNode.setProperty("section_id", parentNode.getProperty("id").toString());
@@ -187,6 +211,7 @@ public class TabularParser {
                         if (reading.equals("#LACUNA#"))
                             readingNode.setProperty("is_lacuna", true);
                         else {
+                            // Lacunae don't count for detecting a common reading
                             distinct++;
                         }
                         createdReadings.put(reading, readingNode);
@@ -197,14 +222,11 @@ public class TabularParser {
                         existingSeq = lastNode.createRelationshipTo(readingNode, ERelations.SEQUENCE);
 
                     // Get that relationship's witnesses list, or create it if it doesn't exist.
-                    ArrayList<String> seqWitnesses = linkWitnesses.getOrDefault(existingSeq, null);
-                    if (seqWitnesses == null) {
-                        seqWitnesses = new ArrayList<>();
-                        linkWitnesses.put(existingSeq, seqWitnesses);
-                    }
+                    ArrayList<String> seqWitnesses = linkWitnesses.computeIfAbsent(
+                            existingSeq, k -> new ArrayList<>());
                     // Add this sigil to the list and store the reading as its last
-                    seqWitnesses.add(sigil);
-                    lastReading.put(sigil, readingNode);
+                    seqWitnesses.add(columnKey);
+                    lastReading.put(columnKey, readingNode);
                 }
                 // Did we create only one reading (and no gaps?) If so it is a common reading.
                 boolean common = distinct == 1;
@@ -212,25 +234,7 @@ public class TabularParser {
                 // Now that we have been through the row, create the witness / layer attributes
                 // for the created relationships.
                 for (Relationship r : linkWitnesses.keySet()) {
-                    ArrayList<String> witList = linkWitnesses.get(r);
-                    HashMap<String, ArrayList<String>> layerMap = new HashMap<>();
-                    layerMap.put("witnesses", new ArrayList<>());
-                    for (String w : witList)
-                        if (layerWitnesses.containsKey(w)) {
-                            // It's a layer witness. Get the layer label and the base witness
-                            String baseWit = layerWitnesses.get(w)[0];
-                            String ll = layerWitnesses.get(w)[1];
-                            String layerLabel = ll.substring(0, ll.indexOf(')'));
-                            // See if the base witness is already in the list
-                            if (witList.contains(baseWit))
-                                continue;
-                            // Add the layer label key and the witness.
-                            if (!layerMap.containsKey(layerLabel))
-                                layerMap.put(layerLabel, new ArrayList<>());
-                            layerMap.get(layerLabel).add(baseWit);
-                        } else layerMap.get("witnesses").add(w);
-                    // Finally, set the properties for each layer label
-                    layerMap.forEach((x, y) -> r.setProperty(x, y.toArray(new String[0])));
+                    setWitnessProperties(r, linkWitnesses.get(r), layerWitnesses);
                 }
                 // Create a COLLATED link between all non-meta readings created at the same rank, to preserve
                 // the collation as it was uploaded.
@@ -255,8 +259,6 @@ public class TabularParser {
                     }
                     i--;
                 }
-
-
             }
 
             // Tie all the last readings to the end node.
@@ -269,7 +271,7 @@ public class TabularParser {
                         if (lastReading.get(x).equals(readingNode))
                             readingWits.add(x);
                     });
-                    endRelation.setProperty("witnesses", readingWits.toArray(new String[0]));
+                    setWitnessProperties(endRelation, readingWits, layerWitnesses);
                 } // else we've already connected this reading.
             }
 
@@ -287,5 +289,54 @@ public class TabularParser {
 
         return Response.status(result).entity(response).build();
 
+    }
+
+    /**
+     * Parses a column heading that denotes a layer of a witness, i.e. a base sigil followed by a single
+     * parenthesised layer label, like "XX (YY)". Whitespace around the sigil and the label is not
+     * significant, nor is whitespace between the sigil and the opening parenthesis.
+     *
+     * @param heading - a column heading from the table
+     * @return null if the heading is a plain sigil, otherwise [base sigil, layer label]
+     * @throws IllegalArgumentException if the heading has parentheses but is not a well-formed layer
+     */
+    private static String[] parseLayerHeading(String heading) throws IllegalArgumentException {
+        int open = heading.indexOf('(');
+        int close = heading.indexOf(')');
+        if (open < 0 && close < 0)
+            return null;
+        String base = open < 0 ? "" : heading.substring(0, open).strip();
+        String label = open < 0 || close < open ? "" : heading.substring(open + 1, close).strip();
+        if (base.isEmpty() || label.isEmpty() || label.indexOf('(') >= 0 || !heading.substring(close + 1).isBlank())
+            throw new IllegalArgumentException(String.format("Malformed layer sigil \"%s\": expected the form "
+                    + "\"sigil (layer)\", with a single layer label and nothing after the closing parenthesis.", heading));
+        return new String[]{base, label};
+    }
+
+    /**
+     * Sets the witness properties on a sequence link, given the column headings of the witnesses (and
+     * layers) that travel along it. The main witnesses go in the "witnesses" property, and the base
+     * witnesses of any layers go in a property named for the layer label. A layer whose base witness
+     * is already travelling along the link adds nothing.
+     */
+    private static void setWitnessProperties(Relationship r, List<String> witList,
+                                             HashMap<String, String[]> layerWitnesses) {
+        HashMap<String, ArrayList<String>> layerMap = new HashMap<>();
+        layerMap.put("witnesses", new ArrayList<>());
+        for (String w : witList)
+            if (layerWitnesses.containsKey(w)) {
+                // It's a layer witness. Get the layer label and the base witness
+                String baseWit = layerWitnesses.get(w)[0];
+                String layerLabel = layerWitnesses.get(w)[1];
+                // See if the base witness is already in the list
+                if (witList.contains(baseWit))
+                    continue;
+                // Add the layer label key and the witness.
+                if (!layerMap.containsKey(layerLabel))
+                    layerMap.put(layerLabel, new ArrayList<>());
+                layerMap.get(layerLabel).add(baseWit);
+            } else layerMap.get("witnesses").add(w);
+        // Finally, set the properties for each layer label
+        layerMap.forEach((x, y) -> r.setProperty(x, y.toArray(new String[0])));
     }
 }

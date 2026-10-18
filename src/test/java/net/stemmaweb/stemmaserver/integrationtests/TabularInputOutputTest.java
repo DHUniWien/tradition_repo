@@ -1,5 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotEquals;
 
 import java.io.StringReader;
@@ -22,6 +23,7 @@ import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
@@ -46,6 +48,7 @@ import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.model.WitnessTokensModel;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Tradition;
@@ -193,6 +196,140 @@ public class TabularInputOutputTest extends TestCase {
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(311, allReadings.size());
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("Μαξίμου")));
+    }
+
+    // Every sigil used on a SEQUENCE link, in the main witnesses or in a layer, must be a witness
+    // of its tradition, and no sigil may carry the "X (layer)" notation.
+    private void assertSequenceSigilaAreWitnesses(String tradId) {
+        Set<String> witnesses = ((ArrayList<WitnessModel>) new Tradition(tradId).getAllWitnesses().getEntity())
+                .stream().map(WitnessModel::getSigil).collect(Collectors.toSet());
+        try (Transaction tx = db.beginTx()) {
+            Node trad = tx.findNode(Nodes.TRADITION, "id", tradId);
+            Set<String> sectionIds = DatabaseService.getRelated(trad, ERelations.PART).stream()
+                    .map(x -> x.getProperty("id").toString()).collect(Collectors.toSet());
+            for (Relationship rel : tx.getAllRelationships()) {
+                if (!rel.isType(ERelations.SEQUENCE)
+                        || !sectionIds.contains(rel.getStartNode().getProperty("section_id").toString()))
+                    continue;
+                for (String key : rel.getPropertyKeys())
+                    for (String sigil : (String[]) rel.getProperty(key)) {
+                        assertTrue("Unknown sigil " + sigil, witnesses.contains(sigil));
+                        assertFalse("Layer notation in sigil " + sigil, sigil.contains("("));
+                    }
+            }
+        }
+    }
+
+    // The base witnesses of the given layer on the link from the given reading text into #END#
+    private String[] layerOnLinkToEnd(String tradId, String fromText, String layer) {
+        try (Transaction tx = db.beginTx()) {
+            Node trad = tx.findNode(Nodes.TRADITION, "id", tradId);
+            Set<String> sectionIds = DatabaseService.getRelated(trad, ERelations.PART).stream()
+                    .map(x -> x.getProperty("id").toString()).collect(Collectors.toSet());
+            for (Relationship rel : tx.getAllRelationships())
+                if (rel.isType(ERelations.SEQUENCE) && rel.getEndNode().getProperty("text").equals("#END#")
+                        && rel.getStartNode().getProperty("text").equals(fromText)
+                        && sectionIds.contains(rel.getStartNode().getProperty("section_id").toString()))
+                    return (String[]) rel.getProperty(layer);
+        }
+        return null;
+    }
+
+    public void testLayerColumnWithoutBaseIsRejected() {
+        // A layer must have its base witness in the same table
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                "A,B,C (x)\nthe,the,the\ncat,cat,\nsat,sat,sat\n", "csv");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        String error = Util.getValueFromJson(response, "error");
+        assertTrue(error, error.contains("C (x)") && error.contains("\"C\""));
+
+        // The same goes for adding a section to an existing tradition, which must not leave
+        // either a half-made section or a stray witness behind.
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Plain", "LR", "1",
+                "A,B\nthe,the\ncat,cat\n", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        response = Util.addSectionToTradition(jerseyTest, tradId,
+                "A,B,C (x)\nthe,the,the\ncat,cat,\n", "csv", "Bad section");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, sections.size());
+        ArrayList<WitnessModel> witnesses = (ArrayList<WitnessModel>) new Tradition(tradId).getAllWitnesses().getEntity();
+        assertEquals(2, witnesses.size());
+    }
+
+    public void testMalformedLayerIsRejected() {
+        // Exactly one pair of parentheses, closing the sigil, with a non-empty layer label inside
+        for (String header : new String[]{"B (x", "B (x) y", "B (x) (y)", "B ((x))", "B ()", "B ( )", "(x)", "B x)"}) {
+            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                    String.format("A,B,%s\nthe,the,the\ncat,cat,kat\n", header), "csv");
+            assertEquals(header, Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            String error = Util.getValueFromJson(response, "error");
+            assertTrue(error, error.contains("Malformed") && error.contains(header));
+        }
+    }
+
+    public void testLayerHeaderSpacingVariants() {
+        // The spacing around the layer label is not significant
+        for (String header : new String[]{"B (x)", "B(x)", "B (x) ", "B (x )", "B ( x )", "B  (x)", "B\t(x)"}) {
+            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                    String.format("A,B,%s\nthe,the,the\ncat,cat,kat\n", header), "csv");
+            assertEquals(header, Response.Status.CREATED.getStatusCode(), response.getStatus());
+            String tradId = Util.getValueFromJson(response, "tradId");
+            assertEquals(header, 2, ((ArrayList<WitnessModel>) new Tradition(tradId).getAllWitnesses().getEntity()).size());
+            assertSequenceSigilaAreWitnesses(tradId);
+            // Every variant has to produce the very same layer "x" of witness B
+            assertArrayEquals(header, new String[]{"B"}, layerOnLinkToEnd(tradId, "kat", "x"));
+        }
+    }
+
+    public void testDuplicateLayerIsRejected() {
+        // These all say the same thing, so only one of them can be in a file
+        for (String second : new String[]{"B(x)", "B (x )", "B ( x) "}) {
+            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                    String.format("A,B,B (x),%s\nthe,the,the,the\ncat,cat,kat,kit\n", second), "csv");
+            assertEquals(second, Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+            String error = Util.getValueFromJson(response, "error");
+            assertTrue(error, error.contains("\"B (x)\"") && error.contains("\"" + second + "\"")
+                    && error.contains("both"));
+        }
+        // The same layer label on different witnesses is of course fine
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                "A,B,A (x),B (x)\nthe,the,the,the\ncat,cat,kat,kit\n", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    }
+
+    public void testLayerBaseMayFollowLayer() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                "A,B (x),B\nthe,the,the\ncat,kat,cat\n", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        assertEquals(2, ((ArrayList<WitnessModel>) new Tradition(tradId).getAllWitnesses().getEntity()).size());
+        assertSequenceSigilaAreWitnesses(tradId);
+    }
+
+    public void testLayerOnFinalLink() {
+        // B (x) ends on a different reading from B, so its final link into #END# has to carry
+        // the layer, not a sigil called "B (x)".
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+                "A,B,B (x)\nthe,the,the\ncat,cat,kat\n", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        assertEquals(2, ((ArrayList<WitnessModel>) new Tradition(tradId).getAllWitnesses().getEntity()).size());
+        assertSequenceSigilaAreWitnesses(tradId);
+        try (Transaction tx = db.beginTx()) {
+            boolean found = false;
+            for (Relationship rel : tx.getAllRelationships()) {
+                if (rel.isType(ERelations.SEQUENCE) && rel.getEndNode().getProperty("text").equals("#END#")
+                        && rel.getStartNode().getProperty("text").equals("kat")) {
+                    found = true;
+                    assertArrayEquals(new String[]{"B"}, (String[]) rel.getProperty("x"));
+                    assertEquals(0, ((String[]) rel.getProperty("witnesses")).length);
+                }
+            }
+            assertTrue(found);
+        }
     }
 
     public void testSetRelationship() {
