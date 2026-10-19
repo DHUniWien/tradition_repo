@@ -66,22 +66,23 @@ public class SectionModel {
                 setLanguage(tn.getProperty("language").toString());
         }
         Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
-        setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
+        setEndRank(sectionEnd == null ? 0 : Long.parseLong(sectionEnd.getEndNode().getProperty("rank").toString()));
 
         // Collect the witnesses by traversing SEQUENCE links
         Node startNode = VariantGraphService.getStartNode(tx, node.getProperty("id").toString());
         witnesses = new HashSet<>();
-        tx.traversalDescription().depthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .evaluator(Evaluators.all())
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                .relationships().forEach(r -> {
-                    for (String prop : r.getPropertyKeys()) {
-                        for (String sigil : (String[]) r.getProperty(prop)) {
-                            witnesses.add(prop.equals("witnesses") ? sigil : String.format("%s (%s)", sigil, prop));
+        if (startNode != null)
+            tx.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                    .relationships().forEach(r -> {
+                        for (String prop : r.getPropertyKeys()) {
+                            for (String sigil : (String[]) r.getProperty(prop)) {
+                                witnesses.add(prop.equals("witnesses") ? sigil : String.format("%s (%s)", sigil, prop));
+                            }
                         }
-                    }
-                });
+                    });
     }
 
     public String getId() {

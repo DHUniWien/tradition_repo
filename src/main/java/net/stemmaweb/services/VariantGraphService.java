@@ -85,6 +85,7 @@ public class VariantGraphService {
     
     private static Node getBoundaryNode(Transaction tx, String nodeId, ERelations direction) {
         Node boundNode = null;
+        Relationship boundRel = null;
         // If we have been asked for a tradition node, use either the first or the last of
         // its section nodes instead.
         Node currentNode = getTraditionNode(tx, nodeId);
@@ -104,8 +105,10 @@ public class VariantGraphService {
         } catch (NotFoundException | IllegalArgumentException e) {
             return null;
         }
-		if (currentNode.hasLabel(Nodes.SECTION))
-			boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
+		if (currentNode.hasLabel(Nodes.SECTION)) {
+            boundRel = currentNode.getSingleRelationship(direction, Direction.OUTGOING);
+            boundNode = boundRel == null ? null : boundRel.getEndNode();
+        }
 
 		return boundNode;
     }

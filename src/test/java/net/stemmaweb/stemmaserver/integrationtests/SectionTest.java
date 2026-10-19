@@ -157,6 +157,21 @@ public class SectionTest extends TestCase {
         assertEquals("My new name", Util.getValueFromJson(jerseyResult, "name"));
     }
 
+    public void testEmptySectionIsHandled() {
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
+            Node oldSectionNode = tx.findNode(Nodes.SECTION, "id", Long.parseLong(firstSectId));
+            Node newSectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
+            tradNode.createRelationshipTo(newSectionNode, ERelations.PART);
+            oldSectionNode.createRelationshipTo(newSectionNode, ERelations.NEXT);
+            tx.commit();
+        }
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/sections").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        List<SectionModel> sectionList = jerseyResult.readEntity(new GenericType<>() {});
+        assertEquals(2, sectionList.size());
+    }
+
     public void testAddSection() {
         try (Transaction tx = db.beginTx()) {
         	// Get the existing start and end nodes
