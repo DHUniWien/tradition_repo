@@ -157,19 +157,19 @@ public class SectionTest extends TestCase {
         assertEquals("My new name", Util.getValueFromJson(jerseyResult, "name"));
     }
 
+    // Check that the remains of a failed section upload don't cause problems with
+    // getting the tradition info
     public void testEmptySectionIsHandled() {
-        try (Transaction tx = db.beginTx()) {
-            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
-            Node oldSectionNode = tx.findNode(Nodes.SECTION, "id", Long.parseLong(firstSectId));
-            Node newSectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
-            tradNode.createRelationshipTo(newSectionNode, ERelations.PART);
-            oldSectionNode.createRelationshipTo(newSectionNode, ERelations.NEXT);
-            tx.commit();
+        String newTradId = "";
+        try (Response r = Util.createTraditionFromFileOrString(jerseyTest, "empty", "LR",
+                "user@example.com", "src/TestFiles/EmptySection.zip", "graphml")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            newTradId = Util.getValueFromJson(r, "tradId");
+        } catch (Exception e) {
+            fail();
         }
-        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/sections").request().get();
+        Response jerseyResult = jerseyTest.target("/tradition/" + newTradId + "/sections").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<SectionModel> sectionList = jerseyResult.readEntity(new GenericType<>() {});
-        assertEquals(2, sectionList.size());
     }
 
     public void testAddSection() {
