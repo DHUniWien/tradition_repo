@@ -1,6 +1,5 @@
 package net.stemmaweb.model;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -69,20 +68,20 @@ public class SectionModel {
         Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
         setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
-        // Get the traverser for the tradition readings
+        // Collect the witnesses by traversing SEQUENCE links
         Node startNode = VariantGraphService.getStartNode(tx, node.getProperty("id").toString());
-        ArrayList<Node> traversedNodes = new ArrayList<>();
+        witnesses = new HashSet<>();
         tx.traversalDescription().depthFirst()
                 .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .evaluator(Evaluators.all())
                 .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                .nodes().forEach(traversedNodes::add);
-
-        witnesses = new HashSet<>();
-        for (Node readingNode : traversedNodes) {
-            ReadingModel rm = new ReadingModel(readingNode);
-            witnesses.addAll(rm.getWitnesses());
-        }
+                .relationships().forEach(r -> {
+                    for (String prop : r.getPropertyKeys()) {
+                        for (String sigil : (String[]) r.getProperty(prop)) {
+                            witnesses.add(prop.equals("witnesses") ? sigil : String.format("%s (%s)", sigil, prop));
+                        }
+                    }
+                });
     }
 
     public String getId() {
