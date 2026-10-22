@@ -40,6 +40,27 @@ public class CollateXJsonParser {
      * @return a Response to indicate the result
      */
     public Response parseCollateXJson(InputStream filestream, Node parentNode) {
+        JSONObject collation;
+        try {
+            collation = new JSONObject(IOUtils.toString(filestream, StandardCharsets.UTF_8));
+        } catch (JSONException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Bad CollateX JSON: " + e.getMessage())).build();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return parseCollateXJson(collation, parentNode);
+    }
+
+    /**
+     * Parse an already-read CollateX JSON object and attach it to the given (section) parentNode.
+     *
+     * @param collation - The CollateX JSON output object
+     * @param parentNode - The section node that will carry the parsed data
+     * @return a Response to indicate the result
+     */
+    public Response parseCollateXJson(JSONObject collation, Node parentNode) {
         // parse the JSON
         ArrayList<String> collationWitnesses = new ArrayList<>();
         ArrayList<ArrayList<ReadingModel>> collationTable = new ArrayList<>();
@@ -48,7 +69,6 @@ public class CollateXJsonParser {
         // JSON parsing block; turn CollateX JSON into our model classes.
         // Needs its own try/catch for JSON exceptions
         try {
-            JSONObject collation = new JSONObject(IOUtils.toString(filestream, StandardCharsets.UTF_8));
             // see if there is a section name here
             if (collation.has("name")) {
                 collationName = collation.getString("name");
@@ -57,6 +77,9 @@ public class CollateXJsonParser {
             JSONArray jWit = collation.getJSONArray("witnesses");
             // Is the list of witnesses a list of sigla, or a list of id/token objects? If the latter,
             // tell the user they are trying to use CollateX input.
+            if (jWit.isEmpty())
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(jsonerror("Bad CollateX JSON: the witness list is empty")).build();
             Object firstWit = jWit.get(0);
             if (firstWit instanceof JSONObject)
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -68,13 +91,19 @@ public class CollateXJsonParser {
             for (int i = 0; i < jAlign.length(); i++) {
                 ArrayList<ReadingModel> row = new ArrayList<>();
                 JSONArray jrow = jAlign.getJSONArray(i);
+                if (jrow.length() != collationWitnesses.size())
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(jsonerror(String.format(
+                                    "Bad CollateX JSON: table row %d has %d cells but there are %d witnesses",
+                                    i, jrow.length(), collationWitnesses.size()))).build();
                 for (int j = 0; j < jrow.length(); j++) {
                     String rtext = "";
                     String rnormal = "";
                     String rdisplay = "";
                     boolean joinPrior = false;
                     Boolean joinNext = false;
-                    JSONArray jcell = jrow.getJSONArray(j);
+                    // A null cell is an empty cell, just like []
+                    JSONArray jcell = jrow.isNull(j) ? new JSONArray() : jrow.getJSONArray(j);
                     JSONArray rownames = new JSONArray();
                     JSONArray rowsource = new JSONArray();
                     for (int k = 0; k < jcell.length(); k++) {
@@ -90,6 +119,8 @@ public class CollateXJsonParser {
                         // Normal form
                         if (jtoken.has("normal_form"))
                             rnormal = readingAppend(rnormal, jtoken, "normal_form", joinNext);
+                        else if (jtoken.has("n"))
+                            rnormal = readingAppend(rnormal, jtoken, "n", joinNext);
                         else
                             rnormal = readingAppend(rnormal, jtoken, "t", joinNext);
                         if (jtoken.has("display"))
@@ -98,6 +129,7 @@ public class CollateXJsonParser {
                             rdisplay = readingAppend(rdisplay, jtoken, "t", joinNext);
                         jtoken.remove("t");
                         jtoken.remove("normal_form");
+                        jtoken.remove("n");
                         jtoken.remove("display");
                         // Join_next attribute; the last value will prevail
                         joinNext = jtoken.has("join_next") && jtoken.getBoolean("join_next");
@@ -125,9 +157,9 @@ public class CollateXJsonParser {
                 }
                 collationTable.add(row);
             }
-        } catch (JSONException|IOException e) {
-            e.printStackTrace();
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        } catch (JSONException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Bad CollateX JSON: " + e.getMessage())).build();
         }
 
         // Now we have the data in our own model classes; proceed.
@@ -168,9 +200,11 @@ public class CollateXJsonParser {
                     Node thisReading;
                     if (createdReadings.containsKey(lookupKey)) {
                         thisReading = createdReadings.get(lookupKey);
-                        thisReading.setProperty("extra",
-                                expandExtraField(thisReading.getProperty("extra").toString(),
-                                        witParts, rm.getExtra()));
+                        // Only tokens that carry extra data contribute to the extra field
+                        if (rm.getExtra() != null)
+                            thisReading.setProperty("extra",
+                                    expandExtraField(thisReading.getProperty("extra", "{}").toString(),
+                                            witParts, rm.getExtra()));
                     } else {
                         thisReading = DatabaseService.createNode(tx, Nodes.READING);
                         thisReading.setProperty("text", rm.getText());

@@ -2792,7 +2792,7 @@ public class ReadingTest {
         assertNotNull(compressed);
         assertEquals("թվկնութես հայո՛ց", compressed.getText());
         assertEquals("թ<O>վկ</O>նութ<O>ես</O> հայո՛ց", compressed.getDisplay());
-        assertEquals("թուականութեանս հայո՛ց", compressed.getNormal_form());
+        assertEquals("թուականութեանս հայոց", compressed.getNormal_form());
     }
 
     @Test

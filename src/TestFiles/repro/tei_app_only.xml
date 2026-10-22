@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+ <teiHeader><fileDesc><titleStmt><title>t</title></titleStmt><publicationStmt><p>x</p></publicationStmt><sourceDesc><listWit>
+  <witness xml:id="B">B</witness><witness xml:id="D">D</witness>
+ </listWit></sourceDesc></fileDesc></teiHeader>
+ <text><body><p><app><rdg wit="B">x</rdg><rdg wit="D">y</rdg></app> </p></body></text>
+</TEI>

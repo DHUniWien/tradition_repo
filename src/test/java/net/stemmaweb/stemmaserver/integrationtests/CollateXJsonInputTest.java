@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Response;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -313,6 +314,62 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         String errorMsg = Util.getValueFromJson(response, "error");
         assertTrue(errorMsg != null && errorMsg.contains("filetype"));
+    }
+
+    public void testNullCells() {
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Nulls", "LR", "1",
+                "src/TestFiles/repro/cx_null_cell.json", "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newTradId = Util.getValueFromJson(r, "tradId");
+        String[][] expected = {
+                {"B", "Իսկ ընդ աւուրսն և ի թվականութիւն ՆԱ"},
+                {"D", "Իսկ ընդ ի թուականու՟ի ՆԱ"},
+                {"Q", "Իսկ ընդ աւուրսնս այսոսիկ"}};
+        for (String[] e : expected) {
+            Response tr = jerseyTest.target("/tradition/" + newTradId + "/witness/" + e[0] + "/text")
+                    .request().get();
+            assertEquals(Response.Status.OK.getStatusCode(), tr.getStatus());
+            assertEquals(e[1], Util.getValueFromJson(tr, "text"));
+        }
+    }
+
+    public void testNKeyIsNormalForm() {
+        String cx = "{\"witnesses\":[\"A\",\"B\"],\"table\":[[[{\"t\":\"Colour \",\"n\":\"color\"}],"
+                + "[{\"t\":\"color \",\"n\":\"color\"}]]]}";
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "NKey", "LR", "1", cx, "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newTradId = Util.getValueFromJson(r, "tradId");
+        List<ReadingModel> rdgs = jerseyTest.target("/tradition/" + newTradId + "/readings")
+                .request().get(new GenericType<>() {});
+        int seen = 0;
+        for (ReadingModel rm : rdgs) {
+            if (rm.getIs_start() || rm.getIs_end()) continue;
+            seen++;
+            assertEquals("color", rm.getNormal_form());
+            assertNull(rm.getExtra());
+        }
+        assertEquals(2, seen);
+    }
+
+    public void testBadCxInputIs400() {
+        int before = jerseyTest.target("/traditions").request().get(new GenericType<List<TraditionModel>>() {}).size();
+        String[] bad = {
+                "[]",
+                "{\"witnesses\":[],\"table\":[]}",
+                "{\"witnesses\":[\"A\",\"B\"],\"table\":[[[{\"t\":\"x\"}]]]}",
+                "{\"witnesses\":[\"A\"],\"table\":[[[{\"t\":\"x\"}],[{\"t\":\"y\"}]]]}",
+                "{\"witnesses\":[\"A\"],\"table\":[[\"notarray\"]]}",
+                "{\"witnesses\":",
+                "src/TestFiles/repro/cx_no_rank.xml",
+                "src/TestFiles/repro/tei_app_only.xml"};
+        for (String b : bad) {
+            Response r = Util.createTraditionFromFileOrString(jerseyTest, "Bad", "LR", "1", b, "cxjson");
+            assertEquals(b, Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+            String msg = Util.getValueFromJson(r, "error");
+            assertNotNull(b, msg);
+            int after = jerseyTest.target("/traditions").request().get(new GenericType<List<TraditionModel>>() {}).size();
+            assertEquals(b, before, after);
+        }
     }
 
     /** For diagnostic use when parsing a section fails
