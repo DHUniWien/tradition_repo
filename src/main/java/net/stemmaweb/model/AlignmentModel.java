@@ -1,13 +1,12 @@
 package net.stemmaweb.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluator;
@@ -62,13 +61,24 @@ public class AlignmentModel {
         if (startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE))
             seqType = ERelations.NSEQUENCE;
 
-        // Get the traverser for the tradition readings
-        ArrayList<Relationship> allRels = new ArrayList<>();
-        tx.traversalDescription().depthFirst()
-                .relationships(seqType, Direction.OUTGOING)
-                .evaluator(Evaluators.all())
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                .relationships().forEach(allRels::add);
+        // Traverse the sequences to get the list of witnesses and layers in this section
+        HashMap<String, HashSet<String>> layersByWitness = new HashMap<>();
+        if (!excludeLayers) {
+            tx.traversalDescription().depthFirst()
+                    .relationships(seqType, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                    .relationships().forEach(seq -> {
+                        for (String layer : seq.getPropertyKeys()) {
+                            if (layer.equals("witnesses")) continue;
+                            for (String wit : (String[]) seq.getProperty(layer))
+                                layersByWitness.computeIfAbsent(wit, _ -> new HashSet<>()).add(layer);
+                        }
+                    });
+        }
+
+        // Cache ReadingModel for use in multiple witness columns
+        HashMap<String, ReadingModel> modelCache = new HashMap<>();
 
         // Now make the alignment.
         alignment = new ArrayList<>();
@@ -80,16 +90,7 @@ public class AlignmentModel {
             // Find out which witness layers we need to deal with
             HashSet<String> layers = new HashSet<>();
             layers.add("base");
-            if (!excludeLayers) {
-                for (Relationship seq : allRels) {
-                    for (String layer : seq.getPropertyKeys()) {
-                        if (!layer.equals("witnesses")) {
-                            ArrayList<String> layerwits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(layer)));
-                            if (layerwits.contains(sigil)) layers.add(layer);
-                        }
-                    }
-                }
-            }
+            layers.addAll(layersByWitness.getOrDefault(sigil, new HashSet<>()));
 
             // Now for each layer iteration, produce a set of tokens.
             for (String layer : layers) {
@@ -119,7 +120,7 @@ public class AlignmentModel {
                         continue;
 
                     // Make the reading token
-                    ReadingModel readingToken = new ReadingModel(r);
+                    ReadingModel readingToken = modelCache.computeIfAbsent(r.getElementId(), _ -> new ReadingModel(r));
                     // Check whether it was a lacuna
                     if (readingToken.getIs_lacuna())
                         filler = readingToken;

@@ -1194,6 +1194,32 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals("C         XXXABAABX", matrixLines[3]);
     }
 
+    // A reading shared by many witnesses should be represented by a single ReadingModel
+    // in the alignment, not one copy per witness (which blows up memory on large traditions).
+    public void testAlignmentSharesReadingModels() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+                "src/TestFiles/ChronicleOfMatthew.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        try (Transaction tx = db.beginTx()) {
+            Node trad = tx.findNode(Nodes.TRADITION, "id", tradId);
+            Node section = DatabaseService.getRelated(trad, ERelations.PART).getFirst();
+            AlignmentModel am = new AlignmentModel(section, false, tx);
+            java.util.IdentityHashMap<ReadingModel, Boolean> distinct = new java.util.IdentityHashMap<>();
+            HashMap<String, ReadingModel> byId = new HashMap<>();
+            for (WitnessTokensModel wtm : am.getAlignment()) {
+                for (ReadingModel rm : wtm.getTokens()) {
+                    if (rm == null) continue;
+                    distinct.put(rm, true);
+                    ReadingModel prior = byId.putIfAbsent(rm.getId(), rm);
+                    if (prior != null) assertSame(prior, rm);
+                }
+            }
+            assertEquals(byId.size(), distinct.size());
+            tx.commit();
+        }
+    }
+
     public void tearDown() throws Exception {
 //        db.shutdown();
     	GraphDatabaseServiceProvider.shutdown();
