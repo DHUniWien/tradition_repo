@@ -4,7 +4,9 @@ import static java.time.LocalDateTime.now;
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -15,7 +17,10 @@ import java.util.stream.Collectors;
 import jakarta.ws.rs.*;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
+import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -361,6 +366,70 @@ public class Tradition {
     }
 
     /**
+     * Handle a multi-section CollateX JSON wrapper of the form {"name": ..., "sections": [ CX objects ]}.
+     * Any failure returns an error Response without committing, so that the caller's transaction rolls back.
+     * A section element with both an empty witness list and an empty table becomes a bare section.
+     */
+    private static Response parseCxjsonWrapper(JSONObject wrapper, Node traditionNode,
+                                               boolean addToExisting, Transaction tx) {
+        if (addToExisting)
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror(
+                    "A multi-section CollateX JSON file cannot be added as a single section; upload it as a new tradition")).build();
+        JSONArray jSections = wrapper.optJSONArray("sections");
+        if (jSections == null || jSections.isEmpty())
+            return Response.status(Status.BAD_REQUEST).entity(jsonerror(
+                    "Bad CollateX JSON: 'sections' must be a non-empty array")).build();
+        for (int i = 0; i < jSections.length(); i++)
+            if (!(jSections.get(i) instanceof JSONObject))
+                return Response.status(Status.BAD_REQUEST).entity(jsonerror(
+                        String.format("Bad CollateX JSON: section %d is not an object", i + 1))).build();
+
+        String tradElementId = traditionNode.getElementId();
+        String tradName = traditionNode.getProperty("name", "").toString();
+        if (tradName.isBlank() && !wrapper.optString("name", "").isEmpty()) {
+            tradName = wrapper.getString("name");
+            traditionNode.setProperty("name", tradName);
+        }
+        String firstId = null;
+        Node prior = null;
+        for (int i = 0; i < jSections.length(); i++) {
+            JSONObject jSection = jSections.getJSONObject(i);
+            String name = jSection.optString("name", "__DEFAULT__");
+            Node sectionNode = createNewSection(tradElementId, name, tx);
+            if (prior != null)
+                prior.createRelationshipTo(sectionNode, ERelations.NEXT);
+            prior = sectionNode;
+            // An empty section, as written by the exporter for a bare section, becomes a bare section node
+            JSONArray jWitnesses = jSection.optJSONArray("witnesses");
+            JSONArray jTable = jSection.optJSONArray("table");
+            if (jWitnesses != null && jWitnesses.isEmpty() && jTable != null && jTable.isEmpty()) {
+                if (sectionNode.getProperty("name", "__DEFAULT__").toString().equals("__DEFAULT__"))
+                    sectionNode.setProperty("name", tradName);
+                if (firstId == null)
+                    firstId = sectionNode.getProperty("id").toString();
+                continue;
+            }
+            Response result = new CollateXJsonParser(tx).parseCollateXJson(jSection, sectionNode);
+            if (result.getStatus() != Status.CREATED.getStatusCode()) {
+                String msg;
+                try {
+                    msg = new JSONObject(result.getEntity().toString()).getString("error");
+                } catch (JSONException | NullPointerException e) {
+                    msg = String.valueOf(result.getEntity());
+                }
+                return Response.status(result.getStatus())
+                        .entity(jsonerror(String.format("section %d (%s): %s", i + 1,
+                                sectionNode.getProperty("name", name), msg))).build();
+            }
+            if (sectionNode.getProperty("name", "__DEFAULT__").toString().equals("__DEFAULT__"))
+                sectionNode.setProperty("name", tradName);
+            if (firstId == null)
+                firstId = sectionNode.getProperty("id").toString();
+        }
+        return Response.status(Status.CREATED).entity(jsonresp("parentId", firstId)).build();
+    }
+
+    /**
      * A package-private method to add sections to a given tradition, used by POST /tradition and POST /section
      *
      * @param tradId - the ID of the tradition to which the new sections should be added
@@ -376,6 +445,24 @@ public class Tradition {
         Response result = null;
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         Node sectionNode = null;
+        // CollateX JSON is read up front, since it may be a multi-section wrapper
+        JSONObject cxCollation = null;
+        boolean isMultiSection = false;
+        if (filetype.equals("cxjson")) {
+            try {
+                cxCollation = new JSONObject(IOUtils.toString(uploadedInputStream, StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                return Response.status(Status.BAD_REQUEST)
+                        .entity(jsonerror("Bad CollateX JSON: " + e.getMessage())).build();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            }
+            isMultiSection = cxCollation.has("sections");
+            if (isMultiSection && addToExisting)
+                return Response.status(Status.BAD_REQUEST).entity(jsonerror(
+                        "A multi-section CollateX JSON file cannot be added as a single section; upload it as a new tradition")).build();
+        }
         // If we are adding a section to an existing tradition, or we are parsing anything except
         // GraphML, we have to start by creating the section node
         if (!filetype.startsWith("graphml") || addToExisting)
@@ -402,9 +489,11 @@ public class Tradition {
             // Pass it off to the CollateX parser
             result = new CollateXParser(tx).parseCollateX(uploadedInputStream, sectionNode);
         if (filetype.equals("cxjson"))
-            // Pass it off to the CollateX JSON parser, which also takes care of a multi-section wrapper
-            // (but only when we are creating a new tradition)
-            result = new CollateXJsonParser(tx).parseCollateXJson(uploadedInputStream, sectionNode, !addToExisting);
+            // Pass it off to the CollateX JSON parser one way or the other
+            if (isMultiSection)
+                result = new CollateXJsonParser(tx).parseSections(cxCollation, sectionNode);
+            else
+                result = new CollateXJsonParser(tx).parseCollateXJson(cxCollation, sectionNode);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the old Stemmaweb-format parser
             result = new StemmawebParser(tx).parseGraphML(uploadedInputStream, sectionNode);
@@ -1262,8 +1351,10 @@ public class Tradition {
                     + "and \"join_next\" / \"join_prior\" when true. Witness layers are separate columns named "
                     + "\"SIGIL (layer)\"; a witness with no readings in a section has no column in that section, "
                     + "and rows in which every cell is empty are omitted. A lacuna is written as a #LACUNA# "
-                    + "token at every rank it spans. The output is streamed; an error after streaming has begun "
-                    + "aborts the connection.",
+                    + "token at every rank it spans. The output is streamed; if an error occurs after output "
+                    + "has begun, the response can no longer change status, and the JSON is left unbalanced so it "
+                    + "cannot be mistaken for a complete document. Clients should parse the body to confirm it is "
+                    + "complete (HTTP 200 alone does not guarantee that).",
             parameters = {
                     @Parameter(name = "conflate", description = "A relationship type to use for normalisation",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),

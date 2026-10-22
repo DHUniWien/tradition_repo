@@ -70,7 +70,7 @@ public class CollateXJsonParser {
      * @param firstSection - The (already created) section node that will carry the first section
      * @return a Response to indicate the result, naming the ID of the first section on success
      */
-    private Response parseSections(JSONObject wrapper, Node firstSection) {
+    public Response parseSections(JSONObject wrapper, Node firstSection) {
         JSONArray jSections = wrapper.optJSONArray("sections");
         if (jSections == null || jSections.isEmpty())
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
@@ -105,6 +105,12 @@ public class CollateXJsonParser {
                 sectionNode.setProperty("name", name);
                 Util.ensureSectionLink(tx, traditionNode, sectionNode);
             }
+            // Check that it isn't an empty section before we send it off for parsing
+            JSONArray jWit = jSection.getJSONArray("witnesses");
+            JSONArray jAlign = jSection.getJSONArray("table");
+            if (jWit != null && jWit.isEmpty() && jAlign != null && jAlign.isEmpty())
+                continue;
+
             try (Response result = parseCollateXJson(jSection, sectionNode)) {
                 if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
                     // Keep the status of the failure, but say which section it was

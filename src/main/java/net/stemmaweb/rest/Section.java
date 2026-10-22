@@ -1728,7 +1728,10 @@ public class Section {
                     + "\"join_prior\" when true. Witness layers are separate columns named \"SIGIL (layer)\"; "
                     + "witnesses with no readings in the section have no column, and rows in which every "
                     + "cell is empty are omitted. A lacuna is written as a #LACUNA# token at every rank it "
-                    + "spans. The output is streamed; an error after streaming has begun aborts the connection.",
+                    + "spans. The output is streamed; if an error occurs after output has begun, the response can "
+                    + "no longer change status, and the JSON is left unbalanced so it cannot be mistaken for a "
+                    + "complete document. Clients should parse the body to confirm it is complete (HTTP 200 alone "
+                    + "does not guarantee that).",
             parameters = {
                     @Parameter(
                             name = "conflate",

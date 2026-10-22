@@ -189,8 +189,10 @@ public class CollateXJsonExporter {
             VariantGraphService.normalizeGraph(tx, sectionNode, conflate);
     }
 
-    // The status line has gone out already; log, and make sure the connection aborts
-    // rather than ending as a valid-looking short file.
+    // The status line may have gone out already, so the response status can no longer change.
+    // Log, and propagate the failure; because AUTO_CLOSE_JSON_CONTENT is disabled the JSON is left
+    // unbalanced, so a truncated body cannot parse as a complete document (the container may still
+    // end the response normally as HTTP 200, so clients must parse the body to confirm completeness).
     private static IOException abort(Exception e) {
         e.printStackTrace();
         if (e instanceof IOException ioe) return ioe;
@@ -321,10 +323,30 @@ public class CollateXJsonExporter {
                 g.writeEndArray();
             }
             g.writeEndArray();
-        } finally {
-            for (Column c : columns) c.close();
+        } catch (Throwable t) {
+            closeAll(columns, t);
+            throw t;
         }
+        closeAll(columns, null);
         g.writeEndObject();
+    }
+
+    /**
+     * Close every column, even if some close() calls fail. A failure is added as suppressed to the
+     * exception already propagating, if any; otherwise the first failure is rethrown.
+     */
+    private static void closeAll(List<Column> columns, Throwable propagating) {
+        RuntimeException first = null;
+        for (Column c : columns) {
+            try {
+                c.close();
+            } catch (RuntimeException e) {
+                if (propagating != null) propagating.addSuppressed(e);
+                else if (first == null) first = e;
+                else first.addSuppressed(e);
+            }
+        }
+        if (first != null) throw first;
     }
 
     private static long rankOf(Node n) {

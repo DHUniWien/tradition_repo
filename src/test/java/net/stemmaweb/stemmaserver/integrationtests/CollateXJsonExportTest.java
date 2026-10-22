@@ -1160,4 +1160,95 @@ public class CollateXJsonExportTest extends TestCase {
         assertEquals(5, sectionModels(newId).size());
         assertSectionTextsEqual(origId, newId);
     }
+
+    public void testRoundTripEmptySection() {
+        String origId = createCsvTradition("A,B\nx,x\ny,z\n");
+        String firstSection = Util.getSingleSection(jerseyTest, origId).getId();
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = VariantGraphService.getTraditionNode(tx, origId);
+            Node sectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
+            sectionNode.setProperty("name", "Empty section");
+            tradNode.createRelationshipTo(sectionNode, ERelations.PART);
+            DatabaseService.findNodeOrThrow(tx, Nodes.SECTION, firstSection)
+                    .createRelationshipTo(sectionNode, ERelations.NEXT);
+            tx.commit();
+        }
+        String newId = reimport(origId, "Empty copy");
+        List<SectionModel> orig = sectionModels(origId);
+        List<SectionModel> copy = sectionModels(newId);
+        assertEquals(2, copy.size());
+        assertEquals(orig.get(0).getName(), copy.get(0).getName());
+        assertEquals("Empty section", copy.get(1).getName());
+        assertEquals(witnessTexts(origId, orig.get(0).getId()), witnessTexts(newId, copy.get(0).getId()));
+        String emptyId = copy.get(1).getId();
+        try (Response r = jerseyTest.target("/tradition/" + newId + "/section/" + emptyId + "/witnesses")
+                .request().get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            assertTrue(new JSONArray(r.readEntity(String.class)).isEmpty());
+        }
+        try (Response r = jerseyTest.target("/tradition/" + newId + "/section/" + emptyId + "/readings")
+                .request().get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            assertTrue(new JSONArray(r.readEntity(String.class)).isEmpty());
+        }
+    }
+
+    public void testTrailingLacunaFillsToEnd() {
+        String tradId = createCsvTradition("A,B\nx,x\n#LACUNA#,y\n,z\n");
+        String sectId = Util.getSingleSection(jerseyTest, tradId).getId();
+        JSONArray table = fetchSectionCx(tradId, sectId, null, false).getJSONArray("table");
+        assertEquals(3, table.length());
+        String[] colA = {"x", "#LACUNA#", "#LACUNA#"};
+        String[] colB = {"x", "y", "z"};
+        for (int i = 0; i < 3; i++) {
+            assertEquals("row " + (i + 1), colA[i], cellText(table.getJSONArray(i), 0));
+            assertEquals("row " + (i + 1), colB[i], cellText(table.getJSONArray(i), 1));
+        }
+    }
+
+    public void testLacunaWithLayerColumn() {
+        // Base A has a lacuna at rank 2; the a.c. layer reads y there, so has no lacuna
+        String tradId = createCsvTradition("A,A (a.c.),B\nx,x,x\n#LACUNA#,y,y\nz,z,z\n");
+        String sectId = Util.getSingleSection(jerseyTest, tradId).getId();
+        JSONObject cx = fetchSectionCx(tradId, sectId, null, false);
+        assertEquals(List.of("A", "A (a.c.)", "B"), witnessList(cx));
+        JSONArray table = cx.getJSONArray("table");
+        assertEquals(3, table.length());
+        String[][] expected = {{"x", "x", "x"}, {"#LACUNA#", "y", "y"}, {"z", "z", "z"}};
+        for (int r = 0; r < 3; r++)
+            for (int c = 0; c < 3; c++)
+                assertEquals("row " + (r + 1) + " col " + c, expected[r][c], cellText(table.getJSONArray(r), c));
+    }
+
+    private Map<String, String> displayJoinSignature(String tradId) {
+        List<ReadingModel> readings = jerseyTest.target("/tradition/" + tradId + "/readings")
+                .request().get(new GenericType<List<ReadingModel>>() {});
+        Map<String, String> sig = new TreeMap<>();
+        for (ReadingModel rm : readings)
+            sig.put(rm.getRank() + "|" + rm.getText(),
+                    rm.getDisplay() + "|" + rm.getJoin_next() + "|" + rm.getJoin_prior());
+        return sig;
+    }
+
+    public void testDisplayAndJoinRoundTrip() {
+        String cx = "{\"witnesses\":[\"A\",\"B\"],\"table\":["
+                + "[[{\"t\":\"foo\",\"display\":\"<i>foo</i>\",\"join_next\":true}],[{\"t\":\"foo\"}]],"
+                + "[[{\"t\":\"bar\",\"join_prior\":true}],[{\"t\":\"baz\"}]]]}";
+        Response up = Util.createTraditionFromFileOrString(jerseyTest, "Join", "LR", "1", cx, "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), up.getStatus());
+        String origId = Util.getValueFromJson(up, "tradId");
+        Map<String, String> first = displayJoinSignature(origId);
+        assertEquals("<i>foo</i>|true|false", first.get("1|foo"));
+        assertTrue(first.get("2|bar").endsWith("|true"));
+
+        String sectId = Util.getSingleSection(jerseyTest, origId).getId();
+        JSONArray table = fetchSectionCx(origId, sectId, null, false).getJSONArray("table");
+        JSONObject foo = table.getJSONArray(0).getJSONArray(0).getJSONObject(0);
+        assertEquals("<i>foo</i>", foo.getString("display"));
+        assertTrue(foo.getBoolean("join_next"));
+        assertTrue(table.getJSONArray(1).getJSONArray(0).getJSONObject(0).getBoolean("join_prior"));
+
+        String newId = reimport(origId, "Join copy");
+        assertEquals(first, displayJoinSignature(newId));
+    }
 }

@@ -511,4 +511,14 @@ public class CollateXJsonInputTest extends TestCase {
         jerseyTest.tearDown();
         super.tearDown();
     }
+
+    public void testWrapperWithNonObjectSection() {
+        int before = jerseyTest.target("/traditions").request().get(new GenericType<List<TraditionModel>>() {}).size();
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Bad", "LR", "1",
+                "{\"sections\":[\"notanobject\"]}", "cxjson");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        assertNotNull(Util.getValueFromJson(r, "error"));
+        int after = jerseyTest.target("/traditions").request().get(new GenericType<List<TraditionModel>>() {}).size();
+        assertEquals(before, after);
+    }
 }
