@@ -37,6 +37,31 @@ import net.stemmaweb.services.ReadingService.AlignmentTraverse;
 public class VariantGraphService {
 
     /**
+     * Scans the sequences reachable from a section's start node and maps each base sigil to the
+     * names of the witness layers (excluding "witnesses") that it has anywhere in the section.
+     *
+     * @param tx        the open transaction
+     * @param startNode the section start node
+     * @param seqType   SEQUENCE or NSEQUENCE
+     * @return a map of base sigil to layer names
+     */
+    public static HashMap<String, HashSet<String>> witnessLayers(Transaction tx, Node startNode, RelationshipType seqType) {
+        HashMap<String, HashSet<String>> layersByWitness = new HashMap<>();
+        tx.traversalDescription().depthFirst()
+                .relationships(seqType, Direction.OUTGOING)
+                .evaluator(Evaluators.all())
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                .relationships().forEach(seq -> {
+                    for (String layer : seq.getPropertyKeys()) {
+                        if (layer.equals("witnesses")) continue;
+                        for (String wit : (String[]) seq.getProperty(layer))
+                            layersByWitness.computeIfAbsent(wit, _ -> new HashSet<>()).add(layer);
+                    }
+                });
+        return layersByWitness;
+    }
+
+    /**
      * Check whether a given section actually belongs to the given tradition.
      *
      * @param tx         - the transaction within which we are working

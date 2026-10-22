@@ -62,20 +62,9 @@ public class AlignmentModel {
             seqType = ERelations.NSEQUENCE;
 
         // Traverse the sequences to get the list of witnesses and layers in this section
-        HashMap<String, HashSet<String>> layersByWitness = new HashMap<>();
-        if (!excludeLayers) {
-            tx.traversalDescription().depthFirst()
-                    .relationships(seqType, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                    .relationships().forEach(seq -> {
-                        for (String layer : seq.getPropertyKeys()) {
-                            if (layer.equals("witnesses")) continue;
-                            for (String wit : (String[]) seq.getProperty(layer))
-                                layersByWitness.computeIfAbsent(wit, _ -> new HashSet<>()).add(layer);
-                        }
-                    });
-        }
+        HashMap<String, HashSet<String>> layersByWitness = excludeLayers
+                ? new HashMap<>()
+                : VariantGraphService.witnessLayers(tx, startNode, seqType);
 
         // Cache ReadingModel for use in multiple witness columns
         HashMap<String, ReadingModel> modelCache = new HashMap<>();
