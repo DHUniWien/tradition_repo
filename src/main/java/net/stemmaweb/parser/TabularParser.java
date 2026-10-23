@@ -181,9 +181,9 @@ public class TabularParser {
             }
 
             // Go through the remaining rows and create the readings
-            int distinct = 0;
             for (int idx = 1; idx < tableData.size(); idx++) { // for each row
                 String[] collationRow = tableData.get(idx);
+                int distinct = 0;
                 HashMap<String, Node> createdReadings = new HashMap<>();
                 HashMap<Relationship, ArrayList<String>> linkWitnesses = new HashMap<>();
                 for (int j = 0; j < collationRow.length; j++) {
