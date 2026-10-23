@@ -372,6 +372,36 @@ public class CollateXJsonInputTest extends TestCase {
         }
     }
 
+    public void testLacunaRunsMatchCsvImport() {
+        Response csv = Util.createTraditionFromFileOrString(jerseyTest, "Lacuna CSV", "LR", "1",
+                "A,B\nx,x\n#LACUNA#,y\n#LACUNA#,z\n#LACUNA#,z2\nw,w\nv,#LACUNA#\n", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), csv.getStatus());
+        String csvId = Util.getValueFromJson(csv, "tradId");
+        Response cx = Util.createTraditionFromFileOrString(jerseyTest, "Lacuna CX", "LR", "1",
+                "{\"witnesses\":[\"A\",\"B\"],\"table\":[[[{\"t\":\"x\"}],[{\"t\":\"x\"}]],"
+                        + "[[{\"t\":\"#LACUNA#\"}],[{\"t\":\"y\"}]],[[{\"t\":\"#LACUNA#\"}],[{\"t\":\"z\"}]],"
+                        + "[[{\"t\":\"#LACUNA#\"}],[{\"t\":\"z2\"}]],[[{\"t\":\"w\"}],[{\"t\":\"w\"}]],"
+                        + "[[{\"t\":\"v\"}],[{\"t\":\"#LACUNA#\"}]]]}", "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), cx.getStatus());
+        String cxId = Util.getValueFromJson(cx, "tradId");
+
+        List<ReadingModel> csvReadings = jerseyTest.target("/tradition/" + csvId + "/readings")
+                .request().get(new GenericType<>() {});
+        List<ReadingModel> cxReadings = jerseyTest.target("/tradition/" + cxId + "/readings")
+                .request().get(new GenericType<>() {});
+        assertEquals(summarise(csvReadings), summarise(cxReadings));
+        List<ReadingModel> lacunae = cxReadings.stream().filter(r -> Boolean.TRUE.equals(r.getIs_lacuna())).toList();
+        assertEquals(2, lacunae.size());
+        assertTrue(lacunae.stream().anyMatch(r -> r.getRank() == 2L));
+        assertTrue(lacunae.stream().anyMatch(r -> r.getRank() == 6L));
+    }
+
+    private static List<String> summarise(List<ReadingModel> readings) {
+        return readings.stream()
+                .map(r -> r.getText() + "|" + r.getRank() + "|" + r.getIs_lacuna() + "|" + r.getIs_common())
+                .sorted().toList();
+    }
+
     /** For diagnostic use when parsing a section fails
     public void testSomething() throws Exception {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,

@@ -26,6 +26,7 @@ import net.stemmaweb.services.VariantGraphService;
 
 public class CollateXJsonParser {
 
+    private static final String LACUNA = "#LACUNA#";
     private final Transaction tx;
 
     public CollateXJsonParser(Transaction tx) {
@@ -197,6 +198,10 @@ public class CollateXJsonParser {
                         distinct++;
                         continue;  // Don't add blank readings
                     }
+                    boolean isLacuna = rm.getText().equals(LACUNA);
+                    // A run of lacuna cells in one witness column is a single lacuna reading
+                    if (isLacuna && lastWitnessReading.get(thisWitness).hasProperty("is_lacuna"))
+                        continue;
                     Node thisReading;
                     if (createdReadings.containsKey(lookupKey)) {
                         thisReading = createdReadings.get(lookupKey);
@@ -222,9 +227,13 @@ public class CollateXJsonParser {
                             thisReading.setProperty("extra", thisExtra.toString());
                         }
                         thisReading.setProperty("rank", rank);
+                        if (isLacuna)
+                            thisReading.setProperty("is_lacuna", true);
                         thisReading.setProperty("section_id", parentNode.getProperty("id").toString());
                         createdReadings.put(lookupKey, thisReading);
-                        distinct++;
+                        // Lacunae don't count for detecting a common reading
+                        if (!isLacuna)
+                            distinct++;
                     }
                     Node lastReading = lastWitnessReading.get(thisWitness);
                     ReadingService.addWitnessLink(lastReading, thisReading, witParts.get(0), witParts.get(1));
