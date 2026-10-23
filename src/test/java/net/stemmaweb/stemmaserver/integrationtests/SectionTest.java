@@ -1883,9 +1883,11 @@ public class SectionTest extends TestCase {
     }
 
     public void testInitRanksNoSuchSectionIsJson() {
-        Response response = new Section(tradId, "999999").initRanks();
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        JSONObject body = new JSONObject((String) response.getEntity());
+        JSONObject body;
+        try (Response response = new Section(tradId, "999999").initRanks()) {
+            assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+            body = new JSONObject((String) response.getEntity());
+        }
         assertTrue(body.has("error"));
     }
 
@@ -1907,7 +1909,7 @@ public class SectionTest extends TestCase {
 
     public void testGetDotNoSuchSection() {
         Response response = new Section("nonexistentTradId", firstSectId)
-                .getDot(false, false, false, false, null, new ArrayList<>());
+                .getDot(false, false, false, false, false, null, new ArrayList<>());
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getMediaType());
         JSONObject body = new JSONObject((String) response.getEntity());

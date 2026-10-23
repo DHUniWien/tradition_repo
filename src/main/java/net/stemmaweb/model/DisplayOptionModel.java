@@ -7,18 +7,20 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 @XmlRootElement
 public class DisplayOptionModel {
 
-    private boolean includeRelated;
-    private boolean showNormalForm;
-    private boolean showRank;
-    private boolean displayAllSigla;
+    private final boolean includeRelated;
+    private final boolean showNormalForm;
+    private final boolean rankInLabel;
+    private final boolean displayAllSigla;
+    private final boolean rankAsAttribute;
     // private boolean showEmendations;
-    private String normaliseOn;
-    private List<String> excludeWitnesses;
+    private final String normaliseOn;
+    private final List<String> excludeWitnesses;
 
-    public DisplayOptionModel(Boolean ir, Boolean snf, Boolean sr, Boolean das, String n, List<String> ew) {
+    public DisplayOptionModel(Boolean ir, Boolean snf, Boolean sr, Boolean rs, Boolean das, String n, List<String> ew) {
         includeRelated = ir;
         showNormalForm = snf;
-        showRank = sr;
+        rankInLabel = sr;
+        rankAsAttribute = rs;
         // showEmendations = se;
         displayAllSigla = das;
         normaliseOn = n;
@@ -33,9 +35,11 @@ public class DisplayOptionModel {
         return showNormalForm;
     }
 
-    public boolean getShowRank() {
-        return showRank;
+    public boolean getRankInLabel() {
+        return rankInLabel;
     }
+
+    public boolean getRankAsAttribute() { return rankAsAttribute; }
 
     public boolean getDisplayAllSigla() {
         return displayAllSigla;

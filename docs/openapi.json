@@ -2198,9 +2198,17 @@
             "default" : false
           }
         }, {
-          "name" : "show_rank",
+          "name" : "rank_in_label",
           "in" : "query",
-          "description" : "Display the rank of readings, if true",
+          "description" : "Display the rank of readings in the label, if true",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "rank_as_attribute",
+          "in" : "query",
+          "description" : "Include the rank of readings as a node attribute 'rdgrank', if true",
           "schema" : {
             "type" : "boolean",
             "default" : false
@@ -2245,7 +2253,14 @@
             "default" : false
           }
         }, {
-          "name" : "show_rank",
+          "name" : "rank_in_label",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "rank_as_attribute",
           "in" : "query",
           "schema" : {
             "type" : "boolean",
@@ -4570,6 +4585,7 @@
         "parameters" : [ {
           "name" : "include_relations",
           "in" : "query",
+          "description" : "Include RELATED edges in the dot, if true",
           "schema" : {
             "type" : "boolean",
             "default" : false
@@ -4577,13 +4593,23 @@
         }, {
           "name" : "show_normal",
           "in" : "query",
+          "description" : "Display normal form of readings alongside 'raw' text form, if true",
           "schema" : {
             "type" : "boolean",
             "default" : false
           }
         }, {
-          "name" : "show_rank",
+          "name" : "rank_in_label",
           "in" : "query",
+          "description" : "Display the rank of readings in the label, if true",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "rank_as_attribute",
+          "in" : "query",
+          "description" : "Include the rank of readings as a node attribute 'rdgrank', if true",
           "schema" : {
             "type" : "boolean",
             "default" : false
@@ -4591,6 +4617,7 @@
         }, {
           "name" : "expand_sigla",
           "in" : "query",
+          "description" : "Avoid the 'majority' contraction of long witness labels, if true",
           "schema" : {
             "type" : "boolean",
             "default" : false
@@ -4598,12 +4625,14 @@
         }, {
           "name" : "normalise",
           "in" : "query",
+          "description" : "A RelationType name to normalise on, if desired",
           "schema" : {
             "type" : "string"
           }
         }, {
           "name" : "exclude_witness",
           "in" : "query",
+          "description" : "A witness name to exclude from the dot, if desired. Can be specified multiple times",
           "schema" : {
             "type" : "string"
           }
@@ -4622,7 +4651,14 @@
             "default" : false
           }
         }, {
-          "name" : "show_rank",
+          "name" : "rank_in_label",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "rank_as_attribute",
           "in" : "query",
           "schema" : {
             "type" : "boolean",

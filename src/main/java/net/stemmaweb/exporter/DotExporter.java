@@ -11,14 +11,9 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.text.DecimalFormatSymbols;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
@@ -52,7 +47,8 @@ public class DotExporter
 {
     private OutputStream out = null;
     private final Transaction tx;
-    private static final DecimalFormat df2 = new DecimalFormat(".##");
+    private static final DecimalFormat df2 = new DecimalFormat(".##",
+            DecimalFormatSymbols.getInstance(Locale.US));
 
     public DotExporter(Transaction tx){
         this.tx = tx;
@@ -343,11 +339,13 @@ public class DotExporter
     }
 
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
+        HashMap<String,String> attributes = new HashMap<>();
         // Get the proper node ID
         String nodeDotId = node.hasLabel(Nodes.EMENDATION) ? "ne" : "n";
         nodeDotId+= node.getProperty("id").toString();
         if (node.getProperty("is_end", false).equals(true)) nodeDotId = "__END__";
         else if (node.getProperty("is_start", false).equals(true)) nodeDotId = "__START__";
+        attributes.put("id", nodeDotId);
 
         // Get the node label. If there is a 'display' property, strip any leading / trailing angle
         // brackets, because if we are also showing normal forms, we have to wedge more into the
@@ -359,7 +357,7 @@ public class DotExporter
             hasHTML = true;
             nodeLabel = "<B>[ ... ]</B>";
         }
-        if (dm.getShowRank())
+        if (dm.getRankInLabel())
             nodeLabel = String.format("%s%s(%s)", nodeLabel, hasHTML ? "&nbsp;" : " ", node.getProperty("rank").toString());
         if (dm.getShowNormalForm() && node.hasProperty("normal_form")
             && !node.getProperty("normal_form").toString().equals(node.getProperty("text").toString())) {
@@ -378,9 +376,16 @@ public class DotExporter
         else
             // Escape double quotes since we are wrapping in double quotes
             nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
+        attributes.put("label", nodeLabel);
+
+        if (dm.getRankAsAttribute())
+            attributes.put("noderank", node.getProperty("rank").toString());
+
+        String attributeStr = attributes.entrySet().stream().sorted(Map.Entry.comparingByKey()).map(
+                e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(", "));
 
         // Put it all together
-        return("\t" + node.getProperty("id").toString() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
+        return("\t" + node.getProperty("id").toString() + " [" + attributeStr + "];\n");
     }
 
     private static String sequenceLabel(Map<String, String[]> witnessInfo, int numWits, DisplayOptionModel dm) {

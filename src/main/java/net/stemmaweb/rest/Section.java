@@ -1607,7 +1607,8 @@ public class Section {
      *
      * @param includeRelatedRelationships - Include RELATED edges in the dot, if true
      * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
-     * @param showRank - Display the rank of readings, if true
+     * @param showRank - Display the rank of readings in the label, if true
+     * @param rankSequences - Includes the rank of readings as a node attribute 'rdgrank', if true
      * @param displayAllSigla - Avoid the 'majority' contraction of long witness labels, if true
      * @param normalise - A RelationType name to normalise on, if desired
      * @param excWitnesses - Exclude the given witness from the dot output. Can be specified multiple times
@@ -1623,31 +1624,43 @@ public class Section {
             parameters = {
                     @Parameter(
                             name = "include_relations",
+                            description = "Include RELATED edges in the dot, if true",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "boolean", defaultValue = "false")
                     ),
                     @Parameter(
                             name = "show_normal",
+                            description = "Display normal form of readings alongside 'raw' text form, if true",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "boolean", defaultValue = "false")
                     ),
                     @Parameter(
-                            name = "show_rank",
+                            name = "rank_in_label",
+                            description = "Display the rank of readings in the label, if true",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "boolean", defaultValue = "false")
+                    ),
+                    @Parameter(
+                            name = "rank_as_attribute",
+                            description = "Include the rank of readings as a node attribute 'rdgrank', if true",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "boolean", defaultValue = "false")
                     ),
                     @Parameter(
                             name = "expand_sigla",
+                            description = "Avoid the 'majority' contraction of long witness labels, if true",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "boolean", defaultValue = "false")
                     ),
                     @Parameter(
                             name = "normalise",
+                            description = "A RelationType name to normalise on, if desired",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "exclude_witness",
+                            description = "A witness name to exclude from the dot, if desired. Can be specified multiple times",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     )
@@ -1680,7 +1693,8 @@ public class Section {
     )
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
-                           @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
+                           @DefaultValue("false") @QueryParam("rank_in_label") Boolean showRank,
+                           @DefaultValue("false") @QueryParam("rank_as_attribute") Boolean rankSequences,
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
                                                   @QueryParam("normalise") String normalise,
                                                   @QueryParam("exclude_witness") List<String> excWitnesses) {
@@ -1691,7 +1705,8 @@ public class Section {
                         .entity(jsonerror("No such tradition found")).build();
             // Put our options into an object
             DisplayOptionModel dm = new DisplayOptionModel(
-                    includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);
+                    includeRelatedRelationships, showNormalForms, showRank, rankSequences, displayAllSigla,
+                    normalise, excWitnesses);
             // Make the dot.
             DotExporter exporter = new DotExporter(tx);
             return exporter.writeNeo4J(tradId, sectId, dm);
