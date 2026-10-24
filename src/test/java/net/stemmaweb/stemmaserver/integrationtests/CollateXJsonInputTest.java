@@ -396,6 +396,86 @@ public class CollateXJsonInputTest extends TestCase {
         assertTrue(lacunae.stream().anyMatch(r -> r.getRank() == 6L));
     }
 
+    private static final String MULTI = "src/TestFiles/cxjson_multi.json";
+
+    private Response uploadWrapper(String tName, String content) {
+        return Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", content, "cxjson");
+    }
+
+    public void testMultiSectionUpload() throws Exception {
+        Response r = uploadWrapper("", MULTI);
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId = Util.getValueFromJson(r, "tradId");
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + newId + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(List.of("first section", "second section", "third section", "fourth section", "fifth section"),
+                sections.stream().map(SectionModel::getName).toList());
+        for (SectionModel sm : sections) {
+            List<WitnessModel> wits = jerseyTest.target("/tradition/" + newId + "/section/" + sm.getId() + "/witnesses")
+                    .request().get(new GenericType<>() {});
+            assertEquals(List.of("A", "B", "C", "D", "F", "G", "L", "O", "Y"),
+                    wits.stream().map(WitnessModel::getSigil).sorted().toList());
+        }
+        TraditionModel tm = jerseyTest.target("/tradition/" + newId).request().get(TraditionModel.class);
+        assertEquals("many sections in collatex", tm.getName());
+
+        // Check witness A's text in section 1 against the fixture
+        JSONObject fixture = new JSONObject(java.nio.file.Files.readString(java.nio.file.Path.of(MULTI)));
+        org.json.JSONArray table = fixture.getJSONArray("sections").getJSONObject(0).getJSONArray("table");
+        List<String> toks = new ArrayList<>();
+        for (int i = 0; i < table.length(); i++) {
+            org.json.JSONArray cell = table.getJSONArray(i).getJSONArray(0);
+            for (int j = 0; j < cell.length(); j++) toks.add(cell.getJSONObject(j).getString("t"));
+        }
+        String expected = String.join(" ", toks.stream().map(String::trim).toList()).trim();
+        String got = Util.getValueFromJson(jerseyTest.target("/tradition/" + newId + "/section/"
+                + sections.getFirst().getId() + "/witness/A/text").request().get(), "text");
+        assertEquals(expected, got);
+    }
+
+    public void testWrapperNameDoesNotOverrideForm() {
+        Response r = uploadWrapper("Mine", MULTI);
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId = Util.getValueFromJson(r, "tradId");
+        TraditionModel tm = jerseyTest.target("/tradition/" + newId).request().get(TraditionModel.class);
+        assertEquals("Mine", tm.getName());
+    }
+
+    public void testWrapperUnnamedSectionGetsTraditionName() {
+        Response r = uploadWrapper("T",
+                "{\"sections\":[{\"witnesses\":[\"A\"],\"table\":[[[{\"t\":\"x\"}]]]}]}");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId = Util.getValueFromJson(r, "tradId");
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + newId + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, sections.size());
+        assertEquals("T", sections.getFirst().getName());
+    }
+
+    public void testBadSectionRollsBack() {
+        int before = jerseyTest.target("/traditions").request().get(new GenericType<List<TraditionModel>>() {}).size();
+        Response r = uploadWrapper("Bad",
+                "{\"sections\":[{\"witnesses\":[\"A\"],\"table\":[[[{\"t\":\"x\"}]]]},"
+                        + "{\"witnesses\":[\"A\"],\"table\":[[\"notarray\"]]}]}");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        assertTrue(r.readEntity(String.class).contains("section 2"));
+        assertEquals(before, jerseyTest.target("/traditions").request()
+                .get(new GenericType<List<TraditionModel>>() {}).size());
+
+        Response empty = uploadWrapper("Empty", "{\"sections\":[]}");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), empty.getStatus());
+        assertEquals(before, jerseyTest.target("/traditions").request()
+                .get(new GenericType<List<TraditionModel>>() {}).size());
+    }
+
+    public void testWrapperRejectedOnAddSection() {
+        Response r = Util.addSectionToTradition(jerseyTest, tradId, MULTI, "cxjson", "extra");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, sections.size());
+    }
+
     private static List<String> summarise(List<ReadingModel> readings) {
         return readings.stream()
                 .map(r -> r.getText() + "|" + r.getRank() + "|" + r.getIs_lacuna() + "|" + r.getIs_common())

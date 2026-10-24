@@ -34,13 +34,16 @@ public class CollateXJsonParser {
     }
 
     /**
-     * Parse a CollateX JSON input stream and attach it to the given (section) parentNode.
+     * Parse a CollateX JSON input stream and attach it to the given (section) parentNode. If
+     * the input has multiple sections (and allowSections is true), they are all created and
+     * linked in order behind parentNode.
      *
      * @param filestream - The data to parse
-     * @param parentNode - The section node that will carry the parsed data
+     * @param parentNode - The section node that will carry the (first) parsed section
+     * @param allowSections - Whether a multi-section wrapper is acceptable here; if it is not, it is rejected
      * @return a Response to indicate the result
      */
-    public Response parseCollateXJson(InputStream filestream, Node parentNode) {
+    public Response parseCollateXJson(InputStream filestream, Node parentNode, boolean allowSections) {
         JSONObject collation;
         try {
             collation = new JSONObject(IOUtils.toString(filestream, StandardCharsets.UTF_8));
@@ -51,7 +54,80 @@ public class CollateXJsonParser {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return parseCollateXJson(collation, parentNode);
+        if (!collation.has("sections"))
+            return parseCollateXJson(collation, parentNode);
+        if (!allowSections)
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
+                    "A multi-section CollateX JSON file cannot be added as a single section; "
+                            + "upload it as a new tradition")).build();
+        return parseSections(collation, parentNode);
+    }
+
+    /**
+     * Handle a multi-section wrapper of the form {"name": ..., "sections": [ CollateX JSON objects ]}.
+     *
+     * @param wrapper - The wrapper object
+     * @param firstSection - The (already created) section node that will carry the first section
+     * @return a Response to indicate the result, naming the ID of the first section on success
+     */
+    private Response parseSections(JSONObject wrapper, Node firstSection) {
+        JSONArray jSections = wrapper.optJSONArray("sections");
+        if (jSections == null || jSections.isEmpty())
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
+                    "Bad CollateX JSON: 'sections' must be a non-empty array")).build();
+        for (int i = 0; i < jSections.length(); i++)
+            if (!(jSections.get(i) instanceof JSONObject))
+                return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
+                        String.format("Bad CollateX JSON: section %d is not an object", i + 1))).build();
+
+        // Get the tradition's name if it hasn't been set yet
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, firstSection);
+        String tradName = traditionNode.getProperty("name", "").toString();
+        if (tradName.isBlank() && !wrapper.optString("name", "").isEmpty()) {
+            tradName = wrapper.getString("name");
+            traditionNode.setProperty("name", tradName);
+        }
+
+        for (int i = 0; i < jSections.length(); i++) {
+            JSONObject jSection = jSections.getJSONObject(i);
+            String name = jSection.optString("name", "");
+            Node sectionNode;
+            if (i == 0) {
+                sectionNode = firstSection;
+                if (!name.isBlank())
+                    sectionNode.setProperty("name", name);
+                else
+                    sectionNode.setProperty("name", "uploaded section 1");
+            } else {
+                sectionNode = DatabaseService.createNode(tx, Nodes.SECTION);
+                if (name.isBlank())
+                    name = "uploaded section " + (i + 1);
+                sectionNode.setProperty("name", name);
+                Util.ensureSectionLink(tx, traditionNode, sectionNode);
+            }
+            try (Response result = parseCollateXJson(jSection, sectionNode)) {
+                if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                    // Keep the status of the failure, but say which section it was
+                    String msg;
+                    try {
+                        msg = new JSONObject(result.getEntity().toString()).getString("error");
+                    } catch (JSONException | NullPointerException e) {
+                        msg = String.valueOf(result.getEntity());
+                    }
+                    return Response.status(result.getStatus())
+                            .entity(jsonerror(String.format("section %d (%s): %s", i + 1,
+                                    sectionNode.getProperty("name", name), msg))).build();
+                }
+            } catch (Exception e) {
+                // Something unexpected and un-caught happened
+                e.printStackTrace();
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(jsonerror(String.format("Error parsing CollateX JSON section %d",i + 1))).build();
+            }
+
+        }
+        return Response.status(Response.Status.CREATED)
+                .entity(jsonresp("parentId", firstSection.getProperty("id").toString())).build();
     }
 
     /**

@@ -410,8 +410,9 @@ public class Tradition {
             // Pass it off to the CollateX parser
             result = new CollateXParser(tx).parseCollateX(uploadedInputStream, sectionNode);
         if (filetype.equals("cxjson"))
-            // Pass it off to the CollateX JSON parser
-            result = new CollateXJsonParser(tx).parseCollateXJson(uploadedInputStream, sectionNode);
+            // Pass it off to the CollateX JSON parser, which also takes care of a multi-section wrapper
+            // (but only when we are creating a new tradition)
+            result = new CollateXJsonParser(tx).parseCollateXJson(uploadedInputStream, sectionNode, !addToExisting);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the old Stemmaweb-format parser
             result = new StemmawebParser(tx).parseGraphML(uploadedInputStream, sectionNode);
