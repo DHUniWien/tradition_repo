@@ -89,14 +89,14 @@ public class AlignmentModel {
             String sigil = w.getProperty("sigil").toString();
             // Find out which witness layers we need to deal with
             HashSet<String> layers = new HashSet<>();
-            layers.add("base");
+            layers.add("__base__");
             layers.addAll(layersByWitness.getOrDefault(sigil, new HashSet<>()));
 
             // Now for each layer iteration, produce a set of tokens.
             for (String layer : layers) {
                 WitnessTokensModel witnessRow = new WitnessTokensModel();
                 witnessRow.setWitness(sigil);
-                if (!layer.equals("base")) {
+                if (!layer.equals("__base__")) {
                     witnessRow.setLayer(layer);
                 }
 
@@ -105,9 +105,9 @@ public class AlignmentModel {
 
                 // Get the witness readings for the given layer
                 ArrayList<String> alternatives = new ArrayList<>();
-                if (!layer.equals("base")) alternatives.add(layer);
+                if (!layer.equals("__base__")) alternatives.add(layer);
                 Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
-                ReadingModel filler;
+                ReadingModel filler = null;
                 ArrayList<Node> witReadings = new ArrayList<>();
                 tx.traversalDescription().depthFirst()
                         .relationships(seqType, Direction.OUTGOING)
@@ -137,7 +137,7 @@ public class AlignmentModel {
 
                 // Fill in any empty ranks at the end
                 for (int i = tokens.size(); i < length; i++)
-                    tokens.add(null);
+                    tokens.add(filler);
 
                 // Store the witness row and add it to the alignment
                 witnessRow.setTokens(tokens);
