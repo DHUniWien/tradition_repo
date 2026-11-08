@@ -504,6 +504,34 @@ public class TabularInputOutputTest extends TestCase {
                 }
             }
         }
+        // Check with a lacuna from the beginning
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium whole", "LR",
+                "user@example.com", "src/TestFiles/florilegium.csv", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String florCsvId = Util.getValueFromJson(response, "tradId");
+        response = jerseyTest.target("/tradition/" + florCsvId + "/json").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        alignment = new JSONObject(response.readEntity(String.class));
+        // Just check the first N ranks of witnesses B and G
+        witStructs = alignment.getJSONArray("alignment");
+        for (int i = 0; i < witStructs.length(); i++) {
+            JSONObject witStruct = witStructs.getJSONObject(i);
+            String sigil = witStruct.getString("witness");
+            if (Arrays.asList("B", "G").contains(sigil)) {
+                JSONArray readings = witStruct.getJSONArray("tokens");
+                int emptyUntil = sigil.equals("B") ? 124 : 39;
+                for (int idx = 0; idx < emptyUntil; idx++) {
+                    JSONObject reading = readings.getJSONObject(idx);
+                    assertTrue(reading.getBoolean("is_lacuna"));
+                    assertEquals("#LACUNA#", reading.getString("text"));
+                    assertEquals(1, reading.getInt("rank"));
+                }
+                JSONObject reading = readings.getJSONObject(emptyUntil);
+                assertFalse(reading.has("is_lacuna"));
+                assertEquals(sigil.equals("B") ? "τὸ" : "ἐξετάσει", reading.getString("text"));
+                assertEquals(emptyUntil + 1, reading.getInt("rank"));
+            }
+        }
         // Now try it with a multi-section export with missing witnesses in some sections
         List<String> florIds = Util.importFlorilegium(jerseyTest);
         response = jerseyTest.target("/tradition/" + florIds.getFirst() + "/json").request().get();

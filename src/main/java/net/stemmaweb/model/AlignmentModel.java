@@ -121,16 +121,17 @@ public class AlignmentModel {
 
                     // Make the reading token
                     ReadingModel readingToken = modelCache.computeIfAbsent(r.getElementId(), _ -> new ReadingModel(r));
-                    // Check whether it was a lacuna
-                    if (readingToken.getIs_lacuna())
-                        filler = readingToken;
-                    else filler = null;
 
                     // Put it at its proper rank, filling null bzw. lacuna tokens into the gap
                     long currRankIndex = (long) r.getProperty("rank") - 1;
                     for (int i = tokens.size(); i < currRankIndex; i++)
                         tokens.add(filler);
                     tokens.add(readingToken);
+
+                    // Save the token as filler if it was a lacuna, or else clear the filler
+                    if (readingToken.getIs_lacuna())
+                        filler = readingToken;
+                    else filler = null;
                 }
                 // Skip this witness if it is empty
                 if (tokens.isEmpty()) continue;
