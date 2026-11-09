@@ -121,7 +121,8 @@ public class Root {
      * Imports a new tradition from file data of various forms, and creates at least one section
      * in doing so. Returns the ID of the given tradition, in the form {@code {"tradId": <ID>}}.
      *
-     * @param name      the name of the tradition. Default is the empty string.
+     * @param name      the name of the tradition. Default is the empty string. For formats that include a
+     *                  tradition name, the name in the data takes precedence.
      * @param section_name the name of the section to be created. Default is the name of the tradition.
      * @param language  the language of the tradition text (e.g. Latin, Syriac).
      * @param direction the direction in which the text should be read. Possible values
@@ -133,6 +134,8 @@ public class Root {
      *                  {@code cxjson}, {@code csv}, {@code tsv}, {@code xls}, {@code xlsx},
      *                  {@code graphml}, {@code stemmaweb}, or {@code teips}.
      *                  Required if 'file' is present.
+     *                  In tabular formats, a lacuna is a cell with the text {@code #LACUNA#}; a run of consecutive
+     *                  #LACUNA# cells in one witness column imports as a single lacuna reading.
      * @param empty     Should be set to some non-null value if the tradition is being created without any data file.
      *                  Required if 'file' is not present.
      * @param uploadedInputStream The file data to upload.
@@ -157,13 +160,13 @@ public class Root {
             ),
             responses = {
                     @ApiResponse(responseCode = "201", description = "The tradition was created successfully.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TraditionModel.class))),
-                    @ApiResponse(responseCode = "400", description = "No file was specified and the 'empty' flag was not set, or a file was specified but the 'filetype' parameter was missing or empty.", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "400", description = "No file was specified and the 'empty' flag was not set, or a file was specified but the 'filetype' parameter was missing or empty, or the file was malformed.", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "409", description = "The requested owner does not exist in the database.", content = @Content(mediaType = "application/json")),
                     @ApiResponse(responseCode = "500", description = "Something went wrong. An error message will be returned.", content = @Content(mediaType = "application/json"))
             }
     )
     public Response importFromFile(@Parameter(name = "name", in = ParameterIn.QUERY,
-                                            description = "the name of the tradition. Default is the empty string.")
+                                            description = "the name of the tradition. Default is the empty string. For formats that include a tradition name, the name in the data takes precedence.")
                                    @DefaultValue("") @FormDataParam("name") String name,
                                    @Parameter(name = "sectionName", in = ParameterIn.QUERY,
                                             description = "the name of the section to be created. Defaults to the tradition name. Will be overridden if a section name is specified in the upload file")
@@ -186,7 +189,7 @@ public class Root {
                                             description = "Should be set to some non-null value if the tradition is being created without any data file. Required if 'file' is not present.")
                                    @FormDataParam("empty") String empty,
                                    @Parameter(name = "filetype", in = ParameterIn.QUERY,
-                                            description = "the type of file being uploaded. Possible values are collatex, cxjson, csv, tsv, xls, xlsx, graphml, stemmaweb, or teips. Required if 'file' is present.")
+                                            description = "the type of file being uploaded. Possible values are collatex, cxjson, csv, tsv, xls, xlsx, graphml, stemmaweb, or teips. Required if 'file' is present. In tabular formats, a lacuna is a cell with the text #LACUNA#; a run of consecutive #LACUNA# cells in one witness column imports as a single lacuna reading.")
                                    @FormDataParam("filetype") String filetype,
                                    @FormDataParam("file") InputStream uploadedInputStream,
                                    @FormDataParam("file") FormDataContentDisposition fileDetail) {

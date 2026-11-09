@@ -274,7 +274,9 @@ public class Tradition {
      *
      * @param sectionName - The name of the section
      * @param filetype - The format of the section data file.
-     *                 See the documentation of POST /tradition for possible values.
+     *                 See the documentation of POST /tradition for possible values. Note that a multi-section
+     *                 {@code cxjson} wrapper ({@code {"name": ..., "sections": [...]}}) is not accepted
+     *                 here; upload it as a new tradition instead.
      * @param uploadedInputStream - The section file data
      * @return The stemma specification in JSON format.
      */
@@ -300,7 +302,7 @@ public class Tradition {
                             description = "Section created successfully",
                             content = @Content(schema = @Schema(type = "object", example = "{\"sectionId\": 123456}"))
                     ),
-                    @ApiResponse(responseCode = "400", description = "Unrecognized file type"),
+                    @ApiResponse(responseCode = "400", description = "Unrecognized or disallowed file type"),
                     @ApiResponse(responseCode = "404", description = "Tradition not found"),
                     @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
             }
