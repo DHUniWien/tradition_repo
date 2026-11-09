@@ -9,8 +9,6 @@ import java.util.stream.Collectors;
 import com.opencsv.CSVReader;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
 import org.glassfish.jersey.test.JerseyTest;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,8 +23,10 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import junit.framework.TestCase;
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
@@ -1070,5 +1070,94 @@ public class CollateXJsonExportTest extends TestCase {
         try (Response response = jerseyTest.target("/tradition/" + tradId).request().delete()) {
             assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         }
+    }
+
+    // Round trips
+
+    private Map<String, String> witnessTexts(String tradId, String sectionId, String... layers) {
+        List<WitnessModel> wits = jerseyTest.target("/tradition/" + tradId + "/section/" + sectionId + "/witnesses")
+                .request().get(new GenericType<>() {});
+        Map<String, String> result = new TreeMap<>();
+        for (WitnessModel wm : wits) {
+            var target = jerseyTest.target("/tradition/" + tradId + "/section/" + sectionId
+                    + "/witness/" + wm.getSigil() + "/text");
+            for (String l : layers) target = target.queryParam("layer", l);
+            Response r = target.request().get();
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            result.put(wm.getSigil(), new JSONObject(r.readEntity(String.class)).getString("text"));
+        }
+        return result;
+    }
+
+    private String reimport(String tradId, String name) {
+        Response r = getTraditionJson(tradId);
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        String exported = r.readEntity(String.class);
+        Response up = Util.createTraditionFromFileOrString(jerseyTest, name, "LR", "1", exported, "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), up.getStatus());
+        return Util.getValueFromJson(up, "tradId");
+    }
+
+    private List<SectionModel> sectionModels(String tradId) {
+        return jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<>() {});
+    }
+
+    private void assertSectionTextsEqual(String origId, String newId, String... layers) {
+        List<SectionModel> orig = sectionModels(origId);
+        List<SectionModel> copy = sectionModels(newId);
+        assertEquals(orig.size(), copy.size());
+        for (int i = 0; i < orig.size(); i++) {
+            assertEquals(orig.get(i).getName(), copy.get(i).getName());
+            Map<String, String> expected = witnessTexts(origId, orig.get(i).getId(), layers);
+            assertFalse(expected.isEmpty());
+            assertEquals("section " + i, expected, witnessTexts(newId, copy.get(i).getId(), layers));
+        }
+    }
+
+    public void testRoundTripChronicle() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+                "src/TestFiles/ChronicleOfMatthew.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String origId = Util.getValueFromJson(response, "tradId");
+        String newId = reimport(origId, "Chronicle copy");
+        assertSectionTextsEqual(origId, newId);
+    }
+
+    public void testRoundTripLayers() {
+        String origId = createCsvTradition("A,A (a.c.),B\nx,y,x\nz,z,w");
+        String newId = reimport(origId, "Layers copy");
+        assertSectionTextsEqual(origId, newId);
+        assertSectionTextsEqual(origId, newId, "a.c.");
+        String sect = sectionModels(newId).getFirst().getId();
+        assertEquals("y z", witnessTexts(newId, sect, "a.c.").get("A"));
+        assertEquals("x z", witnessTexts(newId, sect).get("A"));
+    }
+
+    private List<String> lacunaSignature(String tradId, String sectId) {
+        List<ReadingModel> readings = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/readings")
+                .request().get(new GenericType<>() {});
+        List<String> sig = new ArrayList<>();
+        for (ReadingModel rm : readings)
+            sig.add(rm.getText() + "|" + rm.getRank() + "|" + rm.getIs_lacuna());
+        Collections.sort(sig);
+        return sig;
+    }
+
+    public void testRoundTripLacunae() {
+        String origId = createCsvTradition(
+                "A,B\nx,x\n#LACUNA#,y\n#LACUNA#,z\n#LACUNA#,z2\nw,w\nv,#LACUNA#\n");
+        String newId = reimport(origId, "Lacunae copy");
+        String origSect = sectionModels(origId).getFirst().getId();
+        String newSect = sectionModels(newId).getFirst().getId();
+        assertEquals(lacunaSignature(origId, origSect), lacunaSignature(newId, newSect));
+        assertEquals(witnessTexts(origId, origSect), witnessTexts(newId, newSect));
+    }
+
+    public void testRoundTripFixture() {
+        String origId = uploadMultiSectionFixture();
+        String newId = reimport(origId, "Multi copy");
+        assertEquals(5, sectionModels(newId).size());
+        assertSectionTextsEqual(origId, newId);
     }
 }
