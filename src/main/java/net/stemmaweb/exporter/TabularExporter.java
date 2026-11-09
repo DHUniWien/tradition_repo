@@ -244,6 +244,13 @@ public class TabularExporter {
         AlignmentModel wholeTradition = new AlignmentModel();
         List<String> sortedWits = new ArrayList<>(allWitnesses);
         Collections.sort(sortedWits);
+        // Create our generic "missing" reading for witnesses that don't appear in some sections.
+        // It has rank 1 since, if it were a real reading, it would be at the start of the section.
+        ReadingModel genericGap = new ReadingModel();
+        genericGap.setText("#MISSING#");
+        genericGap.setIs_lacuna(true);
+        genericGap.setRank(1L);
+        genericGap.setId("-1");
         for (String sigil : sortedWits) {
             String[] parsed = WitnessTokensModel.parseSigil(sigil);
 
@@ -268,8 +275,9 @@ public class TabularExporter {
                     wholeWitness.getTokens().addAll(witcolumn.getTokens());
                     assert(witcolumn.getTokens().size() == aSection.getLength());
                 } else {
-                    // Add a bunch of nulls
-                    wholeWitness.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) aSection.getLength(), null)));
+                    // The witness doesn't exist for this section. Represent it as our generic gap
+                    wholeWitness.getTokens().addAll(
+                            new ArrayList<>(Collections.nCopies((int) aSection.getLength(), genericGap)));
                 }
             }
             // Add the WitnessTokensModel to the new AlignmentModel.

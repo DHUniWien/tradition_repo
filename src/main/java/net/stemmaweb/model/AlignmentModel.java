@@ -77,14 +77,14 @@ public class AlignmentModel {
             String sigil = w.getProperty("sigil").toString();
             // Find out which witness layers we need to deal with
             HashSet<String> layers = new HashSet<>();
-            layers.add("base");
+            layers.add("__base__");
             layers.addAll(layersByWitness.getOrDefault(sigil, new HashSet<>()));
 
             // Now for each layer iteration, produce a set of tokens.
             for (String layer : layers) {
                 WitnessTokensModel witnessRow = new WitnessTokensModel();
                 witnessRow.setWitness(sigil);
-                if (!layer.equals("base")) {
+                if (!layer.equals("__base__")) {
                     witnessRow.setLayer(layer);
                 }
 
@@ -93,9 +93,9 @@ public class AlignmentModel {
 
                 // Get the witness readings for the given layer
                 ArrayList<String> alternatives = new ArrayList<>();
-                if (!layer.equals("base")) alternatives.add(layer);
+                if (!layer.equals("__base__")) alternatives.add(layer);
                 Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
-                ReadingModel filler;
+                ReadingModel filler = null;
                 ArrayList<Node> witReadings = new ArrayList<>();
                 tx.traversalDescription().depthFirst()
                         .relationships(seqType, Direction.OUTGOING)
@@ -109,23 +109,24 @@ public class AlignmentModel {
 
                     // Make the reading token
                     ReadingModel readingToken = modelCache.computeIfAbsent(r.getElementId(), _ -> new ReadingModel(r));
-                    // Check whether it was a lacuna
-                    if (readingToken.getIs_lacuna())
-                        filler = readingToken;
-                    else filler = null;
 
                     // Put it at its proper rank, filling null bzw. lacuna tokens into the gap
                     long currRankIndex = (long) r.getProperty("rank") - 1;
                     for (int i = tokens.size(); i < currRankIndex; i++)
                         tokens.add(filler);
                     tokens.add(readingToken);
+
+                    // Save the token as filler if it was a lacuna, or else clear the filler
+                    if (readingToken.getIs_lacuna())
+                        filler = readingToken;
+                    else filler = null;
                 }
                 // Skip this witness if it is empty
                 if (tokens.isEmpty()) continue;
 
                 // Fill in any empty ranks at the end
                 for (int i = tokens.size(); i < length; i++)
-                    tokens.add(null);
+                    tokens.add(filler);
 
                 // Store the witness row and add it to the alignment
                 witnessRow.setTokens(tokens);

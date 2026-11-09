@@ -73,7 +73,7 @@ public class TabularInputOutputTest extends TestCase {
         DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
     	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     	new GraphDatabaseServiceProvider(dbbuilder, db);
-        Util.setupTestDB(db, "1");
+        Util.setupTestDB(db, "user@example.com");
 
         // Create a JerseyTestServer for the necessary REST API calls
 
@@ -84,7 +84,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testParseCSV() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium_simple.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -131,7 +131,7 @@ public class TabularInputOutputTest extends TestCase {
 
 
     public void testParseNastyCSV() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox", "LR", "user@example.com",
                 "src/TestFiles/qbf.csv", "ssv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -160,7 +160,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         String result = response.readEntity(String.class);
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox 2", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox 2", "LR", "user@example.com",
                 result, "tsv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId2 = Util.getValueFromJson(response, "tradId");
@@ -171,7 +171,7 @@ public class TabularInputOutputTest extends TestCase {
 
 
     public void testParseCsvLayers() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -237,7 +237,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testLayerColumnWithoutBaseIsRejected() {
         // A layer must have its base witness in the same table
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
                 "A,B,C (x)\nthe,the,the\ncat,cat,\nsat,sat,sat\n", "csv");
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         String error = Util.getValueFromJson(response, "error");
@@ -245,7 +245,7 @@ public class TabularInputOutputTest extends TestCase {
 
         // The same goes for adding a section to an existing tradition, which must not leave
         // either a half-made section or a stray witness behind.
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Plain", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Plain", "LR", "user@example.com",
                 "A,B\nthe,the\ncat,cat\n", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -262,7 +262,7 @@ public class TabularInputOutputTest extends TestCase {
     public void testMalformedLayerIsRejected() {
         // Exactly one pair of parentheses, closing the sigil, with a non-empty layer label inside
         for (String header : new String[]{"B (x", "B (x) y", "B (x) (y)", "B ((x))", "B ()", "B ( )", "(x)", "B x)"}) {
-            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
                     String.format("A,B,%s\nthe,the,the\ncat,cat,kat\n", header), "csv");
             assertEquals(header, Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             String error = Util.getValueFromJson(response, "error");
@@ -273,7 +273,7 @@ public class TabularInputOutputTest extends TestCase {
     public void testLayerHeaderSpacingVariants() {
         // The spacing around the layer label is not significant
         for (String header : new String[]{"B (x)", "B(x)", "B (x) ", "B (x )", "B ( x )", "B  (x)", "B\t(x)"}) {
-            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
                     String.format("A,B,%s\nthe,the,the\ncat,cat,kat\n", header), "csv");
             assertEquals(header, Response.Status.CREATED.getStatusCode(), response.getStatus());
             String tradId = Util.getValueFromJson(response, "tradId");
@@ -287,7 +287,7 @@ public class TabularInputOutputTest extends TestCase {
     public void testDuplicateLayerIsRejected() {
         // These all say the same thing, so only one of them can be in a file
         for (String second : new String[]{"B(x)", "B (x )", "B ( x) "}) {
-            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+            Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
                     String.format("A,B,B (x),%s\nthe,the,the,the\ncat,cat,kat,kit\n", second), "csv");
             assertEquals(second, Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             String error = Util.getValueFromJson(response, "error");
@@ -295,13 +295,14 @@ public class TabularInputOutputTest extends TestCase {
                     && error.contains("both"));
         }
         // The same layer label on different witnesses is of course fine
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
-                "A,B,A (x),B (x)\nthe,the,the,the\ncat,cat,kat,kit\n", "csv");
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        try (Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
+                "A,B,A (x),B (x)\nthe,the,the,the\ncat,cat,kat,kit\n", "csv")) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
     }
 
     public void testLayerBaseMayFollowLayer() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
                 "A,B (x),B\nthe,the,the\ncat,kat,cat\n", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -312,7 +313,7 @@ public class TabularInputOutputTest extends TestCase {
     public void testLayerOnFinalLink() {
         // B (x) ends on a different reading from B, so its final link into #END# has to carry
         // the layer, not a sigil called "B (x)".
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Layered", "LR", "user@example.com",
                 "A,B,B (x)\nthe,the,the\ncat,cat,kat\n", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -333,7 +334,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testSetRelationship() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium.csv", "csv");
         String tradId = Util.getValueFromJson(response, "tradId");
         Tradition tradition = new Tradition(tradId);
@@ -372,14 +373,14 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testParseExcel() {
         // Test a bad file
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "user@example.com",
                 "src/TestFiles/armexample_bad.xlsx", "xlsx");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertTrue(response.readEntity(String.class).contains("has too many columns!"));
 
 
         // Test a good XLS file
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "user@example.com",
                 "src/TestFiles/armexample.xls", "xls");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -397,7 +398,7 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("այնոսիկ")));
 
         // Test a good XLSX file
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "user@example.com",
                 "src/TestFiles/armexample.xlsx", "xlsx");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
@@ -417,7 +418,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testExcelCorrectGraph() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "BHL 2761", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "BHL 2761", "LR", "user@example.com",
                 "src/TestFiles/bhl_2761.xlsx", "xlsx");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -448,7 +449,7 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() {
         // Set up some data
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -475,32 +476,94 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(3, i);
     }
 
-    public void testExportSelectedSections() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
-                "1", "src/TestFiles/florilegium_w.csv", "csv");
+    public void testExportLacunae() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Notre besoin", "LR",
+                "user@example.com", "src/TestFiles/besoin.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-        String tradId = Util.getValueFromJson(response, "tradId");
-
-        ArrayList<String> tradSections = new ArrayList<>();
-        // Get the existing single section ID
-        SectionModel firstSection = jerseyTest.target("/tradition/" + tradId + "/sections")
+        String besoinId = Util.getValueFromJson(response, "tradId");
+        response = jerseyTest.target("/tradition/" + besoinId + "/json")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {}).getFirst();
-        assertNotNull(firstSection);
-        tradSections.add(firstSection.getId());
-
-        // Add the other three sections
-        int i = 0;
-        while (i < 3) {
-            String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
-            String sectId = Util.getValueFromJson(
-                    Util.addSectionToTradition(jerseyTest, tradId, fileName, "csv", String.format("part %d", i)),
-                    "sectionId");
-            tradSections.add(sectId);
+                .get();
+        // Make sure we got the right-shaped object
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        JSONObject alignment = new JSONObject(response.readEntity(String.class));
+        JSONArray witStructs = alignment.getJSONArray("alignment");
+        int textlen = alignment.getInt("length");
+        assertEquals(13, witStructs.length());
+        assertEquals(1013, textlen);
+        // Now check the witness with a lacuna
+        String lacunoseWit = "U";
+        int lacunoseFrom = 585;
+        for (int i = 0; i < witStructs.length(); i++) {
+            JSONObject witStruct = witStructs.getJSONObject(i);
+            if (witStruct.getString("witness").equals(lacunoseWit)) {
+                JSONArray tokens = witStruct.getJSONArray("tokens");
+                for (int j = lacunoseFrom; j < textlen; j++) {
+                    assertFalse("rank " + j + " is filled in", tokens.isNull(j));
+                    assertTrue("rank " + j + " is a lacuna", tokens.getJSONObject(j).getBoolean("is_lacuna"));
+                }
+            }
         }
+        // Check with a lacuna from the beginning
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium whole", "LR",
+                "user@example.com", "src/TestFiles/florilegium.csv", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String florCsvId = Util.getValueFromJson(response, "tradId");
+        response = jerseyTest.target("/tradition/" + florCsvId + "/json").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        alignment = new JSONObject(response.readEntity(String.class));
+        // Just check the first N ranks of witnesses B and G
+        witStructs = alignment.getJSONArray("alignment");
+        for (int i = 0; i < witStructs.length(); i++) {
+            JSONObject witStruct = witStructs.getJSONObject(i);
+            String sigil = witStruct.getString("witness");
+            if (Arrays.asList("B", "G").contains(sigil)) {
+                JSONArray readings = witStruct.getJSONArray("tokens");
+                int emptyUntil = sigil.equals("B") ? 124 : 39;
+                for (int idx = 0; idx < emptyUntil; idx++) {
+                    JSONObject reading = readings.getJSONObject(idx);
+                    assertTrue(reading.getBoolean("is_lacuna"));
+                    assertEquals("#LACUNA#", reading.getString("text"));
+                    assertEquals(1, reading.getInt("rank"));
+                }
+                JSONObject reading = readings.getJSONObject(emptyUntil);
+                assertFalse(reading.has("is_lacuna"));
+                assertEquals(sigil.equals("B") ? "τὸ" : "ἐξετάσει", reading.getString("text"));
+                assertEquals(emptyUntil + 1, reading.getInt("rank"));
+            }
+        }
+        // Now try it with a multi-section export with missing witnesses in some sections
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
+        response = jerseyTest.target("/tradition/" + florIds.getFirst() + "/json").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        alignment = new JSONObject(response.readEntity(String.class));
+        textlen = alignment.getInt("length");
+        witStructs = alignment.getJSONArray("alignment");
+        lacunoseWit = "G";
+        lacunoseFrom = 219;
+        for (int i = 0; i < witStructs.length(); i++) {
+            JSONObject witStruct = witStructs.getJSONObject(i);
+            if (witStruct.getString("witness").equals(lacunoseWit)) {
+                JSONArray tokens = witStruct.getJSONArray("tokens");
+                // This witness has a gap in the beginning that is *not* marked as a lacuna
+                assertTrue(tokens.isNull(38));
+                assertFalse(tokens.isNull(39));
+                for (int j = lacunoseFrom; j < textlen; j++) {
+                    assertFalse("rank " + j+1 + " is filled in", tokens.isNull(j));
+                    JSONObject lacunoseReading = tokens.getJSONObject(j);
+                    assertTrue("rank " + j+1 + " is a lacuna", lacunoseReading.getBoolean("is_lacuna"));
+                    assertEquals("rank " + j+1 + "is the generic lacuna", "-1", lacunoseReading.getString("id"));
+                }
+            }
+        }
+    }
+
+    public void testExportSelectedSections() {
+        List<String> tradSections = Util.importFlorilegium(jerseyTest);
+        String tradId = tradSections.removeFirst();
 
         // Request all sections
-        response = jerseyTest
+        Response response = jerseyTest
                 .target("/tradition/" + tradId + "/json")
                 .request(MediaType.APPLICATION_JSON)
                 .get();
@@ -606,7 +669,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testConflatedJSONExport() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
                 "src/TestFiles/globalrel_test.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -682,7 +745,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testCSVExport() throws Exception {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "user@example.com",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -764,7 +827,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testExportMultiSection() throws Exception {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "user@example.com",
                 "src/TestFiles/lf2.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -797,7 +860,9 @@ public class TabularInputOutputTest extends TestCase {
         JSONObject witN = table.getJSONArray("alignment").getJSONObject(24);
         assertEquals("N", witN.getString("witness"));
         for (int i=0; i < 21; i++) {
-            assertEquals("null", "" + witN.getJSONArray("tokens").get(i));
+            JSONObject expectLacuna = witN.getJSONArray("tokens").getJSONObject(i);
+            assertNotNull(expectLacuna);
+            assertEquals("-1", expectLacuna.getString("id"));
         }
         JSONObject firstN = witN.getJSONArray("tokens").getJSONObject(21);
         assertEquals("in", firstN.getString("text"));
@@ -816,7 +881,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testExportWithLayers() {
         // Take the uncorrected MoE section
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "user@example.com",
                 "src/TestFiles/Matthew-401.json", "cxjson");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -882,7 +947,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testComplexLayerExport() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium_tei_ps.xml", "teips");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -1008,23 +1073,39 @@ public class TabularInputOutputTest extends TestCase {
             List<ReadingModel> tableReadings = new ArrayList<>(wtm.getTokens());
             // Check that the first reading is at the correct rank
             Long firstRank = witReadings.getFirst().getRank();
-            // Account for section splits, above
-            if (wtm.getWitness().equals("B") || wtm.getWitness().equals("G"))
+            // Account for section splits. 37 is the magic number
+            boolean lacunaStart = false;
+            if (wtm.getWitness().equals("B") || wtm.getWitness().equals("G")) {
                 firstRank += 37;
+                lacunaStart = true;
+            }
             int i = 1;
             while (i < firstRank) {
-                assertNull(tableReadings.get(i-1));
+                if (lacunaStart && i < 38) {
+                    // B and G will be given as lacunae in the first section
+                    ReadingModel tr = tableReadings.get(i - 1);
+                    assertTrue(tr.getIs_lacuna());
+                    assertEquals("rank " + i + "is lacunose", "-1", tr.getId());
+                }
+                else
+                    assertNull("rank " + i + "is absent", tableReadings.get(i-1));
                 i++;
             }
-            assertNotNull(tableReadings.get(i-1));
-            // Check that the last reading is at the correct rank
+            // Now it should be a real reading
+            assertNotNull("rank " + i + "is present", tableReadings.get(i-1));
+            assertNotEquals("-1", tableReadings.get(i-1).getId());
+
+            // Check that the last reading is at the correct rank. This means the witnesses
+            // not in the last section are lacunae, with the generic -1 ID
             if (!expectedWits.contains(wtm.getWitness()))
                 for (int j = 227; j < alignment.getLength(); j++)
-                    assertNull(tableReadings.get(j));
+                    assertEquals("-1", tableReadings.get(j).getId());
 
-            // Check that the (non-null) reading sequences are identical
+            // Check that the (non-null, non-lacuna) reading sequences are identical
             tableReadings.removeIf(Objects::isNull);
             List<String> witRdgIds = witReadings.stream().map(ReadingModel::getId).collect(Collectors.toList());
+            // Do the same with tableReadings but filter out readings with ID -1
+            tableReadings.removeIf(tr -> tr.getId().equals("-1"));
             List<String> tableRdgIds = tableReadings.stream().map(ReadingModel::getId).collect(Collectors.toList());
 
             assertEquals(witRdgIds, tableRdgIds);
@@ -1160,7 +1241,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testCharMatrixOutput () {
         // Set up some data
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -1197,7 +1278,7 @@ public class TabularInputOutputTest extends TestCase {
     // A reading shared by many witnesses should be represented by a single ReadingModel
     // in the alignment, not one copy per witness (which blows up memory on large traditions).
     public void testAlignmentSharesReadingModels() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "user@example.com",
                 "src/TestFiles/ChronicleOfMatthew.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
