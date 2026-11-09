@@ -1799,11 +1799,13 @@ public class Section {
             parameters = {
                     @Parameter(
                             name = "conflate",
+                            description = "A relation type whose related readings (and any more tightly-bound ones) should be treated as identical",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "exclude_layers",
+                            description = "If \"true\", omit the witness layer columns",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     )
@@ -1848,7 +1850,7 @@ public class Section {
     /**
      * Returns a CSV file that contains the aligned reading data for the tradition.
      *
-     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param toConflate   - A relationship type whose readings (and any more tightly-bound ones) should be treated as identical
      * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the CSV alignment as plaintext
      */
@@ -1862,11 +1864,13 @@ public class Section {
             parameters = {
                     @Parameter(
                             name = "conflate",
+                            description = "A relation type whose related readings (and any more tightly-bound ones) should be treated as identical",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "exclude_layers",
+                            description = "If \"true\", omit the witness layer columns",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     )
@@ -1925,11 +1929,13 @@ public class Section {
             parameters = {
                     @Parameter(
                             name = "conflate",
+                            description = "A relation type whose related readings (and any more tightly-bound ones) should be treated as identical",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "exclude_layers",
+                            description = "If \"true\", omit the witness layer columns",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     )
@@ -1990,16 +1996,19 @@ public class Section {
             parameters = {
                     @Parameter(
                             name = "conflate",
+                            description = "A relation type whose related readings (and any more tightly-bound ones) should be treated as identical",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "exclude_layers",
+                            description = "If \"true\", omit the witness layer columns",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "maxVars",
+                            description = "The maximum number of variants per location, above which the location will be discarded",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "integer", defaultValue = "8")
                     )
@@ -2046,7 +2055,7 @@ public class Section {
     /**
      * Returns a TEI double-endpoint-attachment file representing the section text.
      *
-     * @param significant   - Zero or more relationship types whose readings should be treated as identical
+     * @param significant   - Whether to conflate readings whose relations are marked as not significant
      * @param excludeType1  - If "true", exclude type-1 (singleton) variants
      * @param excludeNonsense - If "true", suppress any variants marked with the is_nonsense property
      * @param combine - If "true", move dislocated (e.g. transposed) variants to their matching base
@@ -2068,41 +2077,49 @@ public class Section {
             parameters = {
                     @Parameter(
                             name = "significant",
+                            description = "A significance level below which to conflate related readings",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string", defaultValue = "no")
                     ),
                     @Parameter(
                             name = "exclude_type1",
+                            description = "If \"true\", exclude type-1 (singleton) variants",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string", defaultValue = "no")
                     ),
                     @Parameter(
                             name = "exclude_nonsense",
+                            description = "If \"true\", suppress any variants marked with the is_nonsense property",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string", defaultValue = "no")
                     ),
                     @Parameter(
                             name = "combine_dislocations",
+                            description = "If \"true\", combine dislocated readings into a single location",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string", defaultValue = "no")
                     ),
                     @Parameter(
                             name = "suppress_matching",
+                            description = "Suppress any readings matching the given regular expression (default: punctuation-only readings)",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string", defaultValue = "punct")
                     ),
                     @Parameter(
                             name = "base_witness",
+                            description = "A witness to use as the base for the collation, or the value 'majority' or 'lemma'",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "normalize",
+                            description = "A relation type to use for normalization",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     ),
                     @Parameter(
                             name = "exclude_witness",
+                            description = "A witness to exclude from the collation. Can be specified multiple times",
                             in = ParameterIn.QUERY,
                             schema = @Schema(type = "string")
                     )

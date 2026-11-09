@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jakarta.ws.rs.*;
+import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.json.JSONObject;
@@ -37,23 +38,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.exporter.CollateXJsonExporter;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
 import net.stemmaweb.exporter.TEIExporter;
 import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.AlignmentModel;
-import net.stemmaweb.model.AnnotationLabelModel;
-import net.stemmaweb.model.AnnotationModel;
-import net.stemmaweb.model.DisplayOptionModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.SectionUploadModel;
-import net.stemmaweb.model.StemmaModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.parser.CollateXJsonParser;
 import net.stemmaweb.parser.CollateXParser;
 import net.stemmaweb.parser.DotParser;
@@ -1248,7 +1238,64 @@ public class Tradition {
     }
 
     /**
-     * Returns a JSON file that contains the aligned reading data for the tradition.
+     * Returns a CollateX JSON file that contains the aligned reading data for the tradition.
+     *
+     * @param toConflate    - A relationship type whose readings should be treated as identical
+     * @param sectionList   - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param excludeLayers - If "true", exclude witness layers from the output.
+     * @return the CollateX JSON alignment, one entry per section
+     */
+    @GET
+    @Path("/cxjson")
+    @Produces("application/json; charset=utf-8")
+    @Operation(
+            tags = {"Tradition"},
+            summary = "Download CollateX JSON alignment",
+            description = "Returns the tradition's alignment tables in CollateX JSON format, as read by the "
+                    + "'cxjson' importer: {\"name\": <tradition name>, \"sections\": [<section>, ...]}, with the "
+                    + "sections in tradition order. Each section is {\"name\": <section name>, \"witnesses\": "
+                    + "[\"A\", \"A (a.c.)\", ...], \"table\": [<row>, ...]}. Each row has one cell per witness "
+                    + "column; a cell is [] where the witness has no reading at that rank, and otherwise a "
+                    + "one-token array. A token is {\"t\": <text>, \"n\": <normal form>}, plus \"display\" when set "
+                    + "and \"join_next\" / \"join_prior\" when true. Witness layers are separate columns named "
+                    + "\"SIGIL (layer)\"; a witness with no readings in a section has no column in that section, "
+                    + "and rows in which every cell is empty are omitted. A lacuna is written as a #LACUNA# "
+                    + "token at every rank it spans. The output is streamed; an error after streaming has begun "
+                    + "aborts the connection.",
+            parameters = {
+                    @Parameter(name = "conflate", description = "A relationship type to use for normalisation",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "section", description = "Restrict the output to include the given sections (which are always returned in tradition order). Can be specified multiple times.",
+                            in = ParameterIn.QUERY, array = @ArraySchema(schema = @Schema(implementation = String.class))),
+                    @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The tradition as a CollateX JSON object",
+                            content = @Content(schema = @Schema(type = "object",
+                                    description = "CollateX JSON: {name, sections: [{name, witnesses, table}, ...]}"),
+                                    mediaType = "application/json")),
+                    @ApiResponse(responseCode = "400", description = "A requested section does not exist in the tradition, or the 'conflate' relation type does not exist",
+                            content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message; only for failures before streaming begins", content = @Content(mediaType = "application/json"))
+            }
+    )
+    public Response getCxJson(@QueryParam("conflate") String toConflate,
+                            @QueryParam("section") List<String> sectionList,
+                            @QueryParam("exclude_layers") String excludeLayers) {
+        // The exporter opens its own transactions, so we must not hold one here.
+        try {
+            return new CollateXJsonExporter(db).exportTradition(traditionId, toConflate,
+                    sectionList, "true".equals(excludeLayers));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+    }
+
+    /**
+     * Returns a JSON object that contains the aligned reading data for the tradition in Stemmarest JSON format.
      *
      * @param toConflate    - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList   - Restrict the output to include the given sections. Can be specified multiple times.
@@ -1261,7 +1308,8 @@ public class Tradition {
     @Operation(
             tags = {"Tradition"},
             summary = "Download JSON alignment",
-            description = "Returns a JSON file that contains the aligned reading data for the tradition.",
+            description = "Returns a single alignment table for all (specified) sections of the tradition, " +
+                    "in Stemmarest JSON format: {",
             parameters = {
                     @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
                             in = ParameterIn.QUERY, schema = @Schema(type = "string")),
@@ -1282,11 +1330,11 @@ public class Tradition {
                             @QueryParam("exclude_layers") String excludeLayers) {
 
         try (Transaction tx = db.beginTx()) {
-        	return new TabularExporter(tx).exportAsJSON(traditionId, toConflate,
-        			sectionList, "true".equals(excludeLayers));
+            return new TabularExporter(tx).exportAsJSON(traditionId, toConflate,
+                    sectionList, "true".equals(excludeLayers));
         } catch (Exception e) {
-        	e.printStackTrace();
-        	return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 
