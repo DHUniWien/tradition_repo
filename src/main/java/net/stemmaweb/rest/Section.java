@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -52,22 +54,11 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.exporter.CollateXJsonExporter;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.TEIExporter;
 import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.AlignmentModel;
-import net.stemmaweb.model.AnnotationModel;
-import net.stemmaweb.model.DisplayOptionModel;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ProposedEmendationModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.SequenceModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.VariantListModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.ReadingService.AlignmentTraverse;
 
 /**
@@ -1717,9 +1708,84 @@ public class Section {
     }
 
     /**
-     * Returns an alignment table for the section in JSON format.
+     * Returns the section's alignment table as CollateX JSON, streamed.
      *
-     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param toConflate   - A relationship type whose readings (and any more tightly-bound ones) should be treated as identical
+     * @param excludeLayers - If "true", exclude witness layers from the output.
+     * @return the CollateX JSON alignment
+     */
+    @GET
+    @Path("/cxjson")
+    @Produces("application/json; charset=utf-8")
+    @Operation(
+            tags = {"Section"},
+            summary = "Download CollateX JSON alignment",
+            description = "Returns the section's alignment table in CollateX JSON format, as read by the "
+                    + "'cxjson' importer: {\"name\": <section name>, \"witnesses\": [\"A\", \"A (a.c.)\", ...], "
+                    + "\"table\": [<row>, ...]}. Each row has one cell per witness column; a cell is [] where "
+                    + "the witness has no reading at that rank, and otherwise a one-token array. A token is "
+                    + "{\"t\": <text>, \"n\": <normal form>}, plus \"display\" when set and \"join_next\" / "
+                    + "\"join_prior\" when true. Witness layers are separate columns named \"SIGIL (layer)\"; "
+                    + "witnesses with no readings in the section have no column, and rows in which every "
+                    + "cell is empty are omitted. A lacuna is written as a #LACUNA# token at every rank it "
+                    + "spans. The output is streamed; an error after streaming has begun aborts the connection.",
+            parameters = {
+                    @Parameter(
+                            name = "conflate",
+                            description = "A relation type whose related readings (and any more tightly-bound ones) should be treated as identical",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_layers",
+                            description = "If \"true\", omit the witness layer columns",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success, the section as a CollateX JSON object",
+                            content = @Content(schema = @Schema(type = "object",
+                                    description = "CollateX JSON: {name, witnesses, table}"),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "The requested 'conflate' relation type does not exist in the tradition",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure before streaming begins, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
+    public Response getCxJson(@QueryParam("conflate") String toConflate,
+                              @QueryParam("exclude_layers") String excludeLayers) {
+        try {
+            return new CollateXJsonExporter(db).exportSection(tradId, sectId, toConflate,
+                    "true".equals(excludeLayers));
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+    }
+
+    /**
+     * Returns an alignment table for the section in Stemmarest's own JSON format.
+     *
+     * @param toConflate   - A relationship type whose readings (and any more tightly-bound ones) should be treated as identical
      * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the JSON alignment
      */
@@ -1772,10 +1838,10 @@ public class Section {
                             @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
         try (Transaction tx = db.beginTx()) {
-        	return new TabularExporter(tx).exportAsJSON(tradId, toConflate, thisSection, "true".equals(excludeLayers));
+            return new TabularExporter(tx).exportAsJSON(tradId, toConflate, thisSection, "true".equals(excludeLayers));
         } catch (Exception e) {
-        	e.printStackTrace();
-        	return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 

@@ -4,7 +4,6 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -99,7 +98,7 @@ public class CollateXJsonInputTest extends TestCase {
             List<Relationship> sequences =
 //            		VariantGraphService.returnTraditionSection(sectId, db).relationships().stream()
             		StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId).relationships().spliterator(), false)
-            		.filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
+            		.filter(x -> x.getType().toString().equals("SEQUENCE")).toList();
             for (Relationship r : sequences) {
                 if (r.hasProperty("witnesses")) {
                     ArrayList<String> mainwits = new ArrayList<>(Arrays.asList((String[]) r.getProperty("witnesses")));
@@ -146,7 +145,7 @@ public class CollateXJsonInputTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(77, gReadings.size());
-        JSONObject token = new JSONObject(gReadings.get(0).getExtra());
+        JSONObject token = new JSONObject(gReadings.getFirst().getExtra());
         assertEquals(firstPage, token.getJSONObject("G").getJSONObject("page").getString("n"));
         assertEquals(firstLine, token.getJSONObject("G").getJSONObject("line").getString("xml:id"));
         assertEquals(firstContext, token.getJSONObject("G").getString("context"));
@@ -231,11 +230,12 @@ public class CollateXJsonInputTest extends TestCase {
         // Add another section
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
                 "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "sectionId");
-        Response response = jerseyTest
+        try (Response response = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/orderAfter/" + newSectId)
                 .request()
-                .put(Entity.text(""));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+                .put(Entity.text(""))) {
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        }
         List<SectionModel> ourSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections/")
                 .request()
@@ -441,7 +441,8 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals("Mine", tm.getName());
     }
 
-    public void testWrapperUnnamedSectionGetsTraditionName() {
+    public void testWrapperUnnamedSectionGetsAppropriateName() {
+        // If you upload it as a tradition with multiple sections, the section gets a generic name
         Response r = uploadWrapper("T",
                 "{\"sections\":[{\"witnesses\":[\"A\"],\"table\":[[[{\"t\":\"x\"}]]]}]}");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
@@ -449,28 +450,40 @@ public class CollateXJsonInputTest extends TestCase {
         List<SectionModel> sections = jerseyTest.target("/tradition/" + newId + "/sections")
                 .request().get(new GenericType<>() {});
         assertEquals(1, sections.size());
-        assertEquals("T", sections.getFirst().getName());
+        assertEquals("uploaded section 1", sections.getFirst().getName());
+
+        // If you upload a new tradition as a single section, the section gets the tradition name
+        r = uploadWrapper("T2", "{\"witnesses\":[\"A\"],\"table\":[[[{\"t\":\"x\"}]]]}");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newId2 = Util.getValueFromJson(r, "tradId");
+        sections = jerseyTest.target("/tradition/" + newId2 + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, sections.size());
+        assertEquals("T2", sections.getFirst().getName());
     }
 
     public void testBadSectionRollsBack() {
         int before = jerseyTest.target("/traditions").request().get(new GenericType<List<TraditionModel>>() {}).size();
-        Response r = uploadWrapper("Bad",
+        try (Response r = uploadWrapper("Bad",
                 "{\"sections\":[{\"witnesses\":[\"A\"],\"table\":[[[{\"t\":\"x\"}]]]},"
-                        + "{\"witnesses\":[\"A\"],\"table\":[[\"notarray\"]]}]}");
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
-        assertTrue(r.readEntity(String.class).contains("section 2"));
+                        + "{\"witnesses\":[\"A\"],\"table\":[[\"notarray\"]]}]}")) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+            assertTrue(r.readEntity(String.class).contains("section 2"));
+        }
         assertEquals(before, jerseyTest.target("/traditions").request()
                 .get(new GenericType<List<TraditionModel>>() {}).size());
 
-        Response empty = uploadWrapper("Empty", "{\"sections\":[]}");
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), empty.getStatus());
+        try (Response empty = uploadWrapper("Empty", "{\"sections\":[]}")) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), empty.getStatus());
+        }
         assertEquals(before, jerseyTest.target("/traditions").request()
                 .get(new GenericType<List<TraditionModel>>() {}).size());
     }
 
     public void testWrapperRejectedOnAddSection() {
-        Response r = Util.addSectionToTradition(jerseyTest, tradId, MULTI, "cxjson", "extra");
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        try (Response r = Util.addSectionToTradition(jerseyTest, tradId, MULTI, "cxjson", "extra")) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        }
         List<SectionModel> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request().get(new GenericType<>() {});
         assertEquals(1, sections.size());
